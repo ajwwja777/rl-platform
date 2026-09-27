@@ -1,6 +1,6 @@
 # 统一 RL 实验平台：迁移记录
 
-日期：2026-09-27。当前批次：**入口初始化**，尚未开始业务迁移。
+日期：2026-09-27。当前业务迁移进度见文末；以下初始化内容保留为历史记录。
 
 ## 已有位置与成果
 
@@ -47,3 +47,18 @@
 代码调整：路径与所有权拆分；推理环境隔离；输出目录可配置；加载前要求已完成 warmup 的 checkpoint；Python 3.8 网页契约导入兼容；补充 Trace 仅在终止时 fsync（HDF5 和 Replay 提交语义不变）。A6000 可选 Actor pinning / 动作平滑保留，但当前 profile 不启用，默认动作裁剪保留现场公式。
 
 实时进度与验收证据以后续“验收／切换”记录为准，不能将准备工作视为完成。
+
+## 2026-09-27 23:55：已验证范围与现场连接中断
+
+- 主源码提交 1f57443c19ac3ae948ca8dcf922b2c29ba0d6cbf、自有 upstream 8cef77eb7c5211b45382bf9199c9cdf0aaf60a19 已 push 并核对远端。upstream 是独立仓库 ajwwja777/rlt-openpi，保留 c1e40ac 作者历史；仅部署补丁纳入自己的提交，不向上游提 PR。
+- Cobot 新项目同步 501 个源码文件，逐文件 SHA-256 一致。Stage 1 31 个文件、固定 5k 8 个文件、在线资产 135 个文件与旧现场原件逐项相同；Python 3.10 在线环境与 3.11 推理环境复制、重定位，不升级算法依赖。
+- 新目录 preflight 实际通过：learner=5000、actor=2500、warmup_ready_adds_total=2567；7D/C10/z2048、配置非路径字段不变。
+- A6000 测试：adapter/Session/录制 243 passed、upstream 45 passed；硬件项目 342 passed；网页 576 passed / 11 skipped。没有把测试等同于真机成功率。
+- 新代码的独立在线恢复验证通过：实际 checkpoint / Replay 副本从 5000/2500 开始，无新数据时不更新；添加一个模拟 transition 后恰好更新 5 次至 5005/2502，指标有限，重启后不重复更新。原始三份输入 SHA-256 不变，零 ROS 发布者。脚本 scripts/validate_online_resume.py；证据 outputs/migrations/20260927-rlt/resume-validation-a6000/report.json。
+- A6000 原 warmup 对比历史复制到 outputs/rlt/plug_v3_yyshadow/history/，1,731 个文件 SHA-256 一致；选定 5k checkpoint / actor / norm 归 models/rlt/plug_v3_yyshadow/warmup-5000。原件仍保留至全链路切换。
+- Cobot 约 148 GB 数据已经复制，逐文件校验尚未取回完成报告；旧 RLT 全量归档至 A6000、旧 cobot-platform 至 vla-platform 的归档也未完成。不得清理原件。
+- 用户已明确机械臂安全断电，可重启节点。23:44 前确认网页 idle、模型 offline；随后在新路径发起 Stage 1 --validate-only 固定输入验证，无 ROS 发布者。23:46 左右 Cobot SSH / ping 不再响应，至 23:52 仍连接超时，尚未取回加载结果。原因未定，不能判断为模型通过、磁盘故障或已关机。
+- 尚未重启硬件节点、尚未部署本轮网页路径变更、尚未删除旧 cobot-platform / rlt / data。现场现状以连接恢复后的重新检查为准；先核对验证任务、数据校验、模型与录制状态，再接续验收。
+- Guide 摘要只修改 MD，不由本会话提交／推送；其他 agent 的 expo-ft / storage-cleanup 修改保留。
+
+当前未交付完成项：现场权重加载／新硬件节点验收、网页切换、全部数据／历史资产校验和对应旧目录删除。不得把已复制／已 push 写成已经能够在线真机运行。
