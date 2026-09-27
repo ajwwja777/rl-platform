@@ -1,0 +1,188 @@
+{
+  "manifest": {
+    "name": "rtc-corrective-r1",
+    "status": "ready_for_fixed_onsite_trial",
+    "path": "/media/agilex/Getea1/jiaan/projects/rlt/runs/plug_v2/learning/candidates/rtc-corrective-r1/actor.pt",
+    "sha256": "a197ab49db46bf7089740eb868400df57861051c34eeeaee625394d713a44918",
+    "version": 2000,
+    "stage1_checkpoint": "/media/agilex/Getea1/jiaan/projects/rlt/checkpoints/plug_v2/bf16/3999",
+    "stats_sha256": "373d9a01bbcc0907dbbc27b091768774f98933cb28cdf3404a14f378ee02b49d",
+    "rtc_context_dim": 99,
+    "inference_config": {
+      "raw_residual_radius": 0.2,
+      "brake_beta": 0.75,
+      "prefix_gate": {
+        "low": 0.3,
+        "high": 0.7,
+        "threshold": 0.015,
+        "temperature": 0.005
+      },
+      "apply_only_with_committed_prefix": true
+    },
+    "core_residual_radius": 0.05,
+    "online_learning_supported": false,
+    "explore_supported": false,
+    "acceptance_scope": "fixed_onsite_trial_only",
+    "deployment_gate": "/media/agilex/Getea1/jiaan/projects/rlt/runs/plug_v2/learning/rtc-corrective-consistent-training-20260918/deployment-gate.json",
+    "initial_d0_policy": "reference_only; avoid regression outside RTC-corrective training scope",
+    "onsite_validated": false,
+    "command_conditioning": {
+      "control_hz": 30,
+      "velocity_rad_per_sec": 0.2,
+      "step_rad": 0.006666666666666667,
+      "tracking_bound_rad": 0.04,
+      "active_joints": [
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ]
+    },
+    "validation_sources": {
+      "numerical": "/media/agilex/Getea1/jiaan/projects/rlt/runs/plug_v2/learning/candidates/rtc-corrective-r1/offline-validation.json",
+      "session": "/media/agilex/Getea1/jiaan/projects/rlt/runs/plug_v2/learning/candidates/rtc-corrective-r1/session-offline/tests/session_e2e_validation.json",
+      "lifecycle": "/media/agilex/Getea1/jiaan/projects/rlt/runs/plug_v2/learning/candidates/rtc-corrective-r1/lifecycle-validation.json"
+    },
+    "code_sha256": {
+      "runtime.py": "f6a8767d23d6c42b4d41e3ce2631725e5dbc90415c09ecd1c11281663f6cc479",
+      "cli.py": "04892416faf0e0494b5603d1b1c894b2df34de83017f9da50774297336e610a3",
+      "fixed_candidate.py": "45d0120b91f1ccee1000b9776edd4ffd9f7a40a1982407c964644f3fff2a87be",
+      "corrective_policy.py": "0a832c028e3495e94337f0f19a7520e52701b0652c33839b407086579d84275b",
+      "learning_diagnostics.py": "2e96e8eddbc943413e0b4696a86b0e1717cc222776f9689ea00b157ed859f99e",
+      "learning.py": "6c920ea19fbeb45affb1dc807768748ace577de7f9be982f7670270521a555a4",
+      "actor_service.py": "27e70b52e7f840ce7436c3d127cfd6435d622b2568bda5ec0f480509a6c32b6f",
+      "rtc_queue.py": "3077b1ec8668f2807d594ed8789b8ddf2d37cf3353d9fcccb383bef31211e935"
+    },
+    "entrypoint": "/media/agilex/Getea1/jiaan/projects/cobot-platform/scripts/rlt_demo.sh"
+  },
+  "offline": {
+    "scope": "fixed_onsite_trial_only",
+    "robot_publishers": 0,
+    "formal_replay_entries": 0,
+    "checks": [
+      "exact_CPU_HTTP_core_wrapper_equals_trained_CorrectiveActor",
+      "real_CommandFilter_equals_training_filter",
+      "immutable_committed_prefix",
+      "passive_joints_and_grippers_fixed",
+      "30Hz_velocity_bound_0.2rad_per_sec",
+      "stale_generation_rejected_after_pause",
+      "tracking_conflict_fail_closed_without_resumed_actions"
+    ],
+    "samples": 200,
+    "prefix_cases": 199,
+    "max_raw_output_difference": 2.384185791015625e-07,
+    "max_command_step_rad": 0.0066666677594184875,
+    "CPU_actor_latency_ms": {
+      "p50": 1.9186940044164658,
+      "p95": 2.017939947108971,
+      "max": 8.330286989803426
+    },
+    "Q_episode_probe": {
+      "episodes": 15,
+      "HIL_success": 11,
+      "failure": 4,
+      "original_AUC": 1.0,
+      "critic_only_shuffled_AUC_mean": 0.577922077922078,
+      "actor_and_critic_shuffled_AUC_mean": 0.5551948051948051,
+      "interpretation": "Conditional RL-token permutation with reference/context fixed. Reference still contains VLA visual information; neither a complete vision ablation nor in-distribution causal proof."
+    },
+    "factual_teacher_BC": {
+      "expert": {
+        "rows": 439,
+        "UUIDs": 8,
+        "actor_MSE_rad2": 0.00028675911016762257,
+        "reference_MSE_rad2": 0.00028675911016762257
+      },
+      "success": {
+        "rows": 546,
+        "UUIDs": 11,
+        "actor_MSE_rad2": 0.00021691237634513527,
+        "reference_MSE_rad2": 0.00021691237634513527
+      }
+    },
+    "limitations": [
+      "Zero heldout autonomous successful episodes: Q separates HIL-assisted success versus failure only.",
+      "Same small heldout set reused for mechanism diagnosis; no independent final confirmation.",
+      "Only 10 autonomous-input counterfactual BC windows, not factual RL transitions.",
+      "Critic action-direction reliability insufficient for online optimization; candidate actor was BC fine-tuned, critic frozen.",
+      "Physical tracking and insertion success require onsite validation."
+    ],
+    "status": "passed"
+  },
+  "session": {
+    "status": "passed",
+    "checks": [
+      "pause_discards_commands_and_stops_execution_immediately",
+      "hil_from_paused_is_recorded_and_release_stays_paused",
+      "learning_lease_blocks_resume",
+      "fixed_corrective_model_selected_not_legacy20000",
+      "real_model_rtc_async_replan",
+      "success_failure_abort_finalize_without_homing",
+      "session_end_keeps_service_idle"
+    ],
+    "real_stage1_checkpoint": "/media/agilex/Getea1/jiaan/projects/rlt/checkpoints/plug_v2/bf16/3999",
+    "fake_execution_ticks": 40,
+    "robot_publishers": 0,
+    "formal_replay_entries": 0
+  },
+  "lifecycle": {
+    "status": "passed",
+    "checks": [
+      "fixed_candidate_reuses_existing_CPU_core_service",
+      "Session_receives_explicit_corrective_mode",
+      "online_cycle_not_started",
+      "exploration_off"
+    ],
+    "services_started": 0
+  },
+  "gate": {
+    "step": 2000,
+    "preselected_training_budget": true,
+    "groups": {
+      "expert": {
+        "UUID": 8,
+        "rows": 85,
+        "macro_MSE": {
+          "candidate": 0.0008262926639872603,
+          "reference": 0.0009960533498087898,
+          "hold_state": 0.0018163592321798205,
+          "hold_anchor": 0.0014680453459732234,
+          "brake": 0.0008336883547599427
+        },
+        "candidate_over_best_ratio": 0.9911289503680162
+      },
+      "success": {
+        "UUID": 11,
+        "rows": 104,
+        "macro_MSE": {
+          "candidate": 0.0004611054027918726,
+          "reference": 0.0010979439089582725,
+          "hold_state": 0.0005612752019343051,
+          "hold_anchor": 0.0004941114113369787,
+          "brake": 0.0007286013516766781
+        },
+        "candidate_over_best_ratio": 0.9332012825694561
+      },
+      "autonomous_input_counterfactual_BC": {
+        "UUID": 10,
+        "rows": 10,
+        "macro_MSE": {
+          "candidate": 0.00011073256755480542,
+          "reference": 0.00027618957628874343,
+          "hold_state": 0.000591281866945792,
+          "hold_anchor": 0.00017296698551945157,
+          "brake": 0.00011383383925931412
+        },
+        "candidate_over_best_ratio": 0.9727561529621787
+      }
+    },
+    "passes_all_macro": true
+  },
+  "production_actor_sha256": "c6395e9d44139326625cdc2c894fe56b5d8c0196fcb4d722267a0eb24715a9b3",
+  "script_sha256": {
+    "rlt_up.sh": "3c291267c76ca20ea957d74ac34b37ea19a787dcfc30488ef50f788b2a940fd4",
+    "rlt_demo.sh": "057217c30bc18051a67a5a7371185edff7d17a16e436df7bce597f3220760c5b"
+  }
+}

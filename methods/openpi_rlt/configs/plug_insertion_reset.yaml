@@ -1,0 +1,12 @@
+schema_version: 1
+status: candidate
+verified: false
+auto_reset: false
+gripper_mode: hold
+home_pose: plug_preinsert_v1
+retreat_waypoints: []
+reason: >-
+  Generic front home is joint-space interpolation and has not been shown to
+  retreat an inserted plug along the socket axis. Onsite waypoint capture and
+  no-load validation are required before enabling reset.
+

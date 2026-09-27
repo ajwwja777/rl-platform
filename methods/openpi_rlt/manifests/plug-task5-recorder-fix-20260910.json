@@ -1,0 +1,196 @@
+{
+  "schema_version": "cobot-openpi-rlt-deployment-v1",
+  "status": "offline-validated / onsite-live-pending",
+  "deployment_id": "plug-rlt-s1-official-e78-h50-s42-20260909",
+  "task": {
+    "task_id": "plug_insertion",
+    "prompt": "Insert the held plug into the socket.",
+    "scope": "short insertion phase from the held-plug pre-insertion pose"
+  },
+  "cobot": {
+    "host": "agilex",
+    "project_root": "/media/agilex/Getea1/jiaan/projects/cobot-realworld-vla",
+    "deployment_root": "/media/agilex/Getea1/jiaan/projects/cobot-realworld-vla/deployments/openpi-rlt/plug-insertion-stage1-v2",
+    "operator_entry": "/home/agilex/cobot_magic/task3/jiaan/realworld_rl/openpi_rlt_plug/interface_task2_teach_rlt_live.sh",
+    "machine_a_port": 8000,
+    "session_ui": "http://127.0.0.1:8016/"
+  },
+  "source": {
+    "upstream_root": "/media/agilex/Getea1/jiaan/projects/cobot-realworld-rl/code/openpi-rlt",
+    "upstream_commit": "c1e40ac360185778c98cf20da2820e22d2d415e7",
+    "runtime_overlay_manifest": "manifests/runtime-overlay.sha256",
+    "runtime_overlay_file_count": 102,
+    "runtime_overlay_manifest_sha256": "8e1a07c4ac0c7a0f671db1fb0fd3ab732f65ea6b48c43cfb77392e4903dcee35",
+    "training_run_manifest_sha256": "cb440b917f90cfb574346fa8c4a05e9130e1648d1a3fb479160b2036e11b8e7a"
+  },
+  "dataset": {
+    "path": "/media/agilex/Getea1/jiaan/projects/cobot-realworld-vla/datasets/derived/plug-insertion/plug-insertion-stage1-v2",
+    "file_count": 317,
+    "payload_bytes": 784902059,
+    "episode_count": 78,
+    "frame_count": 11811,
+    "video_count": 234,
+    "fps": 30,
+    "camera_keys": [
+      "observation.images.cam_high",
+      "observation.images.cam_left_wrist",
+      "observation.images.cam_right_wrist"
+    ],
+    "physical_state_dim": 14,
+    "physical_action_dim": 14,
+    "model_action_dim": 32,
+    "action_horizon": 50,
+    "release_manifest_sha256": "7da2c8b9a5ca18752855fbd8faf882bc437b76e402451d5c05135dbdb500ad07",
+    "raw_lineage_sha256": "f21f773779fd59a7c59cb440ead6181e9a5bf9526687c9574deafe5ebe2e4479",
+    "tree_manifest": "manifests/dataset.sha256",
+    "tree_manifest_sha256": "344e99f839f4241a72756c18e0096849d050961d993f631f530357c91b2f82ea",
+    "tree_hash_verified_on_cobot": true,
+    "embedded_sidecar_status": "materialized-not-validated",
+    "validation_note": "The immutable sidecar status was not rewritten; training consumed this exact HPC tree and all 317 files were rehashed on Cobot."
+  },
+  "checkpoints": {
+    "default": "step_4000",
+    "rollback": "step_2000",
+    "step_2000": {
+      "path": "/media/agilex/Getea1/jiaan/projects/cobot-realworld-vla/checkpoints/openpi-rlt/cobot_rlt_pi05_joint/plug-rlt-s1-official-e78-h50-s42-20260909/step_2000",
+      "native_step": 1999,
+      "file_count": 47,
+      "payload_bytes": 15428312020,
+      "tree_manifest": "manifests/step_2000.sha256",
+      "tree_manifest_sha256": "dce23ff1e7f603dd9cfd302b7d511e610786a9a11824787c984a78d63809be75",
+      "tree_hash_verified_on_cobot": true
+    },
+    "step_4000": {
+      "path": "/media/agilex/Getea1/jiaan/projects/cobot-realworld-vla/checkpoints/openpi-rlt/cobot_rlt_pi05_joint/plug-rlt-s1-official-e78-h50-s42-20260909/step_4000",
+      "native_step": 3999,
+      "file_count": 38,
+      "payload_bytes": 15428301507,
+      "tree_manifest": "manifests/step_4000.sha256",
+      "tree_manifest_sha256": "3e1deb80bf19fb95dc5e08430d7b7116fb26d967601b74aa474886740fd80cb5",
+      "tree_hash_verified_on_cobot": true,
+      "official_restore_verified_on_hpc": true,
+      "machine_a_cold_load_verified_on_cobot": true
+    }
+  },
+  "inference_contract": {
+    "has_rl_token": true,
+    "z_dim": 2048,
+    "proprio_dim": 14,
+    "action_dim": 14,
+    "chunk_len": 50,
+    "shared_prefix_inference": true,
+    "fixed_hdf5_probe": {
+      "source": "plug-insertion-node-pilot-v1/episode_000001.hdf5 frame 0",
+      "z_rl_shape": [
+        2048
+      ],
+      "proprio_shape": [
+        14
+      ],
+      "ref_chunk_shape": [
+        50,
+        14
+      ],
+      "all_finite": true,
+      "end_to_end_seconds": 0.13950968097196892,
+      "server_infer_ms": 59.67751995194703
+    }
+  },
+  "online_r2": {
+    "default_mode": "eval",
+    "exploration_requires_flag": "--explore",
+    "active_arm": "right",
+    "left_arm_held": true,
+    "both_grippers_held": true,
+    "episode_actor_version_pinned": true,
+    "joint_step_limit_rad": 0.02,
+    "joint_accel_limit_rad": 0.005,
+    "gripper_step_limit": 0.001,
+    "exploration_std": 0.001,
+    "exploration_granularity": "action-chunk linear endpoints",
+    "warmup_min_transitions": 128,
+    "warmup_min_updates": 200,
+    "warmup_max_updates": 1000,
+    "effective_fixed_warmup_updates": 200,
+    "actor_publish_interval_updates": 100,
+    "checkpoint_interval_updates": 200,
+    "requested_updates_per_new_episode_not_wired": 32,
+    "effective_grad_updates_per_new_transition": 1,
+    "expert_replay_prepopulation": "planned-not-materialized"
+  },
+  "terminal_and_reset": {
+    "accepted_labels": [
+      "success",
+      "failure",
+      "abandon"
+    ],
+    "replay_eligible_labels": [
+      "success",
+      "failure"
+    ],
+    "live_home_command": "python multi_arm_launch_tools/task2_homing/task2_home_cli.py all --pose plug",
+    "shadow_home_disabled": true,
+    "automatic_next_session": false
+  },
+  "validation": {
+    "runtime_tests_on_cobot": "20 deployment/config + 26 actor-pinning/runtime tests passed",
+    "machine_b_service_smoke": {
+      "replay_manager": "ready",
+      "learner_service": "ready",
+      "actor_service": "ready",
+      "initial_global_step": 0,
+      "initial_actor_version": -1,
+      "initial_ready_for_online": false,
+      "gpu_memory_used_mib_with_machine_a_and_b": 18019,
+      "post_smoke_ports_9101_9102_released": true,
+      "robot_env_driver_started": false
+    },
+    "checkpoint_dry_run": true,
+    "machine_a_metadata_verified": true,
+    "machine_a_log_has_no_traceback_oom_nan_or_runtime_error": true,
+    "fixed_observation_offline_inference": true,
+    "zero_publisher_shadow": false,
+    "robot_motion": false,
+    "policy_quality": "not evaluated"
+  },
+  "safety": {
+    "ros_started_by_packaging": false,
+    "policy_publisher_created_by_packaging": false,
+    "can_command_sent": false,
+    "robot_motion_authorized": false,
+    "onsite_preflight_required": true
+  },
+  "task5_recorder_fix_20260910": {
+    "backend": "task5_hil.api continuous recording",
+    "port": 8017,
+    "ros_node": "task5_rlt_rollout_recorder",
+    "segmented_teach_8015": "unchanged",
+    "entry_sha256": "b79c56335fc1bed4e27bb04e88179290972ab0cff430080acfa563363d0ae56e",
+    "tests": "58 passed; real HTTP identity/static-route regression and fake-hardware API/client outcome roundtrips",
+    "live_validation": "pending",
+    "recording_started": false,
+    "backup": "/media/agilex/Getea1/jiaan/projects/cobot-realworld-rl/runs/deploy-backup-task5-contract-20260910",
+    "identity_route_fix": "Register identity ahead of Task5 root static mount; previous startup failed HTTP 404 and shut down",
+    "recorder_app_sha256": "1d75cc52589465f4cbe6d02dbc16549ed8884262c3d3c196c55870038130b085",
+    "writer_overflow_fix": {
+      "reason": "writer_queue_overflow: 314 sampled, 58 written, queue 256",
+      "change": "RLT-only dataset handle cache; same schema, sample rate, queue and fail-closed behavior",
+      "tests": "92 Task5/writer/API and 13 session/client tests; synthetic 30Hz 752/752 frames, peak backlog 11, complete operator_stop",
+      "live_validation": "pending",
+      "backup": "/media/agilex/Getea1/jiaan/projects/cobot-realworld-rl/runs/deploy-backup-task5-contract-20260910/writer-overflow-fix"
+    }
+  },
+  "recorder_concurrency_fix_20260910": {
+    "cause": "Shared USB/NTFS synchronous flush contention: per-step trace fsync and per-poll learner status fsync",
+    "change": "Trace fsync at terminal; derived learner status <=1Hz except readiness transitions, flush pending on normal exit; no learning-rate or sample-rate changes",
+    "tests": "Full shadow compute + real ROS + three HTTP camera streams: failure 90s/2714 frames, next success 20s/605 frames, next abort 20s/604 frames; all complete UUIDs and waiting_scene; peak queues 25/12/10",
+    "replay_size": 0,
+    "learner_global_step": 0,
+    "robot_publishers": 0,
+    "robot_motion_tested": false,
+    "evidence": "/media/agilex/Getea1/jiaan/projects/cobot-realworld-rl/scratch/task5-contract-20260910/full-shadow-status-trace-v1-20260910",
+    "backup": "/media/agilex/Getea1/jiaan/projects/cobot-realworld-rl/runs/deploy-backup-task5-contract-20260910/status-trace-io-fix",
+    "preserved": "Existing all --pose plug home implementation retained; batch-writer candidate not deployed",
+    "shutdown": "Uvicorn graceful shutdown bounded to 5 seconds with open MJPEG streams"
+  }
+}

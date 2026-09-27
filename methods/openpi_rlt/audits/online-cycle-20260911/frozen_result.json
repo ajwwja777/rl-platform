@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "status": {
+    "worker_pid": 3977003,
+    "phase": "ready",
+    "ready_for_online": true,
+    "actor_version": 5000,
+    "global_step": 10000,
+    "pending_update_budget": 0,
+    "last_decision": "frozen_actor",
+    "last_update_steps": 0,
+    "last_update_sec": 0.0,
+    "updates_per_episode": 32,
+    "episodes_per_update": 1,
+    "processed_episodes": 1,
+    "request_id": "frozen-test",
+    "training_enabled": false,
+    "collection_only": false,
+    "actor_source": "warmup_step10000_then_episode_updates",
+    "timestamp": 1789059784.254764
+  }
+}

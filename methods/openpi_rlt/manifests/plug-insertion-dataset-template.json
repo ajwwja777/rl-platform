@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "status": "collecting",
+  "dataset_id": "plug-insertion-node-pilot-v1",
+  "task_prompt": "Insert the plug into the socket.",
+  "camera_order": [
+    "head",
+    "left_wrist",
+    "right_wrist"
+  ],
+  "physical_state_dim": 14,
+  "physical_action_dim": 14,
+  "episodes": [],
+  "release_sha256": null,
+  "warning": "Template only. Freeze after real episode, node, frame and hash audit."
+}
+

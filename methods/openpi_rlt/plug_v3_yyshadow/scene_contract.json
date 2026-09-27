@@ -1,0 +1,157 @@
+{
+  "schema_version": 1,
+  "experiment_id": "plug_v3_yyshadow",
+  "task_id": "plug_insertion_critical_phase",
+  "reference_status": "operator_defined_pending_readback",
+  "task_scope": {
+    "start": "all arms are at all/plug2, the camera arm is at mid/plug2, and the right gripper already holds the plug near the target socket",
+    "end": "plug is mechanically seated in the intended socket",
+    "excluded": [
+      "plug pickup",
+      "long-range transport",
+      "left-arm control or learning",
+      "mid-arm motion during an episode",
+      "power-strip relocation during an episode",
+      "camera or gripper remounting within the cohort"
+    ]
+  },
+  "fixed_geometry": {
+    "arm_home_pose_name": "plug2",
+    "mid_camera_pose_name": "plug2",
+    "right_gripper_plug_depth_marked": false,
+    "right_gripper_plug_yaw_marked": false,
+    "power_strip_orientation_marked": false,
+    "camera_mounts_locked": false,
+    "lighting_profile_recorded": false,
+    "arm_home_scope": "all",
+    "mid_camera_home_scope": "mid",
+    "initial_image_source": "mid/left/right images saved with all/plug2 and mid/plug2; exact paths and hashes pending readback",
+    "all_arm_pose_name": "plug2"
+  },
+  "camera_contract": {
+    "required_views": [
+      "mid",
+      "left",
+      "right"
+    ],
+    "raw_target_hz": 30.0,
+    "training_sample_hz": 20.0,
+    "minimum_measured_raw_hz": 25.0,
+    "maximum_inter_camera_skew_sec": 0.12,
+    "maximum_frame_age_sec": 0.25,
+    "freeze_detection_required": true,
+    "reference_images": {
+      "mid": null,
+      "left": null,
+      "right": null
+    },
+    "excluded_views": [],
+    "model_slot_policy": {
+      "mid": "fixed/base view",
+      "left": "left-arm camera view; left arm remains fixed at all/plug2",
+      "right": "right-arm camera view"
+    }
+  },
+  "state_contract": {
+    "online_active_order": [
+      "right_j1",
+      "right_j2",
+      "right_j3",
+      "right_j4",
+      "right_j5",
+      "right_j6",
+      "right_gripper"
+    ],
+    "reference_joint_state_rad": null,
+    "home_repeatability_tolerance_rad": 0.03,
+    "raw_platform_evidence_order": [
+      "left_j1",
+      "left_j2",
+      "left_j3",
+      "left_j4",
+      "left_j5",
+      "left_j6",
+      "left_gripper",
+      "right_j1",
+      "right_j2",
+      "right_j3",
+      "right_j4",
+      "right_j5",
+      "right_j6",
+      "right_gripper"
+    ],
+    "training_proprio_order": [
+      "right_j1",
+      "right_j2",
+      "right_j3",
+      "right_j4",
+      "right_j5",
+      "right_j6",
+      "right_gripper"
+    ],
+    "excluded_from_training": [
+      "left_j1",
+      "left_j2",
+      "left_j3",
+      "left_j4",
+      "left_j5",
+      "left_j6",
+      "left_gripper",
+      "mid_arm_state"
+    ]
+  },
+  "scene_distribution": {
+    "position_ids": [],
+    "nominal_position_id": null,
+    "training_probabilities": {},
+    "heldout_position_ids": [],
+    "rule": "positions and probabilities are frozen before the first accepted demonstration"
+  },
+  "terminal_labels": {
+    "success": "plug is mechanically seated in the intended socket",
+    "failure": "episode is valid but the plug is not seated when the operator terminates it",
+    "aborted": "operator cancellation, hardware fault, stale camera, invalid reset, or invalid recording; excluded from formal replay",
+    "autonomous_success": "success with no HIL during the episode",
+    "hil_success": "success after any human takeover; retained with HUMAN/MIXED source and never counted as autonomous success"
+  },
+  "hil_contract": {
+    "purpose": "safety or correction of a still-recoverable deviation",
+    "do_not_intervene": [
+      "before the policy has made a meaningful decision solely to manufacture a success",
+      "after an unrecoverable collision solely to relabel the episode as success"
+    ],
+    "release_behavior": "episode remains paused until an explicit operator decision",
+    "source_labels_required": true
+  },
+  "reference_evidence": {
+    "captured_at": null,
+    "operator": null,
+    "camera_topic_measurements": {},
+    "initial_state_file": null,
+    "scene_photos_manifest": null,
+    "notes": "Pose names and the three intended views are defined by the operator. Exact files, hashes, joint values, topic rates, mount marks and scene positions remain pending onsite readback.",
+    "operator_statement": "On 2026-09-23 the operator selected all/plug2 and mid/plug2 as the initial poses; observations use mid, left-arm, and right-arm cameras while control/proprio use only the right arm."
+  },
+  "expert_collection_contract": {
+    "source": "expert_demonstration",
+    "terminal_label": "success",
+    "label_rule": "A complete committed expert episode is implicitly success=true; no separate success button is required.",
+    "exceptions": [
+      "operator explicitly rejects the episode",
+      "recorder or sensor fault",
+      "invalid scene/reset",
+      "incomplete commit"
+    ],
+    "training_action_qpos_indices": [
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13
+    ],
+    "training_action_qpos_dim": 7,
+    "raw_evidence_dim": 14
+  }
+}

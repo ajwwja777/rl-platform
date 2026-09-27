@@ -1,0 +1,462 @@
+{
+  "cohort": "plug_v2",
+  "fixed_upstream": "c1e40ac360185778c98cf20da2820e22d2d415e7",
+  "cobot_root": "/media/agilex/Getea1/jiaan/projects/rlt",
+  "hpc_root": "/data/user/jhe724/jiaan/research-workspace/projects/cobot-realworld-rl",
+  "deployment_manifest": {
+    "cohort": "plug_v2",
+    "status": "offline_validated",
+    "checkpoint": "/media/agilex/Getea1/jiaan/projects/rlt/checkpoints/plug_v2/bf16/3999",
+    "checkpoint_updates": 4000,
+    "rtc": {
+      "trained": true,
+      "max_delay": 6,
+      "control_hz": 30,
+      "chunk_len": 50,
+      "execute_len": 10
+    },
+    "onsite_validated": false,
+    "automatic_warmup": false,
+    "source_hpc_checkpoint": "/data/user/jhe724/jiaan/research-workspace/projects/cobot-realworld-rl/runs/plug_v2/checkpoints/plug_v2_rlt_stage1/rlt_stage1/3999",
+    "precision": "bf16",
+    "validated_at": "2026-09-18T03:13:40.141316+08:00",
+    "reference_sampling": "fixed_seed_42",
+    "command_conditioning": {
+      "control_hz": 30,
+      "alpha": 0.249629830121,
+      "max_step_rad": 0.006666666666666667,
+      "active_joints": [
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ]
+    },
+    "rl": {
+      "manual_warmup": true,
+      "max_critic_updates": 20000,
+      "critic_actor_ratio": "2:1",
+      "batch_size": 128,
+      "sample_ratio": [
+        0.3,
+        0.4,
+        0.3
+      ],
+      "online_episodes_per_update": 5,
+      "online_utd": 5
+    },
+    "evidence": {
+      "model-server/validation.json": "/media/agilex/Getea1/jiaan/projects/rlt/runs/plug_v2/model-server/validation.json",
+      "tests/session_e2e_validation.json": "/media/agilex/Getea1/jiaan/projects/rlt/runs/plug_v2/tests/session_e2e_validation.json",
+      "tests/real_observation_rpc_validation.json": "/media/agilex/Getea1/jiaan/projects/rlt/runs/plug_v2/tests/real_observation_rpc_validation.json",
+      "tests/conversion_validation.json": "/media/agilex/Getea1/jiaan/projects/rlt/runs/plug_v2/tests/conversion_validation.json",
+      "tests/actor_service_validation.json": "/media/agilex/Getea1/jiaan/projects/rlt/runs/plug_v2/tests/actor_service_validation.json",
+      "tests/learning_publish_validation.json": "/media/agilex/Getea1/jiaan/projects/rlt/runs/plug_v2/tests/learning_publish_validation.json"
+    },
+    "code_sha256": {
+      "actor_service.py": "27e70b52e7f840ce7436c3d127cfd6435d622b2568bda5ec0f480509a6c32b6f",
+      "cli.py": "9cc4082f6c959014af035ffc922e592c0eceb6949c7381510c99e3d78e76071a",
+      "data_worker.py": "d5f256e7f1f6d135ada59bf1fe362ba697d29c290132a4ee5ebeb3e53b7324d1",
+      "learning.py": "455c8991c88f933a28de9643a2f695718a41a36b956d780f684dca268567c6ad",
+      "recorder_client.py": "8de587e39aa4ac665c2e0403e4773e0131affbc0bac823213a3b073431fb67bb",
+      "replay.py": "1e7829d82863142f75a8d81e2766d76bcf22d8540ef07f4938f14262b303c1aa",
+      "ros_io.py": "deaf6dc5fbc6b206025a23f2cb11f99a714a05781fcbd013f4931720371b400a",
+      "rpc.py": "257cb6288ee03f749dbddfebe3b89ec6a25b11dbe486413921f3770c1822634c",
+      "rtc.py": "3a01e669e419262389bad5fbf264e1554beb63162108c18d33bc1d69621368bf",
+      "rtc_queue.py": "3077b1ec8668f2807d594ed8789b8ddf2d37cf3353d9fcccb383bef31211e935",
+      "runtime.py": "fd8df2355bf9bc9a5ac869a9e8d43888af3e8df832b186b4e8b8c83f5a48d290",
+      "serve.py": "7aad45cb9258e3e2b43e2705e55e5f501433868bcee0bb37b0868a88be56f863",
+      "storage.py": "0b405ad6b797fc8082fdeb296cadbc2ff62ccb5cea992854d2d694927d25d26a",
+      "terminal.py": "9927e60dfe7eb85f7f77cf5df3345c1741dce3eb78bea546e4eea7d4a201d945",
+      "training_flow.py": "93655029c358cb92f3c6ed69c5754010270b84b5583f20292c289e4ab2b4696d",
+      "__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "warmup_actor_at_delivery": false
+  },
+  "validation": {
+    "actor_service_validation.json": {
+      "status": "passed",
+      "checks": [
+        "zero_initialized_actor_preserves_reference",
+        "old_actor_key_immutable_after_publication",
+        "new_episode_selects_new_version",
+        "invalid_input_returns_json_409"
+      ],
+      "fixture_actor_only": true,
+      "robot_publishers": 0,
+      "real_warmup_artifacts_created": 0
+    },
+    "conversion_validation.json": {
+      "status": "passed",
+      "checks": [
+        "corrupt_existing_conversion_never_deletes_raw",
+        "official_reader_success",
+        "pause_mask_raw_delete_idempotence_success",
+        "official_reader_failure",
+        "pause_mask_raw_delete_idempotence_failure",
+        "abort_archives_facts_then_deletes_raw",
+        "real_model_replay_respects_pause_hil_segments_terminal_and_future_masks",
+        "counts_survive_raw_deletion"
+      ],
+      "robot_publishers": 0,
+      "formal_replay_entries": 0
+    },
+    "learning_publish_validation.json": {
+      "status": "passed",
+      "checks": [
+        "actual_100_fixture_warmup_updates_publish_only_accepted_checkpoint",
+        "optimizer_and_target_networks_saved",
+        "online_resume_10_updates_preserves_global_step",
+        "UUID_train_val_isolation"
+      ],
+      "fixture_only": true,
+      "production_warmup_artifacts_created": 0,
+      "robot_publishers": 0,
+      "warmup_validation": {
+        "heldout_bc": 2.3836494733586733e-07,
+        "smooth": 1.3934777598478831e-07,
+        "reference_smooth": 0,
+        "critic_td": 0.42182594537734985,
+        "max_step": 0.0009373608627356589,
+        "q": 0.6033209562301636
+      },
+      "online_validation": {
+        "heldout_bc": 2.342449647585454e-07,
+        "smooth": 1.3702532442039228e-07,
+        "reference_smooth": 0,
+        "critic_td": 0.4214901924133301,
+        "max_step": 0.0009154891013167799,
+        "q": 0.6036688685417175
+      }
+    },
+    "lifecycle_validation.json": {
+      "status": "passed",
+      "candidate_checkpoint": "1999",
+      "checks": [
+        "registered_preload_restore",
+        "exact_registered_process_group_down",
+        "model_vram_released_without_robot_service",
+        "final_BF16_model_down_restart_recovered_exact_selected_checkpoint"
+      ],
+      "robot_publishers": 0,
+      "final_pid": 455734
+    },
+    "online_cycle_validation.json": {
+      "status": "passed",
+      "checks": [
+        "UTD5_counts_only_new_train_transitions_excludes_heldout_and_history",
+        "motion_learning_shared_lease_defers_without_training",
+        "four_episodes_do_not_trigger_five_episode_batch",
+        "five_episode_batch_updates_once_with_actual_new_transition_UTD",
+        "restart_deduplicates_consumed_UUIDs",
+        "concurrent_rollout_start_does_not_consume_untrained_episodes"
+      ],
+      "isolated_fixture": true,
+      "optimizer_subprocesses": 0,
+      "robot_publishers": 0,
+      "production_replay_entries": 0
+    },
+    "real_observation_rpc_validation.json": {
+      "status": "passed",
+      "checkpoint": "/media/agilex/Getea1/jiaan/projects/rlt/checkpoints/plug_v2/bf16/3999",
+      "source_uuid": "40351822-1881-4cef-b6f0-cabe5b146754",
+      "source_split": "val",
+      "calls": 20,
+      "rtc_delay": 6,
+      "raw_rgb_shapes": {
+        "base_0_rgb": [
+          480,
+          640,
+          3
+        ],
+        "left_wrist_0_rgb": [
+          480,
+          640,
+          3
+        ],
+        "right_wrist_0_rgb": [
+          480,
+          640,
+          3
+        ]
+      },
+      "rpc_mean_seconds": 0.09459489794722972,
+      "rpc_p95_seconds": 0.10052893299798597,
+      "rpc_max_seconds": 0.13188816199908615,
+      "deterministic_reference_and_token": true,
+      "exact_committed_prefix": true,
+      "robot_publishers": 0
+    },
+    "runtime_learning_validation.json": {
+      "status": "passed",
+      "checks": [
+        "differentiable_conditioner_matches_actual_30hz_filter",
+        "zero_step_actor_preserves_reference",
+        "heldout_evaluation_all_metrics_finite",
+        "critic_ignores_unexecuted_terminal_future_padding",
+        "actual_100_cpu_rl_updates_finite",
+        "actor_updated_every_second_critic_step",
+        "critic_learns_success_failure_targets",
+        "pause_and_unmatched_recorder_frames_not_training",
+        "repeated_policy_status_does_not_reset_queue",
+        "hil_invalidates_pending_before_session_change"
+      ],
+      "robot_publishers": 0,
+      "synthetic_training_steps": 100,
+      "first": {
+        "critic_loss": 0.983633279800415,
+        "q": -0.003061581403017044
+      },
+      "last": {
+        "critic_loss": 6.496711648651399e-07,
+        "q": 0.45663297176361084,
+        "actor_loss": -0.04727499559521675,
+        "bc": 0.00010220930562354624,
+        "smooth": 5.719059845432639e-05
+      }
+    },
+    "session_e2e_validation.json": {
+      "status": "passed",
+      "checks": [
+        "pause_discards_commands_and_stops_execution_immediately",
+        "hil_from_paused_is_recorded_and_release_stays_paused",
+        "learning_lease_blocks_resume",
+        "real_model_rtc_async_replan",
+        "success_failure_abort_finalize_without_homing",
+        "session_end_keeps_service_idle"
+      ],
+      "real_stage1_checkpoint": "/media/agilex/Getea1/jiaan/projects/rlt/checkpoints/plug_v2/bf16/3999",
+      "fake_execution_ticks": 40,
+      "robot_publishers": 0,
+      "formal_replay_entries": 0
+    },
+    "unified_ui_release_validation.json": {
+      "status": "passed",
+      "url": "http://127.0.0.1:8015",
+      "profile": "plug_v2",
+      "rlt_enabled": true,
+      "checkpoint_updates": 4000,
+      "recorded_experts": 82,
+      "mode_switches": [
+        "rlt",
+        "normal"
+      ],
+      "ros_unavailable_blocks_onsite_arm": true,
+      "robot_publishers": 0,
+      "browser_visual_check": "unavailable in current computer-use environment; HTTP/DOM and Node rules verified"
+    },
+    "rollout_ui_20260918": {
+      "status": "passed",
+      "public_url": "http://127.0.0.1:8015/",
+      "api_tests_passed": 35,
+      "node_tests_passed": 12,
+      "runtime_counts": "passed",
+      "saved_rollouts": 0,
+      "preserved_demonstrations": 82,
+      "model_pid": 455734,
+      "session_phase": "disarmed",
+      "robot_actions": false,
+      "browser_visual_check": false,
+      "checked_at": "2026-09-18T17:30:44+0800"
+    },
+    "session_lifecycle_20260918": {
+      "status": "passed",
+      "api_regression_tests": 55,
+      "new_lifecycle_tests": 13,
+      "actual_signal_checks": [
+        {
+          "case": "ctrl-c",
+          "foreground_returncode": 0,
+          "session_stopped": true,
+          "model_same_start_ticks": true,
+          "onsite_arm": false
+        },
+        {
+          "case": "terminal-close",
+          "foreground_returncode": 0,
+          "session_stopped": true,
+          "model_same_start_ticks": true,
+          "onsite_arm": false
+        }
+      ],
+      "saved_rollouts_preserved": 3,
+      "incomplete_retained": true,
+      "model_pid": 455734,
+      "model_start_ticks": 2358420,
+      "session_phase": "stopped",
+      "console_idle": true,
+      "new_drain_timeout_seconds": 90,
+      "stop_http_timeout_seconds": 120,
+      "robot_motion_commands": false,
+      "native_hdf_slow_drain": "passed",
+      "explicit_orphan_restart": "passed",
+      "rlt_stop_script": "passed"
+    },
+    "start_recovery_20260918": {
+      "status": "passed",
+      "regression_tests": 87,
+      "real_storage_prepare_http": 200,
+      "next_file_index": 5,
+      "saved_rollouts": 3,
+      "failed_episode_index": 4,
+      "failed_file_preserved_same_sha256": true,
+      "failed_archive": "/media/agilex/Getea1/jiaan/data/rlt/plug_v2/warmup/.failed/494d4fb9-f175-4d34-88d3-7ca4551ce698/episode_000004.hdf5.incomplete",
+      "robot_actions": false,
+      "onsite_rollout_test": false,
+      "checked_at": "2026-09-18T18:15:42+0800"
+    }
+  },
+  "code_in_framework": "historical preparation only; execute registered server source",
+  "snapshot_date": "2026-09-18",
+  "final_checks": {
+    "git_diff_check": 0,
+    "workspace_doctor_errors": 0,
+    "existing_legacy_attachment_warnings": 7,
+    "shell_entry_points": 6,
+    "manifest_code_sha256": "all_matched",
+    "onsite_actions_executed": false
+  },
+  "wrong_camera_rollout_cleanup": {
+    "status": "deleted_and_verified",
+    "reason": "User discarded current rollout: wrong middle camera pose",
+    "session_id": "c854c518-f34c-4a3c-b360-7a553c812bdd",
+    "file_count": 414,
+    "bytes": 335682732,
+    "preserved": [
+      "82 demonstrations",
+      "Stage1 checkpoint",
+      "preloaded model",
+      "other Session traces",
+      "old-cohort assets"
+    ]
+  },
+  "evidence": {
+    "warmup_replay_repair_20260918": {
+      "replay_version": 2,
+      "unit_tests": 19,
+      "online_cycle_checks": 6,
+      "actual_recordings": 75,
+      "expert_fragments": 83,
+      "cross_boundary_bootstrap": 0,
+      "current_policy_positive_BC_actions": 0,
+      "all_55_hil_successes_have_reward": true,
+      "production_training_started": false,
+      "source_root": "/media/agilex/Getea1/jiaan/projects/rlt",
+      "receipt": "runs/plug_v2/audits/warmup-repair-20260918/validation.json",
+      "cache": "runs/plug_v2/replay/v2",
+      "code_sha256": {
+        "replay.py": "e646bf363bcfee6b8bb9607be0ac9e32fad3cbee947a43b0b64f02974c8f953c",
+        "replay_contract.py": "a74c196c73502a6a2de46967094bc85c395b414cbbfcc0256830cdad404f223c",
+        "learning.py": "4afc2376f807fc2e118cb974c1a555740045766cd1184e65b617490924ca2111",
+        "training_flow.py": "9b409f5f49a2b9ec9b8d5cdd9c8f1df73f5c574b3c1bd22d56ad9dc1727b0aa4"
+      }
+    }
+  },
+  "checkpoint_comparison_20260918": {
+    "execution_directory": "/media/agilex/Getea1/jiaan/projects/rlt/runs/plug_v2/learning/checkpoint-comparison-20260918T123855Z",
+    "learning_sha256": "6c920ea19fbeb45affb1dc807768748ace577de7f9be982f7670270521a555a4",
+    "selection_sha256": "b4363068302c41b6cfe4c967af308c05ce27b271b2068993ec55b46182d7795b",
+    "platform_wrapper_sha256": "e818f35d3644cbcb6ae151ed65fc13384fe270efd0a72ad38b3da98b1815356d",
+    "status": "completed_offline",
+    "production_actor_unchanged": true
+  },
+  "rtc_contract_validation_20260918": {
+    "status": "completed_no_candidate_passed",
+    "default_production_pipeline_modified": false,
+    "directory": "runs/plug_v2/learning/rtc-contract-validation-20260918-v3",
+    "source_sha256": {
+      "methods/openpi_rlt/plug_v2/rtc_supervision.py": "9c87d1c3aa5d5f22508399f317d62022340f743bdbc3d2304a5bcf7d6e3c6d2b",
+      "methods/openpi_rlt/plug_v2/handover_credit.py": "c4256777d024894fe25c2218cc2dbed4320ade1253779e239ecab841440d989f",
+      "runs/plug_v2/learning/rtc-contract-validation-20260918-v3/reuse_and_train.py": "043710d9c5ebafd93f9cad247540149ac7f4d39199d21c71ad1f7392704f2b13",
+      "runs/plug_v2/learning/rtc-contract-validation-20260918-v3/postcheck.py": "6775437a34b8dad26abd65f462d5d73cae8fa70fbd8af4d426a0588bc71d61c6",
+      "runs/plug_v2/learning/rtc-contract-validation-20260918-v3/ablate_bounds.py": "3eebe83b24417a46c70a68f8f6b6d582a62af1462e77746e1eda8bbc84391e2e",
+      "runs/plug_v2/learning/rtc-contract-validation-20260918-v3/audit_action_space.py": "1a5fff57af43591e79701ae3939f558571edb7a324423af1cf32e1d1d8923719",
+      "runs/plug_v2/learning/rtc-contract-validation-20260918-v3/test_contract.py": "bcf2a2673efd42354536113df2689e9ea73644073b35e87de99f8305f7304d1e"
+    },
+    "published": false,
+    "robot_actions": false
+  },
+  "human_q_diagnostics_20260918": {
+    "status": "completed_not_published",
+    "execution_directory": "runs/plug_v2/learning/human-contract-r1-20260918",
+    "primary_criterion": "heldout_episode_Q_separation_not_loss",
+    "production_actor_unchanged": true,
+    "robot_actions": false,
+    "source_sha256": {
+      "methods/openpi_rlt/plug_v2/learning_diagnostics.py": "2521f9d3360fa84a8cdd923e8648b754dc306750c20b30e6c598637a88785560",
+      "methods/openpi_rlt/plug_v2/training_contract.py": "2420fb72ab0c51730b611dd9f80b3e41e60522d4bdfadce35a864b184a8ae148"
+    },
+    "audit": "methods/openpi_rlt/audits/2026-09-18-plug-v2-human-sampling-bc-q-diagnostics.md",
+    "current_diagnostics_source_sha256": "2e96e8eddbc943413e0b4696a86b0e1717cc222776f9689ea00b157ed859f99e"
+  },
+  "fixed_rtc_corrective_delivery_20260918": {
+    "manifest": {
+      "name": "rtc-corrective-r1",
+      "status": "ready_for_fixed_onsite_trial",
+      "path": "/media/agilex/Getea1/jiaan/projects/rlt/runs/plug_v2/learning/candidates/rtc-corrective-r1/actor.pt",
+      "sha256": "a197ab49db46bf7089740eb868400df57861051c34eeeaee625394d713a44918",
+      "version": 2000,
+      "stage1_checkpoint": "/media/agilex/Getea1/jiaan/projects/rlt/checkpoints/plug_v2/bf16/3999",
+      "stats_sha256": "373d9a01bbcc0907dbbc27b091768774f98933cb28cdf3404a14f378ee02b49d",
+      "rtc_context_dim": 99,
+      "inference_config": {
+        "raw_residual_radius": 0.2,
+        "brake_beta": 0.75,
+        "prefix_gate": {
+          "low": 0.3,
+          "high": 0.7,
+          "threshold": 0.015,
+          "temperature": 0.005
+        },
+        "apply_only_with_committed_prefix": true
+      },
+      "core_residual_radius": 0.05,
+      "online_learning_supported": false,
+      "explore_supported": false,
+      "acceptance_scope": "fixed_onsite_trial_only",
+      "deployment_gate": "/media/agilex/Getea1/jiaan/projects/rlt/runs/plug_v2/learning/rtc-corrective-consistent-training-20260918/deployment-gate.json",
+      "initial_d0_policy": "reference_only; avoid regression outside RTC-corrective training scope",
+      "onsite_validated": false,
+      "command_conditioning": {
+        "control_hz": 30,
+        "velocity_rad_per_sec": 0.2,
+        "step_rad": 0.006666666666666667,
+        "tracking_bound_rad": 0.04,
+        "active_joints": [
+          7,
+          8,
+          9,
+          10,
+          11,
+          12
+        ]
+      },
+      "validation_sources": {
+        "numerical": "/media/agilex/Getea1/jiaan/projects/rlt/runs/plug_v2/learning/candidates/rtc-corrective-r1/offline-validation.json",
+        "session": "/media/agilex/Getea1/jiaan/projects/rlt/runs/plug_v2/learning/candidates/rtc-corrective-r1/session-offline/tests/session_e2e_validation.json",
+        "lifecycle": "/media/agilex/Getea1/jiaan/projects/rlt/runs/plug_v2/learning/candidates/rtc-corrective-r1/lifecycle-validation.json"
+      },
+      "code_sha256": {
+        "runtime.py": "f6a8767d23d6c42b4d41e3ce2631725e5dbc90415c09ecd1c11281663f6cc479",
+        "cli.py": "04892416faf0e0494b5603d1b1c894b2df34de83017f9da50774297336e610a3",
+        "fixed_candidate.py": "45d0120b91f1ccee1000b9776edd4ffd9f7a40a1982407c964644f3fff2a87be",
+        "corrective_policy.py": "0a832c028e3495e94337f0f19a7520e52701b0652c33839b407086579d84275b",
+        "learning_diagnostics.py": "2e96e8eddbc943413e0b4696a86b0e1717cc222776f9689ea00b157ed859f99e",
+        "learning.py": "6c920ea19fbeb45affb1dc807768748ace577de7f9be982f7670270521a555a4",
+        "actor_service.py": "27e70b52e7f840ce7436c3d127cfd6435d622b2568bda5ec0f480509a6c32b6f",
+        "rtc_queue.py": "3077b1ec8668f2807d594ed8789b8ddf2d37cf3353d9fcccb383bef31211e935"
+      },
+      "entrypoint": "/media/agilex/Getea1/jiaan/projects/cobot-platform/scripts/rlt_demo.sh"
+    },
+    "public_scripts_sha256": {
+      "rlt_up.sh": "3c291267c76ca20ea957d74ac34b37ea19a787dcfc30488ef50f788b2a940fd4",
+      "rlt_demo.sh": "057217c30bc18051a67a5a7371185edff7d17a16e436df7bce597f3220760c5b"
+    },
+    "evidence": "fixed_rtc_corrective_delivery.json",
+    "production_actor_sha256": "c6395e9d44139326625cdc2c894fe56b5d8c0196fcb4d722267a0eb24715a9b3",
+    "robot_publishers": 0,
+    "formal_replay_entries": 0
+  }
+}

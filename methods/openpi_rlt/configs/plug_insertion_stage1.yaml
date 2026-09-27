@@ -1,0 +1,21 @@
+schema_version: 1
+status: prepared-not-trained
+initialization: fixed_pi05_base
+dataset_release: pending
+task_prompt: Insert the plug into the socket.
+seed: 42
+action_horizon: 50
+physical_action_dim: 14
+model_action_dim: 32
+rlt_num_tokens: 1
+rlt_num_layers: 2
+rlt_alpha: 1.0
+train_scope: joint_vlm_and_rlt_token
+smoke_steps: 2
+full_steps_candidate: 1000
+batch_probe: [8, 16, 32]
+freeze_after_validation: [vlm, rlt_encoder, rl_token]
+notes:
+  - Final steps and batch are selected after real-data smoke and throughput probe.
+  - This file does not authorize or launch training.
+

@@ -1,0 +1,11 @@
+{
+  "status": "completed",
+  "last_step": 20000,
+  "actor_version": 10000,
+  "elapsed_sec": 119.45261296798708,
+  "stop_reason": null,
+  "recommended_step": 10000,
+  "selection": "minimum expert/current-success validation RMSE among smoothness-gated checkpoints; offline proxy only",
+  "formal_artifacts_unchanged": true,
+  "not_deployed": true
+}

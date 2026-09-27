@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "status": "verified-readonly-relay-copy",
+  "model_id": "pi05",
+  "owner_project": "proj-20260829-pi05",
+  "official_id": "gs://openpi-assets/checkpoints/pi05_base",
+  "source_revision": "215abfb217dbac7d5f1273282331b9b1866c0479",
+  "trainer_source": "/vepfs-C区/wam/junjiehe/jiaan/research-workspace/projects/pi05/checkpoints/base/pi05_base",
+  "relay_copy": "/data/LFT-W02_data/jiaan/scratch/cobot-realworld-rl/assets/pi05_base",
+  "file_count": 29,
+  "file_bytes": 12441749581,
+  "owner_registered_tree_metadata_sha256": "472673f3c31667e5fd2d41ae5e701d535c87143ca8f0fb99b70249d6fecf8461",
+  "transfer": {
+    "method": "rsync -a --partial over registered trainer SSH",
+    "elapsed": "00:18:36",
+    "post_copy_verification": "rsync -an --checksum --itemize-changes returned no changes",
+    "published_from_staging": true
+  },
+  "major_files_sha256": {
+    "params/ocdbt.process_0/d/0832cad6c37f82d4eedd897dcbb8da9d": "b2c08d8f1d83ef842fcb2be1518fb2309648380b61202515f9a0678cf28ce751",
+    "params/ocdbt.process_0/d/247d4b7c814d8b1a23fa8a20f36a88f7": "c04c95d8b587705c36e45bfb74ffbca92f699e910cbb3da44bab99e8e37a5fed",
+    "params/ocdbt.process_0/d/35a545f74995e511808d4f94dfbef3b6": "a3fd9934c60f9bac41445d196a353a2ae8a7d9fafabee5496f24ed21fe11ab32",
+    "params/ocdbt.process_0/d/73bbae8a4deba6498bf07d96b215a574": "ef0910f6e572ab84e8e6dd5f91bbc3d6fb35cd18d8c885fc524e7eb30c67d17f",
+    "params/ocdbt.process_0/d/7bc9d3296d23a6fb83a6b3778ac6e964": "0be2d8e4bfb6c5bce4a05a442ce5bd6138ce4c036145d8fa792479198de105b8",
+    "params/ocdbt.process_0/d/8c5d7070ea57bdce2f0a19f95b8a21b4": "75799900494cb9bdbd12acafd86858add78fb95946be564d28a8401a5baee764",
+    "params/ocdbt.process_0/d/b4349aaadb7dfa45c3a53fc67c04b8f6": "306be49ac582f312d901d3ec41a38bc06d582dfb1e6f2d0e8160b9f7d517e535",
+    "params/ocdbt.process_0/d/caf01a82962cbd4651563d2ac1063e0b": "f2a18128db3a56347f223f53a4ae85c658a3cf5f6bc5f01af53f5871185c08f7",
+    "params/ocdbt.process_0/d/deefd3c43390a50472cbcd317b0fff58": "9dfb1737f7640313fd74bcd9a9b0c858abe0a088313bd2d2782f562cccb5f069",
+    "params/ocdbt.process_0/d/ec484cf8f02dcf59e1892180f0862e40": "6fc7cdad578faaa7fcd7c6805216396416e3daac637304c0d57454f62719663c"
+  }
+}

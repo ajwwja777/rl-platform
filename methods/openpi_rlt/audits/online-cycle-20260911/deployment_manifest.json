@@ -1,0 +1,21 @@
+{
+  "entry": "interface_task2_teach_rlt_online.sh",
+  "seed_learner_step": 10000,
+  "seed_actor_version": 5000,
+  "updates_per_valid_episode": 32,
+  "default_run": "/media/agilex/Getea1/jiaan/projects/cobot-realworld-rl/runs/plug-online-warmup-r1",
+  "validation": "isolated real GPU learner + actor HTTP + replay fixtures; no robot actions",
+  "backup": "/media/agilex/Getea1/jiaan/projects/cobot-realworld-rl/runs/deploy-backup-online-cycle-20260911",
+  "files": {
+    "/media/agilex/Getea1/jiaan/projects/cobot-realworld-vla/deployments/openpi-rlt/plug-insertion-stage1-v2/runtime-overlay/methods/openpi_rlt/cobot_adapter/online_cycle.py": "b468286a160162c140e3eda3f874f16682a75b272b9c6f93ce25252b65c78ec2",
+    "/media/agilex/Getea1/jiaan/projects/cobot-realworld-vla/deployments/openpi-rlt/plug-insertion-stage1-v2/runtime-overlay/methods/openpi_rlt/cobot_adapter/offline_warmup.py": "dfe629b69a6f75be6e86203110126a5b1c0ba099562904b4a0de4302eec7066b",
+    "/media/agilex/Getea1/jiaan/projects/cobot-realworld-vla/deployments/openpi-rlt/plug-insertion-stage1-v2/runtime-overlay/methods/openpi_rlt/cobot_adapter/cobot_online_env.py": "297a7cfcb427bbfca5d2d2a28c266c3a60e172d10186129dd3003a30912a3ba7",
+    "/media/agilex/Getea1/jiaan/projects/cobot-realworld-vla/deployments/openpi-rlt/plug-insertion-stage1-v2/runtime-overlay/methods/openpi_rlt/cobot_adapter/session_http.py": "5dd719d227837887e112f570a9ec061bf482d552cb0e36519fc933be3b685e2f",
+    "/media/agilex/Getea1/jiaan/projects/cobot-realworld-vla/deployments/openpi-rlt/plug-insertion-stage1-v2/runtime-overlay/methods/openpi_rlt/scripts/online_cycle_worker.py": "e3fcf3a5382180bfa8f1d52f61741531865057f5caf8511bbeb3b5576f9be0b3",
+    "/media/agilex/Getea1/jiaan/projects/cobot-realworld-vla/deployments/openpi-rlt/plug-insertion-stage1-v2/runtime-overlay/methods/openpi_rlt/scripts/interface_task2_teach_rlt_online.sh": "cd12e918e3360dc5f440de15cc159941445c110749f24bcc455c53355c041849",
+    "/media/agilex/Getea1/jiaan/projects/cobot-realworld-vla/deployments/openpi-rlt/plug-insertion-stage1-v2/runtime-overlay/methods/openpi_rlt/scripts/rollback_rlt_online.sh": "9d027e4b3918ee5baf203cb8ae8c87d67dee06dcabb2aa6907961ed1d70e9726",
+    "/media/agilex/Getea1/jiaan/projects/cobot-realworld-vla/deployments/openpi-rlt/plug-insertion-stage1-v2/runtime-overlay/methods/openpi_rlt/web/rlt_session/app.js": "ccf860ef80268b241e5d4c485b2c1d8b123f01d0cd1b04d2b2410cbe22192241",
+    "/media/agilex/Getea1/jiaan/projects/cobot-realworld-vla/deployments/openpi-rlt/plug-insertion-stage1-v2/interface_task2_teach_rlt_online.sh": "cd12e918e3360dc5f440de15cc159941445c110749f24bcc455c53355c041849",
+    "/media/agilex/Getea1/jiaan/projects/cobot-realworld-vla/deployments/openpi-rlt/plug-insertion-stage1-v2/rollback_rlt_online.sh": "9d027e4b3918ee5baf203cb8ae8c87d67dee06dcabb2aa6907961ed1d70e9726"
+  }
+}

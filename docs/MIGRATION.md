@@ -35,3 +35,15 @@
 - 首次发布提交：`3063ae62a7043184e7331d877d1e89bb067b18cc`。
 - 本记录在首次发布验证后追加并单独提交；最新版本以 main 为准。
 - 运行状态：源码／文档基础已发布，业务迁移、环境安装及新位置运行验收尚未开展。
+
+## 2026-09-27 RLT 业务迁移（进行中）
+
+本批已取得迁移授权，guide Git 由另一个 agent 管理，本会话不提交／推送 guide。
+
+来源为 Cobot /media/agilex/Getea1/jiaan/projects/rlt 和 A6000 旧 proj-20260904-cobot-realworld-rl。两边原件、差异与复制核验置于 outputs/migrations/20260927-rlt/。生产冲突以现场版本为基础；A6000 独有工具和测试保留。当前 cohort、模型计算、奖励、数据比例和 warmup 预算不变。
+
+新运行布局见 README。代码主工作区在 A6000，通过 Git 发布后同步 Cobot；新模型、Replay、环境和数据均使用 Cobot /home/agilex/jiaan。模型历史归 A6000，现场只留当前所需模型。旧文件通过完整验证前不得清理。
+
+代码调整：路径与所有权拆分；推理环境隔离；输出目录可配置；加载前要求已完成 warmup 的 checkpoint；Python 3.8 网页契约导入兼容；补充 Trace 仅在终止时 fsync（HDF5 和 Replay 提交语义不变）。A6000 可选 Actor pinning / 动作平滑保留，但当前 profile 不启用，默认动作裁剪保留现场公式。
+
+实时进度与验收证据以后续“验收／切换”记录为准，不能将准备工作视为完成。

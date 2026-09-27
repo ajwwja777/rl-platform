@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "status": "verified-canonical-input",
+  "dataset_id": "legacy40-v2.1",
+  "task_id": "in_the_pot",
+  "task_description": "Open the pot lid, put the object into the pot, then close the lid.",
+  "source": {
+    "owner_project": "proj-20260829-cobot-realworld-vla",
+    "hpc_path": "/data/user/jhe724/jiaan/research-workspace/projects/cobot-realworld-vla/datasets/canonical/in-the-pot/legacy40-v2.1",
+    "relay_checksum_copy": "/data/LFT-W02_data/jiaan/scratch/cobot-realworld-rl/fixtures/legacy40-v2.1"
+  },
+  "format": {
+    "lerobot_codebase_version": "v2.1",
+    "fps": 30,
+    "episodes": 40,
+    "frames": 29383,
+    "regular_files": 164,
+    "bytes": 421394882,
+    "videos": 120,
+    "video_codec": "AV1"
+  },
+  "schema": {
+    "state_dim": 14,
+    "action_dim": 14,
+    "action_order": [
+      "left_joint_1",
+      "left_joint_2",
+      "left_joint_3",
+      "left_joint_4",
+      "left_joint_5",
+      "left_joint_6",
+      "left_gripper",
+      "right_joint_1",
+      "right_joint_2",
+      "right_joint_3",
+      "right_joint_4",
+      "right_joint_5",
+      "right_joint_6",
+      "right_gripper"
+    ],
+    "camera_mapping": {
+      "observation.images.cam_high": "base_0_rgb",
+      "observation.images.cam_left_wrist": "left_wrist_0_rgb",
+      "observation.images.cam_right_wrist": "right_wrist_0_rgb"
+    },
+    "stage1_joint_delta_mask": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false
+    ],
+    "pi05_internal_action_dim": 32,
+    "pi05_action_horizon": 50
+  },
+  "integrity": {
+    "tree_hash_algorithm": "sha256 of LC_ALL=C sorted per-file sha256sum lines using relative ./ paths",
+    "tree_sha256": "4bd2987f61900da803c030615b8c612b6547dab8c8219c116a475250aae835a0",
+    "source_and_relay_tree_hash_match": true,
+    "norm_stats_path": "/data/LFT-W02_data/jiaan/scratch/cobot-realworld-rl/runs/stage1-production-preflight/assets/openpi-rlt/cobot_rlt_pi05_joint/legacy40-v2.1/norm_stats.json",
+    "norm_stats_sha256": "0e86c542fe27de2018a031c72d493494821697ed9f3a9c976511ee9ddfb1a2e8",
+    "norm_stats_frames": 29383,
+    "norm_stats_dim": 14,
+    "norm_stats_all_finite": true
+  },
+  "known_method_behavior": {
+    "normalization_before_padding": true,
+    "padding_target_zero_from_dim_14_to_32": true,
+    "upstream_flow_loss_masks_padding_dims": false,
+    "upstream_flow_loss_uses_action_is_pad": false,
+    "episode_length_min": 654,
+    "episode_length_max": 878,
+    "horizon_action_slots": 1469150,
+    "episode_end_padded_action_slots": 49000,
+    "episode_end_padded_action_fraction": 0.0333526188612463
+  }
+}

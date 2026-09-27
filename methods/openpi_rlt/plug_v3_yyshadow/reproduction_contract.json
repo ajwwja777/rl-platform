@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "experiment_id": "plug_v3_yyshadow",
+  "created_date": "2026-09-23",
+  "status": "stage0_locked",
+  "upstream": {
+    "repository": "https://github.com/Yyshadow/openpi-RLT.git",
+    "branch": "main",
+    "commit": "c1e40ac360185778c98cf20da2820e22d2d415e7",
+    "tree": "15f7602f6e9ceaf5f4b70721a48088e52271e751",
+    "relay_clone": "/data/LFT-W02_data/jiaan/scratch/cobot-realworld-rl/openpi-rlt/upstream",
+    "files": {
+      "rlt_online_rl/configs/tasks/agilex_ethernet/online_rl.yaml": "65c727270979f6d88e88f6bcb44c0d1397e77abfa3552fcbceff33be09ae93b8",
+      "src/openpi/training/config.py": "98757f454c831ed48267a081f60cf860b1c8fa66e9246adeaf19bdf09c8099ae",
+      "scripts/train_rlt.py": "7ec1cf99980e56d961777b43852642466f982f5c0222a76d02f44d8b6bf5f77d",
+      "README.md": "a23e5d3fd40460e6e71e53f0083e1bd42117800c7d3a1995358cbec55b46e692",
+      "rlt_online_rl/README.md": "22a38a423dda2d9fa698fbd051f2f0a3be151dca785a7bc77538fe2b8c871ac3"
+    }
+  },
+  "isolation": {
+    "new_cohort": "plug_v3_yyshadow",
+    "forbidden_input_cohorts": [
+      "plug_v2",
+      "plug-insertion-stage1-v2",
+      "plug-online-warmup-r1",
+      "online-r1-legacy40-v2.1-session-v2"
+    ],
+    "forbidden_asset_classes": [
+      "stage1_checkpoint",
+      "norm_stats",
+      "feature_cache",
+      "replay_journal",
+      "learner_checkpoint",
+      "actor_snapshot",
+      "release_pointer"
+    ],
+    "deletion_policy": "preserve_history_read_only"
+  },
+  "stage1": {
+    "upstream_config_name": "rlt_pi05_agilexbag_image_delta_joint",
+    "base_model": "pi0.5",
+    "model_action_dim": 32,
+    "action_horizon": 50,
+    "rlt_num_tokens": 1,
+    "rlt_num_layers": 2,
+    "rlt_embed_dim": 2048,
+    "rlt_input_dim": 2048,
+    "rlt_alpha": 1.0,
+    "num_train_steps": 5000,
+    "online_active_dim": 7,
+    "active_indices_in_physical14": [
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13
+    ],
+    "raw_platform_state_dim": 14,
+    "training_action_dim": 7,
+    "training_proprio_dim": 7,
+    "ignored_indices_in_physical14": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6
+    ],
+    "training_camera_views": [
+      "mid",
+      "left",
+      "right"
+    ],
+    "inactive_camera_views": []
+  },
+  "online_rl": {
+    "action_dim": 7,
+    "proprio_dim": 7,
+    "chunk_len": 10,
+    "z_dim": 2048,
+    "action_representation": "delta_chunk",
+    "gamma": 0.99,
+    "fixed_std": 0.002,
+    "reference_dropout_prob": 0.5,
+    "delta_weight": 10.0,
+    "warmup_bc_weight": 10.0,
+    "warmup_q_weight": 0.1,
+    "online_bc_weight": 5.0,
+    "online_q_weight": 0.1,
+    "actor_hidden_dim": 256,
+    "actor_num_layers": 2,
+    "critic_hidden_dim": 256,
+    "critic_num_layers": 2,
+    "actor_lr": 0.0001,
+    "critic_lr": 0.0001,
+    "target_tau": 0.005,
+    "actor_update_period": 2,
+    "warmup_min_size": 600,
+    "warmup_post_collect_updates": 20000,
+    "freeze_after_warmup": false,
+    "grad_updates_per_cycle": 5,
+    "sample_batch_size": 128,
+    "push_actor_interval_steps": 500,
+    "checkpoint_interval_steps": 1000,
+    "task_mode": "critical_phase",
+    "actor_deterministic": false,
+    "chunk_exec_horizon": 10,
+    "control_frequency_hz": 20.0,
+    "step_trace_stride": 0,
+    "replay_feature_batch_size": 16,
+    "safe_fallback_to_ref": true
+  },
+  "allowed_hardware_adaptations": [
+    "ROS1 topic and service bridge",
+    "three-camera observation mapping: mid fixed camera plus left and right arm cameras",
+    "optional full 14D platform evidence with training/proprio/action restricted to right-arm 7D",
+    "rear-arm HIL bridge with source labels preserved",
+    "emergency stop and hard joint/workspace limits",
+    "Cobot process lifecycle and storage paths"
+  ],
+  "forbidden_initial_algorithm_changes": [
+    "MC-success critic target",
+    "fixed 20-percent HIL stratified replay",
+    "five-episode candidate gate",
+    "custom actor acceptance gate",
+    "30Hz training-time RTC",
+    "delta weight 100 or 300",
+    "online Q weight 0.01",
+    "actor learning rate 1e-5",
+    "dense stride replay",
+    "reward shaping"
+  ]
+}

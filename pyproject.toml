@@ -1,0 +1,12 @@
+[project]
+name = "rl-platform"
+version = "0.1.0"
+description = "Cobot RLT adapters, lifecycle and reproducible experiments"
+requires-python = ">=3.10"
+dependencies = ["numpy==1.26.4", "PyYAML==6.0.2", "requests==2.32.3", "websockets==15.0.1", "msgpack==1.1.0"]
+
+[dependency-groups]
+dev = ["pytest==8.3.5", "httpx==0.28.1", "h5py==3.13.0", "fastapi==0.115.12", "jax==0.5.3", "flax==0.10.4", "optax==0.2.4", "tyro==0.9.18", "dill==0.3.9", "opencv-python-headless==4.11.0.86", "pillow==11.2.1", "uvicorn==0.34.2"]
+
+[tool.pytest.ini_options]
+testpaths = ["methods/openpi_rlt/tests"]

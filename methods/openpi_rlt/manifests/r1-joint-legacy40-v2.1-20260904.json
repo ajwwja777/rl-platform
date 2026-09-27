@@ -1,0 +1,86 @@
+{
+  "status": "completed",
+  "run_id": "r1-joint-legacy40-v2.1-b32w16-s42-20260904",
+  "method": "openpi-RLT Stage 1 joint VLA+RLT",
+  "platform": "cobot",
+  "task": "in_the_pot",
+  "upstream": {
+    "repository": "https://github.com/Yyshadow/openpi-RLT.git",
+    "commit": "c1e40ac360185778c98cf20da2820e22d2d415e7"
+  },
+  "dataset": {
+    "id": "legacy40-v2.1",
+    "episodes": 40,
+    "frames": 29383,
+    "fps": 30,
+    "physical_state_dim": 14,
+    "physical_action_dim": 14,
+    "model_action_dim": 32,
+    "content_tree_sha256": "4bd2987f61900da803c030615b8c612b6547dab8c8219c116a475250aae835a0",
+    "norm_stats_sha256": "0e86c542fe27de2018a031c72d493494821697ed9f3a9c976511ee9ddfb1a2e8",
+    "remote_path": "/data/user/jhe724/jiaan/research-workspace/projects/cobot-realworld-vla/datasets/canonical/in-the-pot/legacy40-v2.1"
+  },
+  "base_checkpoint": {
+    "id": "pi05_base",
+    "remote_path": "/data/user/jhe724/jiaan/research-workspace/projects/cobot-realworld-rl/cache/openpi-assets/pi05_base/params",
+    "verification": "29 files / 12441749581 bytes; all 10 registered major SHA-256 values matched"
+  },
+  "training": {
+    "mode": "joint_full_finetune",
+    "rlt_alpha": 1.0,
+    "rlt_tokens": 1,
+    "rlt_layers": 2,
+    "rlt_embed_dim": 2048,
+    "global_batch_size": 32,
+    "num_workers": 16,
+    "fsdp_devices": 4,
+    "optimizer_updates": 5000,
+    "seed": 42,
+    "action_horizon": 50,
+    "optimizer": "AdamW(b1=0.9,b2=0.95,eps=1e-8,weight_decay=1e-10,clip_gradient_norm=1.0)",
+    "lr_schedule": "CosineDecaySchedule(warmup_steps=1000,peak_lr=2.5e-5,decay_steps=30000,decay_lr=2.5e-6)",
+    "ema_decay": 0.99,
+    "save_interval": 1000,
+    "wandb": false
+  },
+  "probe_evidence": {
+    "gpu": "4x NVIDIA H100 80GB HBM3",
+    "batch_8_workers_8": "passed; steady step approximately 16-20 s",
+    "batch_16_workers_4": "passed; final two steps approximately 8.7 s/step",
+    "batch_32_workers_8": "passed; final two steps approximately 9.5 s/step",
+    "batch_32_workers_16": "passed; final four steps approximately 4.86 s/step; selected",
+    "batch_32_workers_24": "passed; no steady-state gain over 16 workers; rejected",
+    "save_resume": "restored step 1 in 12.02 s and completed finite step 2"
+  },
+  "execution": {
+    "server": "HPC3_jhe724",
+    "slurm_job_id": "593480",
+    "node": "ACD1-33",
+    "environment": "/data/user/jhe724/jiaan/research-workspace/projects/cobot-realworld-rl/envs/rlt-stage1-py311-relay-v1",
+    "checkpoint_dir": "/data/user/jhe724/jiaan/research-workspace/projects/cobot-realworld-rl/checkpoints/openpi-rlt/cobot_rlt_pi05_joint/r1-joint-legacy40-v2.1-b32w16-s42-20260904",
+    "log": "/data/user/jhe724/jiaan/research-workspace/projects/cobot-realworld-rl/logs/openpi-rlt/r1-joint-legacy40-v2.1-b32w16-s42-20260904.log",
+    "resource_log": "/data/user/jhe724/jiaan/research-workspace/projects/cobot-realworld-rl/logs/openpi-rlt/r1-joint-legacy40-v2.1-b32w16-s42-20260904-resources.csv"
+  },
+  "completion": {
+    "final_step": 4999,
+    "final_loss": 0.2014,
+    "final_rlt_loss": 0.1974,
+    "final_vla_loss": 0.0040,
+    "final_grad_norm": 1.3880,
+    "approx_training_wall_time": "55 minutes from training entry to final checkpoint",
+    "approx_steady_throughput": "48 samples/s including the 5000-update run window",
+    "gpu_memory_peak_mib": [63723, 63721, 63721, 63721],
+    "gpu_active_utilization_mean_pct": [97.5, 97.8, 97.7, 97.4],
+    "gpu_active_power_mean_w": [627.3, 633.0, 617.2, 608.0],
+    "hpc_checkpoint": "/data/user/jhe724/jiaan/research-workspace/projects/cobot-realworld-rl/checkpoints/openpi-rlt/cobot_rlt_pi05_joint/r1-joint-legacy40-v2.1-b32w16-s42-20260904/4999",
+    "cobot_deployment_checkpoint": "/media/agilex/Getea1/jiaan/projects/cobot-realworld-rl/checkpoints/openpi-rlt/cobot_rlt_pi05_joint/r1-joint-legacy40-v2.1-b32w16-s42-20260904/4999",
+    "deployment_checkpoint_files": 36,
+    "deployment_checkpoint_file_bytes": 15428374911,
+    "deployment_checksum_verification": "relay-to-Cobot rsync --checksum dry-run produced no differences"
+  },
+  "known_method_risks": [
+    "The fixed upstream loss supervises all 32 action dimensions after zero-padding physical 14D actions.",
+    "LeRobot horizon action_is_pad is not consumed by the fixed upstream flow loss.",
+    "This run uses the public pi0.5 code path; the paper reports pi0.6 and must not be described as an identical-backbone reproduction."
+  ]
+}

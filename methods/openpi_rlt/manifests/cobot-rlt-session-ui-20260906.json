@@ -1,0 +1,177 @@
+{
+  "schema_version": 1,
+  "status": "live-session-validated_warmup-complete_home-exit-fix-pending-onsite",
+  "validated_at": "2026-09-06T14:58:08+08:00",
+  "checkpoint": {
+    "label": "step_4999",
+    "path": "/media/agilex/Getea1/jiaan/projects/cobot-realworld-rl/checkpoints/openpi-rlt/cobot_rlt_pi05_joint/r1-joint-legacy40-v2.1-b32w16-s42-20260904/4999"
+  },
+  "cobot": {
+    "entrypoint": "/home/agilex/cobot_magic/task3/jiaan/realworld_rl/openpi_rlt/interface_task2_teach_rlt_live.sh",
+    "run_root": "/media/agilex/Getea1/jiaan/projects/cobot-realworld-rl/runs/openpi-rlt/online-r1-legacy40-v2.1-session-v2",
+    "task5_data_root": "/home/agilex/cobot_magic/task3/jiaan/realworld_rl/data/task5-rlt-r1",
+    "session_ui": "http://127.0.0.1:8016/",
+    "model_server_port": 8000,
+    "model_server_pid_at_validation": 2897302,
+    "model_server_lifecycle": "persistent_exact-match-reuse"
+  },
+  "shadow_evidence": {
+    "log": "/media/agilex/Getea1/jiaan/projects/cobot-realworld-rl/runs/openpi-rlt/online-r1-legacy40-v2.1-session-v2/logs/interface_20260906_110547.log",
+    "episode_0": {
+      "outcome": "success",
+      "chunks": 5,
+      "frames": 50,
+      "task5_uuid": "0c483249-f201-494d-959c-1c0657e53b90",
+      "task5_file": "/home/agilex/cobot_magic/task3/jiaan/realworld_rl/data/task5-rlt-r1/in_the_pot/openpi_rlt/online_r1_session_v2/episode_000002.hdf5"
+    },
+    "episode_1": {
+      "outcome": "aborted",
+      "chunks": 5,
+      "frames": 50,
+      "task5_uuid": "5bb395e0-4938-46b8-bdf9-b6202b131481",
+      "task5_file": "/home/agilex/cobot_magic/task3/jiaan/realworld_rl/data/task5-rlt-r1/in_the_pot/openpi_rlt/online_r1_session_v2/episode_000003.hdf5"
+    },
+    "policy_publishers": {
+      "/task2/policy/joint_left": null,
+      "/task2/policy/joint_right": null
+    },
+    "replay_transitions_written": 0,
+    "replay_journal_present": false,
+    "automatic_next_episode": true,
+    "automatic_robot_reset": false,
+    "rlt_episode_step_limit": null,
+    "task5_recorder_max_frames": 3600,
+    "unbounded_shadow": {
+      "log": "/media/agilex/Getea1/jiaan/projects/cobot-realworld-rl/runs/openpi-rlt/online-r1-legacy40-v2.1-session-v2/logs/interface_20260906_123914.log",
+      "chunks_observed": 105,
+      "task5_frames": 2997,
+      "outcome": "aborted",
+      "use_for_training": false,
+      "note": "Validated beyond the removed 60-chunk boundary; compact trace remained pending because this run intentionally exercised the pre-fix Ctrl-C path."
+    },
+    "ctrl_c_shutdown": {
+      "log": "/media/agilex/Getea1/jiaan/projects/cobot-realworld-rl/runs/openpi-rlt/online-r1-legacy40-v2.1-session-v2/logs/interface_20260906_125130.log",
+      "chunks": 18,
+      "task5_frames": 403,
+      "task5_uuid": "c88225cf-a615-497d-8284-b28a4630e917",
+      "task5_file": "/home/agilex/cobot_magic/task3/jiaan/realworld_rl/data/task5-rlt-r1/in_the_pot/openpi_rlt/online_r1_session_v2/episode_000008.hdf5",
+      "compact_trace": "/media/agilex/Getea1/jiaan/projects/cobot-realworld-rl/runs/openpi-rlt/online-r1-legacy40-v2.1-session-v2/raw_cobot_trace/episode_1788670342135159960_aborted.jsonl",
+      "outcome": "aborted",
+      "use_for_training": false,
+      "traceback_present": false
+    },
+    "model_preload": {
+      "checkpoint_restore_seconds": 553.47,
+      "checkpoint_restore_mib_per_sec": 14.3,
+      "metadata_reuse_check_seconds": "<1",
+      "static_gpu_memory_mib": 16806
+    }
+  },
+  "live_evidence": {
+    "operator_result": "session_start_terminal_and_hil_flow_worked_without_obvious_bug",
+    "replay_size": 605,
+    "learner_global_step": 20000,
+    "actor_version": 10000,
+    "warmup_required": 600,
+    "warmup_ready_for_online": true,
+    "observation": "right gripper repeatedly released the pot lid during left-arm placement",
+    "interpretation": "The observed gripper failure preceded R2 warmup. Actor version 10000 is trained and restore-validated but has not yet been tested with robot motion."
+  },
+  "terminal_home": {
+    "status": "onsite-service-succeeded_wrapper-exit-pending-onsite",
+    "command": [
+      "/home/agilex/miniconda3/envs/aloha/bin/python",
+      "/media/agilex/Getea1/jiaan/projects/cobot-realworld-rl/methods/openpi_rlt/scripts/home_front_once.py",
+      "/home/agilex/cobot_magic/aloha-devel/Piper-AVP-Teleop/multi_arm_launch_tools/task2_homing/task2_home_cli.py",
+      "front"
+    ],
+    "ordering": [
+      "pause_policy",
+      "finalize_task5",
+      "commit_compact_trace_and_replay",
+      "home_front",
+      "waiting_scene"
+    ],
+    "excluded_paths": [
+      "shadow",
+      "ctrl_c_shutdown",
+      "fault",
+      "task5_or_replay_finalize_failure"
+    ],
+    "failure_behavior": "session_fault_front_home_failed",
+    "automatic_next_episode": false
+  },
+  "prompt_contract": {
+    "value": "Open the pot lid, put the object into the pot, then close the lid.",
+    "source": "legacy40-v2.1 task_description",
+    "runtime_and_machine_a_default_aligned": true
+  },
+  "deployment_validation": {
+    "published_root": "/media/agilex/Getea1/jiaan/projects/cobot-realworld-rl/methods/openpi_rlt",
+    "backup": "/media/agilex/Getea1/jiaan/projects/cobot-realworld-rl/runs/deploy-backup-pre-learner-monitor-20260906",
+    "remote_tests_passed": 100,
+    "remote_tests_known_fixture_failures": 1,
+    "remote_fixture_failure": "test_machine_a_cli.py hard-codes the relay /data/LFT-W02_data scratch root, which is intentionally unavailable on Cobot",
+    "bash_syntax": "passed",
+    "javascript_syntax": "passed",
+    "checksum_dry_run_differences": 0,
+    "robot_motion_executed": false,
+    "machine_a_restarted": false,
+    "machine_b_started": true,
+    "robot_or_ros_env_started_for_fix": false,
+    "role_liveness_monitor": true
+  },
+  "warmup_training": {
+    "replay_transitions": 605,
+    "replay_schema_finite": true,
+    "sample_batch_size": 128,
+    "warmup_updates": 20000,
+    "actor_version": 10000,
+    "ready_for_online": true,
+    "metrics_rows": 20000,
+    "nonfinite_metric_values": 0,
+    "log": "/media/agilex/Getea1/jiaan/projects/cobot-realworld-rl/runs/openpi-rlt/online-r1-legacy40-v2.1-session-v2/logs/offline_warmup_20260906_143622.log",
+    "log_sha256": "e15b604e85d5d1513055ec781639441536bb6440b3c87af946a329c79743e602",
+    "checkpoint": "/media/agilex/Getea1/jiaan/projects/cobot-realworld-rl/runs/openpi-rlt/online-r1-legacy40-v2.1-session-v2/checkpoints/latest.pkl",
+    "checkpoint_bytes": 37794814,
+    "checkpoint_sha256": "1955ab51a6cbce9d95e35f2bad318db22aad3db2c58defaa0a3b751e82875b35",
+    "actor_snapshot": "/media/agilex/Getea1/jiaan/projects/cobot-realworld-rl/runs/openpi-rlt/online-r1-legacy40-v2.1-session-v2/actor_snapshot/actor_snapshot.pkl",
+    "actor_snapshot_bytes": 3245627,
+    "actor_snapshot_sha256": "56872312f95a48eee4962da3786b19f7d5a718fdfca5773fa2898e4ee9755586",
+    "restore_smoke": {
+      "learner_global_step": 20000,
+      "actor_version": 10000,
+      "output_shape": [10, 14],
+      "finite": true
+    },
+    "first_trigger_incident": "one native libc segfault before global_step 1; not reproduced in 2172-step learner-only or 2000-step learner+actor isolation runs"
+  },
+  "quarantine": {
+    "legacy_shadow_replay": "/media/agilex/Getea1/jiaan/projects/cobot-realworld-rl/runs/openpi-rlt/online-r1-legacy40-v2.1",
+    "legacy_shadow_transition_count": 60,
+    "use_for_training": false,
+    "external_task5_incomplete": "/media/agilex/Getea1/jiaan/projects/cobot-realworld-rl/datasets/online/in-the-pot/task5-rlt-r1/in_the_pot/openpi_rlt/online_r1/episode_000001.hdf5.incomplete"
+  },
+  "code_sha256": {
+    "cobot_online_env.py": "5dc5ba8f4fbef4649cfbc0e216747c110072a09f31253a7496f105a8036477b5",
+    "cobot_ros1.py": "78ef99a3b0a3ed6dc6bb32bdde36dfd7ee15975430b5e7ec4f1986a4f3dd08b9",
+    "online_runtime.py": "1aea83aeb5267317b2d880235bb6dda6b28d9727a61e193712af761c2d4c857d",
+    "session.py": "ad7a9fe55804f6d2253240de5cf6be1259ed8a8afbe8c50e02499467e7360561",
+    "session_http.py": "cd2437db8b3882a726eb673d81b62bcac7903061fa43678320386f96e1897947",
+    "session_shutdown.py": "6f6d6eb3f11059548333080488bede688899fd2a22a462d0a1f3c01cb708e92f",
+    "task5_client.py": "48ec49e9feea5a2cc93264fb85782c6d3fd1c824f22e1e967c8e5b09cf258f69",
+    "trace.py": "91159f9d7a782dce044bbb623466d93cc913c90f621c6db01529f1e3f202143c",
+    "home_front_once.py": "e6c4346e4cb72b6a8ceb2e1f68ac5b1314ca6277434d7cd1fce984848cc4530c",
+    "interface_task2_teach_rlt_live.sh": "4fb7bd45bcf186e5a2d15986bf2707c05cc1c9aa7356eb2e4f56804ac4bed2d1",
+    "online_role.py": "5c46d0d3767620b43662f65d2ae076a1030d29c2c2803e353a08d7448edd650a",
+    "operator_log_tail.py": "3209cecf8208c7c5870d86135e694ef2bd33a4d9a71fbf5c4ed64cce2ef83c6a",
+    "rlt_model_server.sh": "4876c819929b968f28137f2307dba27a9fa926d5ccfb5bc435475cb6da643a6f",
+    "shutdown_session.py": "c586ed6e9078205f608aeaae32289a681ea732ac9f80f5235a2278ca76840303",
+    "stop_rlt_model_server.sh": "302aa283a5eaa6e6765e6b2fa584fedb5b42bac5a93cadf6d49229e00cf4afd3",
+    "resolve_online_config.py": "cfdf2c664c2153450db89c49a0cf3c6149b2195770f1fa0137ee5aaa201483d7",
+    "index.html": "764bc50c2eed35944d265592f1d9e1f64923d382c0614c37fd213983eadbd2f0",
+    "serve_machine_a.py": "d89a4a4c1285a6ce1b6081050f2203d6a3499ceca4e773319a836716f0b239f1",
+    "app.js": "99487ad9fe0de0ffdb54f1a753e2a2f3807c84395aafdd9b1e30a73015d09963",
+    "styles.css": "212198b6d9b5f1a55ef6d3510051f5723fd5e3efb524c2fc7d318b7ae980df5f"
+  }
+}

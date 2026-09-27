@@ -1,0 +1,55 @@
+{
+  "cycles": [
+    {
+      "wall_seconds": 1.6164166189846583,
+      "status": {
+        "worker_pid": 3973804,
+        "phase": "ready",
+        "ready_for_online": true,
+        "actor_version": 5016,
+        "global_step": 10032,
+        "pending_update_budget": 0,
+        "last_decision": "accepted",
+        "last_update_steps": 32,
+        "last_update_sec": 1.3161259809858166,
+        "updates_per_episode": 32,
+        "episodes_per_update": 1,
+        "processed_episodes": 1,
+        "request_id": "e3ee0c5896aa4974a192e1e645696ec9",
+        "training_enabled": true,
+        "collection_only": false,
+        "actor_source": "warmup_step10000_then_episode_updates",
+        "timestamp": 1789059632.3377864
+      },
+      "old_episode_actor": 5000,
+      "new_episode_actor": 5016
+    },
+    {
+      "wall_seconds": 1.7209727969602682,
+      "status": {
+        "worker_pid": 3973804,
+        "phase": "ready",
+        "ready_for_online": true,
+        "actor_version": 5032,
+        "global_step": 10064,
+        "pending_update_budget": 0,
+        "last_decision": "accepted",
+        "last_update_steps": 32,
+        "last_update_sec": 1.2809907930204645,
+        "updates_per_episode": 32,
+        "episodes_per_update": 1,
+        "processed_episodes": 2,
+        "request_id": "2e11f4d6c41b4e88a50ff9821adee391",
+        "training_enabled": true,
+        "collection_only": false,
+        "actor_source": "warmup_step10000_then_episode_updates",
+        "timestamp": 1789059633.958428
+      },
+      "old_episode_actor": 5016,
+      "new_episode_actor": 5032
+    }
+  ],
+  "restart_deduplicated": true,
+  "rollback_version": 5016,
+  "formal_replay_unchanged": true
+}

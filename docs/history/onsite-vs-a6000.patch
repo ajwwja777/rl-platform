@@ -1,0 +1,1494 @@
+--- /data/LFT-W02_data/jiaan/projects/proj-20260904-cobot-realworld-rl/methods/openpi_rlt/COBOT_DEPLOYMENT_SOP.md	2026-09-06 18:53:01.312538052 +0800
++++ /data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/site/methods/openpi_rlt/COBOT_DEPLOYMENT_SOP.md	2026-09-06 15:01:38.546171900 +0800
+@@ -105,7 +105,7 @@
+ - 旧 run `online-r1-legacy40-v2.1` 含 60 条早期 shadow 虚构 transition，永久隔离，禁止恢复或训练。
+ - Task5 HDF5/sidecar 与去图像的原子 compact trace 是 Cobot 原始证据；不再额外保存每轮重复的 upstream raw image pickle。
+ - success/failure 才能进入 replay；aborted、pending、fault 和 shadow 均不进入。
+-- 正式 run 已用 605 条 replay 完成一次性 20,000 warmup update，当前 learner step 20000、actor version 10000、`ready_for_online=true`；后续每新增 1 条 replay 按配置追加 5 次 update。当前只有 `warmup → online` 阶段切换被项目 adapter 固定在 episode 边界；上游 ActorService 仍每 0.25 秒轮询 snapshot，可能在同一 rollout 内换版本。整 episode actor pinning 尚未实现，因此 version 10000 在完成离线连续性检查前不得继续 LIVE。
++- 正式 run 已用 605 条 replay 完成一次性 20,000 warmup update，当前 learner step 20000、actor version 10000、`ready_for_online=true`；后续每新增 1 条 replay 按配置追加 5 次 update。online actor 只允许在 episode 边界切换。
+ 
+ ## reset 边界
+ 
+@@ -139,7 +139,7 @@
+ - LIVE 首个小工作区动作；
+ - 后臂按钮真实接管、释放与 fresh replan；
+ - success/failure LIVE replay 内容、reward 和 `expert_mask` 对账；
+-- 最终 actor version 10000 的确定性离线 canary、双臂/跨 chunk 连续性与整 episode 版本固定；通过后再验证 LIVE 阶段切换及后续 5× online update；
++- 最终 actor version 10000 的 LIVE episode 边界切换及后续 5× online update；
+ - 新 CLI 退出包装器下 LIVE 正常终局的 front home → `waiting_scene`；
+ - 任意无人值守自动 reset/自动下一轮；
+ - R1/R2 真机成功率和 B1 公平对照。
+
+--- /data/LFT-W02_data/jiaan/projects/proj-20260904-cobot-realworld-rl/methods/openpi_rlt/HPC_R1_TRAINING_REPORT.md	2026-09-05 17:38:33.423612970 +0800
++++ /data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/site/methods/openpi_rlt/HPC_R1_TRAINING_REPORT.md	2026-09-05 00:54:37.716158600 +0800
+@@ -69,7 +69,7 @@
+ 折算约 48 samples/s。该正式结果显著快于短 probe，后续估时应以同节点正式稳态窗口为准，
+ 不能只外推冷启动 probe。
+ 
+-资源日志的活动采样显示：四卡显存峰值约 63,723 MiB/卡（约 62.2 GiB，按 run manifest 修正原单位）；活动期平均利用率
++资源日志的活动采样显示：四卡显存峰值约 63.7 GiB/卡；活动期平均利用率
+ 97.4%–97.8%；平均功耗约 608–633 W/卡。未选择 24 workers，避免继续增加 CPU/文件系统
+ 压力而无吞吐收益。
+ 
+
+--- /data/LFT-W02_data/jiaan/projects/proj-20260904-cobot-realworld-rl/methods/openpi_rlt/LOCAL_REPRODUCTION.md	2026-09-05 17:44:13.579524649 +0800
++++ /data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/site/methods/openpi_rlt/LOCAL_REPRODUCTION.md	2026-09-04 21:38:59.451824000 +0800
+@@ -1,6 +1,6 @@
+ # 中转机复现记录
+ 
+-**状态：** upstream + real-data + π0.5 full-model RLT-only save/resume verified
++**状态：** upstream + real-data + π0.5 full-model RLT-only save/resume verified  
+ **日期：** 2026-09-04
+ 
+ ## 运行边界
+
+--- /data/LFT-W02_data/jiaan/projects/proj-20260904-cobot-realworld-rl/methods/openpi_rlt/ONLINE_RL_INTERFACE.md	2026-09-09 00:26:10.308646526 +0800
++++ /data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/site/methods/openpi_rlt/ONLINE_RL_INTERFACE.md	2026-09-05 00:56:22.379889200 +0800
+@@ -11,9 +11,8 @@
+ - **Cobot bridge**：项目私有 ROS 1/Task2 adapter，负责三相机、14D state、策略输出、逐臂
+   takeover 和 raw trace；策略只能发布 `/task2/policy/joint_left/right`，Task2 coordinator
+   继续独占最终前臂 command。
+-- **Task5**：普通 VLA 部署可选；RLT 在线 Session 中是明确的数据记录后端，负责 recording、
+-  sidecar 和人工 terminal outcome。当前需人工提前启动；后续由统一入口自动检查、复用或调用
+-  既有 `start_task5_v1.sh`，但不在 RLT 内复制 recorder。
++- **Task5**：可选的数据/界面旁路，负责 recording、sidecar 和人工 terminal outcome；网页未开
++  或未 recording 不阻止 policy rollout。
+ 
+ 这个边界最大程度复用公开实现，同时保留已经现场验证过的 Task2 安全与接管语义。任何
+ Machine A/B、Task5 或网络异常都不得绕过 coordinator 直接发布动作。
+@@ -31,10 +30,8 @@
+    不进入正式 replay。
+ 7. 操作员在 Task5 UI 或等价的独立人工信号中提交 terminal outcome。success 仅在最后一个
+    transition 给 reward 1；failure/done 为 0，不能把 episode 标签广播到所有帧。
+-8. episode 完成后再生成 upstream replay windows，并发送 replay manager。learner 异步更新。
+-   R2 overlay 已按 `episode_id` 固定 actor 参数引用与版本；后台可发现完整新 snapshot，但只在
+-   下一 episode 生效。该实现已通过本地 fixed-upstream 集成测试，尚未发布 Cobot 或完成真实
+-   zero-publisher shadow。
++8. episode 完成后再生成 upstream replay windows，并发送 replay manager。learner 异步更新；
++   新 actor snapshot 只在 episode 边界、hash/schema/version 验证通过后切换。
+ 
+ ## HIL 字段映射
+ 
+@@ -81,24 +78,11 @@
+ 
+ - Task2 topic/service、三相机/14D schema 和按臂 mode 语义已由 snapshot 与自动测试固定；仍需在
+   现场 `--shadow` 下验证真实 payload、相机同步和连续 20 Hz latency。
+-- Task5 facts 已证明包含 `control_source_left/right`、intervention id、valid mask 和 terminal labels；
+-  RLT Session 已使用 8016 页面统一人工终局和 Task5 自动录制。尚待取消人工提前启动 Task5 的
+-  终端步骤，并保持 8015 后端 fail-closed。
++- Task5 facts 已证明包含 `control_source_left/right`、intervention id、valid mask 和 terminal labels，
++  但首轮部署不依赖 Task5；人工 terminal ROS service 与网页如何统一显示仍待现场验证。
+ - 首轮使用公开 Agilex 20 Hz、RL chunk 10；整个 `in_the_pot` 作为 actor-refined critical phase。
+   这与论文 50 Hz 不同，必须作为 adaptation 报告。
+-- 旧 R1 的 replay 600/20,000-update warmup 已降级为问题复现配置。R2 候选先要求至少 128 条
+-  审核专家 transition，预灌来源 manifest 后在 200–2,000 update 内按 held-out canary 选择；
+-  当前代码只生成预灌计划，不在没有真实数据/feature 对账时伪造 replay journal。
++- warmup 固定为 replay 600 条，再做 20,000 updates；历史 HIL 是否预载 replay 尚未决定，不能
++  未经 manifest 混入。
+ - Machine A/B 已在 Cobot 4090 上以约 18.0 GiB 完成共存 smoke，首轮采用本地拓扑。自动视觉
+-  terminal 和自动安全 reset 仍待验证。R2 的确定性、双臂平滑、chunk 连续性与整 episode
+-  版本固定已完成本地实现/测试，但真实数据、GPU learner、Cobot shadow 和 LIVE 仍待分级验证。
+-
+-## R2 防抖运行合同
+-
+-- `eval` 强制 deterministic actor mean；不注入噪声。
+-- `explore` 使用 action chunk 两端点线性插值得到低频扰动，不逐帧独立采样。
+-- `active_arm` 必须显式为 `left/right/both`；首轮插孔默认左臂，另一臂和两个夹爪 hold。
+-- runtime 对双臂执行 current-state 首动作、速度、加速度和跨 chunk 限制；HIL/pause/terminal 后
+-  清空历史，从最新实测 state fresh replan。
+-- learner 的 R2 smoothness 将左右臂速度、current→first、加速度和夹爪变化合成原有
+-  `delta_penalty` 指标，保持 upstream `train_step` metrics 结构兼容。
++  terminal、自动安全 reset 和 warmup→online 的真机边界切换仍待验证。
+
+--- /data/LFT-W02_data/jiaan/projects/proj-20260904-cobot-realworld-rl/methods/openpi_rlt/tests/test_cobot_ros1_io.py	2026-09-24 19:55:53.102536524 +0800
++++ /data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/site/methods/openpi_rlt/tests/test_cobot_ros1_io.py	2026-09-24 19:53:26.154469200 +0800
+@@ -346,7 +346,7 @@
+     ros.subscribers["/task2/teach_handover/mode"](SimpleNamespace(data="manual:right"))
+     assert controller.snapshot().phase is SessionPhase.HIL
+     assert controller.snapshot().policy_paused is False
+-    assert io.paused is True
++    assert io.paused is True  # Task2 manual owns the arm; policy publishing stays gated.
+ 
+     ros.subscribers["/task2/teach_handover/mode"](SimpleNamespace(data="policy"))
+     assert controller.snapshot().phase is SessionPhase.PAUSED
+
+--- /data/LFT-W02_data/jiaan/projects/proj-20260904-cobot-realworld-rl/methods/openpi_rlt/tests/test_session_shutdown.py	2026-09-16 21:07:01.694839463 +0800
++++ /data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/site/methods/openpi_rlt/tests/test_session_shutdown.py	2026-09-06 13:39:31.158584400 +0800
+@@ -56,21 +56,3 @@
+     assert task5.finished[0][1].value == "aborted"
+     assert raw_hooks.outcomes[0].value == "aborted"
+     assert raw_hooks.homes == 0
+-
+-
+-def test_shutdown_waits_for_an_already_committing_episode(monkeypatch):
+-    from methods.openpi_rlt.cobot_adapter import session_shutdown as shutdown
+-    replies=iter([
+-        {"phase":"replay_committing","episode_id":3,"generation":9},
+-        {"phase":"waiting_scene","episode_id":3,"generation":10},
+-        {"phase":"stopped","episode_id":3,"generation":11},
+-    ])
+-    calls=[]
+-    def request(opener,base,method,path,body=None,timeout_sec=5):
+-        calls.append((method,path))
+-        return next(replies)
+-    monkeypatch.setattr(shutdown,"_request",request)
+-    monkeypatch.setattr(shutdown.time,"sleep",lambda value:None)
+-    result=shutdown.shutdown_via_http("http://127.0.0.1:8016",timeout_sec=1)
+-    assert result["phase"]=="stopped"
+-    assert calls==[("GET","/api/session"),("GET","/api/session"),("POST","/api/session/stop")]
+
+--- /data/LFT-W02_data/jiaan/projects/proj-20260904-cobot-realworld-rl/methods/openpi_rlt/tests/test_episode_control.py	2026-09-05 17:44:13.587524398 +0800
++++ /data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/site/methods/openpi_rlt/tests/test_episode_control.py	2026-09-04 23:29:45.902237700 +0800
+@@ -91,3 +91,4 @@
+     assert controller.accepts_policy_result(faulted.generation) is False
+     with pytest.raises(RuntimeError, match="waiting_object_reset"):
+         controller.confirm_object_reset_ready()
++
+
+--- /data/LFT-W02_data/jiaan/projects/proj-20260904-cobot-realworld-rl/methods/openpi_rlt/tests/test_session_e2e.py	2026-09-06 13:51:14.894483449 +0800
++++ /data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/site/methods/openpi_rlt/tests/test_session_e2e.py	2026-09-24 20:57:16.715688400 +0800
+@@ -13,16 +13,31 @@
+     def __init__(self) -> None:
+         self.starts = 0
+         self.outcomes = []
++        self.recording = False
++        self.capture_enabled = False
+ 
+     def start_episode(self, _identity):
+         ref = _Ref(self.starts)
+         self.starts += 1
++        self.recording = True
++        self.capture_enabled = True
+         return ref
+ 
+     def finish_episode(self, ref, outcome):
+         self.outcomes.append(outcome)
++        self.recording = False
+         return _Ref(ref.episode_index, f"uuid-{ref.episode_index}")
+ 
++    def status(self):
++        return {
++            "state": "recording" if self.recording else "stopped",
++            "capture_enabled": self.capture_enabled,
++        }
++
++    def set_capture_enabled(self, enabled):
++        self.capture_enabled = bool(enabled)
++        return self.status()
++
+ 
+ def test_three_episode_session_success_failure_with_hil_then_abort() -> None:
+     from methods.openpi_rlt.cobot_adapter.session import RltSessionController
+
+--- /data/LFT-W02_data/jiaan/projects/proj-20260904-cobot-realworld-rl/methods/openpi_rlt/tests/test_online_bimanual_patch.py	2026-09-09 00:26:10.312646465 +0800
++++ /data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/site/methods/openpi_rlt/tests/test_online_bimanual_patch.py	2026-09-06 11:05:18.183654500 +0800
+@@ -21,10 +21,11 @@
+ 
+ 
+ def test_runtime_patch_converts_both_arms_and_keeps_grippers_absolute(tmp_path) -> None:
++    from rlt_online_rl.config import RLTOnlineRLConfig
++
+     from methods.openpi_rlt.cobot_adapter.online_runtime import (
+         install_bimanual_runtime_patch,
+     )
+-    from rlt_online_rl.config import RLTOnlineRLConfig
+ 
+     install_bimanual_runtime_patch()
+     from rlt_online_rl.action_representation import ActionRepresentationAdapter
+@@ -81,45 +82,6 @@
+     np.testing.assert_allclose(absolute[0, :, [6, 13]], np.zeros((2, 2), dtype=np.float32), atol=1e-6)
+ 
+ 
+-def test_r2_actor_exploration_is_chunk_correlated_and_masked(monkeypatch) -> None:
+-    import jax
+-
+-    monkeypatch.setenv("COBOT_RLT_EXPLORATION_PROFILE", "linear_endpoints")
+-    monkeypatch.setenv("COBOT_RLT_ACTIVE_ARM", "left")
+-    monkeypatch.setenv("COBOT_RLT_EXPLORE_GRIPPER", "0")
+-    from methods.openpi_rlt.cobot_adapter.online_runtime import (
+-        install_bimanual_runtime_patch,
+-    )
+-
+-    install_bimanual_runtime_patch()
+-    from rlt_online_rl.config import RLTOnlineRLConfig
+-    from rlt_online_rl.inference import RLTPolicyInferenceWrapper
+-
+-    config = RLTOnlineRLConfig(
+-        action_dim=14,
+-        chunk_len=10,
+-        z_dim=5,
+-        proprio_dim=14,
+-        actor_hidden_dim=16,
+-        actor_num_layers=1,
+-        fixed_std=0.002,
+-    )
+-    wrapper = RLTPolicyInferenceWrapper(config)
+-    params = wrapper._actor.init_params(jax.random.PRNGKey(1))
+-    z_rl = np.zeros(5, dtype=np.float32)
+-    proprio = np.zeros(14, dtype=np.float32)
+-    ref = np.zeros((10, 14), dtype=np.float32)
+-
+-    mean = wrapper.infer(params, z_rl, proprio, ref, deterministic=True)
+-    sampled = wrapper.infer(
+-        params, z_rl, proprio, ref, rng=jax.random.PRNGKey(2), deterministic=False
+-    )
+-    delta = sampled - mean
+-
+-    np.testing.assert_allclose(delta[:, 6:], 0.0, atol=1e-7)
+-    assert np.max(np.abs(np.diff(delta[:, :6], axis=0))) < 0.003
+-
+-
+ def test_actor_version_socket_timeout_is_retryable_runtime_error(monkeypatch) -> None:
+     """Catches an uncaught slow-start timeout aborting upstream's readiness loop."""
+     from methods.openpi_rlt.cobot_adapter.online_runtime import (
+@@ -286,9 +248,7 @@
+ 
+ 
+ def test_patched_driver_skips_replay_when_cobot_episode_is_not_eligible() -> None:
+-    from methods.openpi_rlt.cobot_adapter.online_runtime import (
+-        install_bimanual_runtime_patch,
+-    )
++    from methods.openpi_rlt.cobot_adapter.online_runtime import install_bimanual_runtime_patch
+ 
+     install_bimanual_runtime_patch()
+     from rlt_online_rl.config import EnvDriverConfig, RLTOnlineRLConfig
+@@ -320,9 +280,7 @@
+ 
+ 
+ def test_cobot_post_episode_helper_advances_session_after_replay_finalize() -> None:
+-    from methods.openpi_rlt.cobot_adapter.online_runtime import (
+-        _mark_cobot_replay_finalized,
+-    )
++    from methods.openpi_rlt.cobot_adapter.online_runtime import _mark_cobot_replay_finalized
+ 
+     class _CobotEnv:
+         cobot_task2_contract = True
+@@ -339,9 +297,7 @@
+ 
+ 
+ def test_non_cobot_post_episode_helper_is_noop() -> None:
+-    from methods.openpi_rlt.cobot_adapter.online_runtime import (
+-        _mark_cobot_replay_finalized,
+-    )
++    from methods.openpi_rlt.cobot_adapter.online_runtime import _mark_cobot_replay_finalized
+ 
+     class _Env:
+         def mark_replay_finalized(self):
+@@ -351,9 +307,7 @@
+ 
+ 
+ def test_cobot_uses_task5_instead_of_duplicate_upstream_raw_pickle() -> None:
+-    from methods.openpi_rlt.cobot_adapter.online_runtime import (
+-        install_bimanual_runtime_patch,
+-    )
++    from methods.openpi_rlt.cobot_adapter.online_runtime import install_bimanual_runtime_patch
+ 
+     install_bimanual_runtime_patch()
+     from rlt_online_rl.inference import EnvDriver
+
+--- /data/LFT-W02_data/jiaan/projects/proj-20260904-cobot-realworld-rl/methods/openpi_rlt/tests/test_online_role_cli.py	2026-09-09 00:26:10.312646465 +0800
++++ /data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/site/methods/openpi_rlt/tests/test_online_role_cli.py	2026-09-06 12:51:06.174512900 +0800
+@@ -51,20 +51,3 @@
+     marker.touch()
+     assert _is_expected_operator_shutdown(error) is True
+     assert _is_expected_operator_shutdown(RuntimeError("unexpected failure")) is False
+-
+-
+-def test_r2_config_exports_explicit_runtime_safety(monkeypatch) -> None:
+-    from methods.openpi_rlt.scripts.online_role import configure_r2_environment
+-
+-    config = PROJECT_ROOT / "methods/openpi_rlt/configs/plug_insertion_r2.yaml"
+-    configure_r2_environment(config)
+-
+-    assert os.environ["COBOT_RLT_MODE"] == "eval"
+-    assert os.environ["COBOT_RLT_ACTIVE_ARM"] == "left"
+-    assert os.environ["COBOT_RLT_EXPLORATION_PROFILE"] == "linear_endpoints"
+-    assert os.environ["COBOT_RLT_PIN_ACTOR_PER_EPISODE"] == "1"
+-    assert os.environ["COBOT_RLT_R2_SMOOTHNESS"] == "1"
+-    assert os.environ["COBOT_RLT_HOLD_GRIPPERS"] == "1"
+-    assert float(os.environ["COBOT_RLT_JOINT_ACCEL_LIMIT"]) < float(
+-        os.environ["COBOT_RLT_JOINT_STEP_LIMIT"]
+-    )
+
+--- /data/LFT-W02_data/jiaan/projects/proj-20260904-cobot-realworld-rl/methods/openpi_rlt/tests/test_machine_a_cli.py	2026-09-06 07:39:46.706174872 +0800
++++ /data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/site/methods/openpi_rlt/tests/test_machine_a_cli.py	2026-09-05 00:40:10.095329300 +0800
+@@ -22,18 +22,10 @@
+     events: list[str] = []
+     runtime = object()
+     args = SimpleNamespace(upstream_root=tmp_path / "upstream")
+-
+-    def import_fixed_runtime(name: str):
+-        fixed_source = str((args.upstream_root / "src").resolve())
+-        assert fixed_source in sys.path
+-        assert sys.path.index(fixed_source) < sys.path.index(str(args.upstream_root.resolve() / "scripts"))
+-        events.append(f"import:{name}")
+-        return runtime
+-
+     monkeypatch.setattr(
+         serve_machine_a.importlib,
+         "import_module",
+-        import_fixed_runtime,
++        lambda name: events.append(f"import:{name}") or runtime,
+     )
+     monkeypatch.setattr(
+         serve_machine_a,
+
+--- /data/LFT-W02_data/jiaan/projects/proj-20260904-cobot-realworld-rl/methods/openpi_rlt/tests/test_cobot_online_env.py	2026-09-17 15:47:24.252997612 +0800
++++ /data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/site/methods/openpi_rlt/tests/test_cobot_online_env.py	2026-09-24 20:52:45.689884500 +0800
+@@ -418,95 +418,69 @@
+     assert done is True
+     assert info["outcome"] == "aborted"
+     assert info["drop_transition"] is True
+-    assert io.raw_steps[-1]["done"] is True
++    assert io.raw_steps == []
+     assert io.published == []
+ 
+ 
+-def test_env_exposes_explicit_post_replay_completion_hook() -> None:
++def test_paused_waiting_intervals_do_not_enter_training_trace() -> None:
+     from methods.openpi_rlt.cobot_adapter.cobot_online_env import CobotOnlineEnv
++    from methods.openpi_rlt.cobot_adapter.trace import EpisodeOutcome
+ 
+-    io = FakeTask2IO([])
++    io = FakeTask2IO([
++        _sample(0.0),
++        _sample(0.01),
++        _sample(0.02),
++        _sample(1.0, paused=True),
++        _sample(2.0, "manual:right", paused=True),
++        _sample(2.1, "manual:right", paused=True),
++        _sample(3.0, "policy", paused=True),
++        _sample(9.0, "policy", outcome=EpisodeOutcome.SUCCESS, paused=True),
++    ])
+     env = CobotOnlineEnv(
+         io,
+-        chunk_exec_horizon=1,
++        chunk_exec_horizon=10,
+         control_frequency_hz=20.0,
+-        max_episode_steps=1,
++        max_episode_steps=None,
+         joint_step_limit=0.03,
+         gripper_step_limit=0.004,
+         sleep=lambda _seconds: None,
+     )
++    observation = env.reset()
++    _, rewards, done, info = env.execute_chunk(observation, lambda *_: _plan(0.01))
+ 
+-    assert env.persist_upstream_raw_episode() is False
+-    env.mark_replay_finalized()
+-    assert io.replay_finalized_count == 1
+-
+-def test_online_cycle_waits_before_finalized_and_skips_aborted_shadow(monkeypatch):
+-    from methods.openpi_rlt.cobot_adapter.cobot_online_env import CobotOnlineEnv
+-    from methods.openpi_rlt.cobot_adapter.trace import EpisodeOutcome
+-    from methods.openpi_rlt.cobot_adapter import online_cycle
+-    monkeypatch.setenv("COBOT_RLT_ONLINE_CYCLE_RUN","/registered/test")
+-    calls=[]
+-    monkeypatch.setattr(online_cycle,"request_cycle",lambda run: calls.append("updated"))
+-    io=FakeTask2IO([])
+-    io.mark_replay_finalized=lambda: calls.append("finalized")
+-    env=CobotOnlineEnv(io,chunk_exec_horizon=10,control_frequency_hz=20,max_episode_steps=None,joint_step_limit=.02,gripper_step_limit=.001)
+-    env._last_outcome=EpisodeOutcome.SUCCESS
+-    env.mark_replay_finalized()
+-    assert calls==["updated","finalized"]
+-    calls.clear();env._last_outcome=EpisodeOutcome.ABORTED;env.mark_replay_finalized()
+-    assert calls==["finalized"]
+-    calls.clear();env._last_outcome=EpisodeOutcome.SUCCESS;env._shadow_mode=True;env.mark_replay_finalized()
+-    assert calls==["finalized"]
++    assert done is True
++    assert len(info["step_trace"]) == 3
++    assert [step["timestamp"] for step in info["step_trace"]] == [0.02, 2.0, 2.1]
++    assert rewards == [0.0, 0.0, 1.0]
++    assert info["step_trace"][-1]["done"] is True
++    assert len(io.raw_steps) == 3
++
++
++def test_terminal_reward_updates_last_real_step_after_pause() -> None:
++    from methods.openpi_rlt.cobot_adapter.online_runtime import _mark_previous_step_terminal
++
++    step = SimpleNamespace(done=False, reward=0.0, success=0)
++    chunk = SimpleNamespace(done=False, success=0)
++    raw_episode = SimpleNamespace(steps=[step], chunks=[chunk])
++    _mark_previous_step_terminal(raw_episode, 1)
++    assert (step.done, step.reward, step.success) == (True, 1.0, 1)
++    assert (chunk.done, chunk.success) == (True, 1)
+ 
+ 
+-def test_tracking_conflict_waits_for_operator_without_publishing_or_recording_gap():
++def test_env_exposes_explicit_post_replay_completion_hook() -> None:
+     from methods.openpi_rlt.cobot_adapter.cobot_online_env import CobotOnlineEnv
+-    from methods.openpi_rlt.cobot_adapter.trace import EpisodeOutcome
+ 
+-    io = FakeTask2IO([
+-        _sample(0.0),  # reset
+-        _sample(0.0),  # valid command
+-        _sample(0.0),  # measurement after valid publication
+-        _sample(0.5),  # discontinuous measurement conflicts with command bound
+-        _sample(0.5, paused=True),  # operator decision gap is excluded
+-        _sample(0.5, outcome=EpisodeOutcome.FAILURE, paused=True),
+-    ])
++    io = FakeTask2IO([])
+     env = CobotOnlineEnv(
+-        io, chunk_exec_horizon=10, control_frequency_hz=20,
+-        max_episode_steps=None, joint_step_limit=0.02,
+-        gripper_step_limit=0.004, joint_accel_limit=0.005,
+-        active_arm="right", hold_grippers=True,
+-        command_smoothing_alpha=0.35, command_step_limit=0.01,
+-        sleep=lambda _: None,
++        io,
++        chunk_exec_horizon=1,
++        control_frequency_hz=20.0,
++        max_episode_steps=1,
++        joint_step_limit=0.03,
++        gripper_step_limit=0.004,
++        sleep=lambda _seconds: None,
+     )
+-    obs = env.reset()
+-    _, rewards, done, info = env.execute_chunk(obs, lambda *_: _plan(1.0))
+-    assert done and info["outcome"] == "failure"
+-    assert io.pending_reasons == ["command_tracking_bounds_conflict"]
+-    assert len(io.published) == 1
+-    assert len(io.raw_steps) == 2
+-    assert rewards == [0.0, 0.0]
+-    assert io.raw_steps[-1]["done"]
+-    np.testing.assert_array_equal(io.raw_steps[-1]["action"], np.full(14, 0.5, dtype=np.float32))
+-    assert False in io.chunk_ready
+-
+ 
+-def test_no_record_episode_excludes_raw_replay_and_update_requests(monkeypatch):
+-    from methods.openpi_rlt.cobot_adapter.cobot_online_env import CobotOnlineEnv
+-    from methods.openpi_rlt.cobot_adapter.trace import EpisodeOutcome
+-    from methods.openpi_rlt.cobot_adapter import online_cycle
+-    monkeypatch.setenv("COBOT_RLT_ONLINE_CYCLE_RUN", "/not-used")
+-    monkeypatch.setattr(online_cycle, "request_cycle", lambda _: (_ for _ in ()).throw(AssertionError("no update request")))
+-    io = FakeTask2IO([_sample(0), _sample(0), _sample(0.01), _sample(0.01, outcome=EpisodeOutcome.SUCCESS)])
+-    env = CobotOnlineEnv(io, chunk_exec_horizon=10, control_frequency_hz=20,
+-        max_episode_steps=None, joint_step_limit=0.02, gripper_step_limit=0.004,
+-        recording_enabled=False, sleep=lambda _: None)
+-    obs = env.reset()
+-    _, _, done, info = env.execute_chunk(obs, lambda *_: _plan(0.02))
+-    assert done and info["success"] == 1
+-    assert len(io.published) == 1
+-    assert io.raw_steps == []
+-    assert info["drop_transition"] and not info["replay_eligible"]
+-    assert not env.replay_commit_allowed()
++    assert env.persist_upstream_raw_episode() is False
+     env.mark_replay_finalized()
+     assert io.replay_finalized_count == 1
+
+--- /data/LFT-W02_data/jiaan/projects/proj-20260904-cobot-realworld-rl/methods/openpi_rlt/tests/test_task2_runtime.py	2026-09-05 17:44:13.587524398 +0800
++++ /data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/site/methods/openpi_rlt/tests/test_task2_runtime.py	2026-09-04 23:36:04.821404400 +0800
+@@ -80,3 +80,4 @@
+     with pytest.raises(ValueError, match="14"):
+         runtime.safe_policy_target(np.zeros(7), np.zeros(14))
+     assert runtime.snapshot().phase.value == "fault"
++
+
+--- /data/LFT-W02_data/jiaan/projects/proj-20260904-cobot-realworld-rl/methods/openpi_rlt/tests/test_resolve_online_config.py	2026-09-09 00:26:10.312646465 +0800
++++ /data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/site/methods/openpi_rlt/tests/test_resolve_online_config.py	2026-09-06 10:44:03.393128000 +0800
+@@ -1,8 +1,8 @@
+ from __future__ import annotations
+ 
+ from pathlib import Path
+-
+ import pytest
++
+ import yaml
+ 
+ 
+@@ -44,22 +44,6 @@
+     )
+ 
+ 
+-def test_resolved_online_config_applies_bounded_r2_defaults(tmp_path) -> None:
+-    from methods.openpi_rlt.scripts.resolve_online_config import build_runtime_payload
+-
+-    method = Path(__file__).parents[1]
+-    payload = build_runtime_payload(
+-        method / "configs/cobot_in_the_pot_online.yaml",
+-        tmp_path / "project",
+-        r2_config=method / "configs/plug_insertion_r2.yaml",
+-    )
+-
+-    assert payload["runtime"]["env_driver"]["actor_deterministic"] is True
+-    assert payload["experiment"]["rl"]["warmup_min_size"] == 128
+-    assert payload["experiment"]["rl"]["warmup_post_collect_updates"] == 2000
+-    assert payload["experiment"]["rl"]["fixed_std"] == 0.001
+-
+-
+ @pytest.mark.parametrize("bad", [Path("/absolute/run"), Path("runs/../escape")])
+ def test_resolved_online_config_rejects_run_root_escape(tmp_path, bad: Path) -> None:
+     from methods.openpi_rlt.scripts.resolve_online_config import build_runtime_payload
+
+--- /data/LFT-W02_data/jiaan/projects/proj-20260904-cobot-realworld-rl/methods/openpi_rlt/tests/test_rollout_phase.py	2026-09-10 21:18:05.523593616 +0800
++++ /data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/site/methods/openpi_rlt/tests/test_rollout_phase.py	2026-09-05 00:01:45.013120100 +0800
+@@ -48,21 +48,3 @@
+ 
+     with pytest.raises(RuntimeError, match="shut down"):
+         controller.begin_episode()
+-
+-
+-def test_collection_only_keeps_multiple_episodes_running_above_threshold():
+-    from methods.openpi_rlt.cobot_adapter.rollout_phase import CobotRolloutPhaseController
+-    def forbidden(*args):
+-        raise AssertionError("collection must not wait for learner or actor")
+-    controller = CobotRolloutPhaseController(
+-        replay_stats_getter=forbidden,
+-        actor_version_getter=forbidden,
+-        learner_status_getter=forbidden,
+-        warmup_min_size=128,
+-        min_online_actor_version=100,
+-        collection_only=True,
+-        sleep=forbidden,
+-    )
+-    for _ in range(5):
+-        assert controller.begin_episode() == "warmup"
+-        controller.finish_episode()
+
+--- /data/LFT-W02_data/jiaan/projects/proj-20260904-cobot-realworld-rl/methods/openpi_rlt/tests/test_session_http.py	2026-09-17 15:47:24.240997848 +0800
++++ /data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/site/methods/openpi_rlt/tests/test_session_http.py	2026-09-26 18:26:08.963816900 +0800
+@@ -19,6 +19,8 @@
+         self.started: list[object] = []
+         self.finished: list[tuple[object, object]] = []
+         self.recording = True
++        self.capture_enabled = True
++        self.capture_changes: list[bool] = []
+ 
+     def start_episode(self, identity):
+         self.started.append(identity)
+@@ -29,7 +31,84 @@
+         return _Ref(ref.episode_index, f"uuid-{ref.episode_index}")
+ 
+     def status(self):
+-        return {"state": "recording" if self.recording else "stopped"}
++        return {
++            "state": "recording" if self.recording else "stopped",
++            "capture_enabled": self.capture_enabled,
++        }
++
++    def set_capture_enabled(self, enabled):
++        self.capture_enabled = bool(enabled)
++        self.capture_changes.append(bool(enabled))
++        return self.status()
++
++    def record_marker(self, kind):
++        self.markers = getattr(self, "markers", []) + [kind]
++
++
++def test_auto_start_saved_episode_and_restart_session():
++    from methods.openpi_rlt.cobot_adapter.trace import EpisodeOutcome
++    from methods.openpi_rlt.cobot_adapter.session import SessionConflict
++    app, task5, hooks = _app()
++    initial = app.snapshot()
++    started = app.start(episode_id=initial.episode_id, generation=initial.generation)
++    assert started.phase.value == "rollout"
++    assert hooks.armed == 1
++    with pytest.raises(SessionConflict):
++        app.start(episode_id=initial.episode_id, generation=initial.generation)
++    app.marker(episode_id=started.episode_id, generation=started.generation)
++    paused = app.pause(episode_id=started.episode_id, generation=started.generation)
++    resumed = app.resume(episode_id=paused.episode_id, generation=paused.generation)
++    assert task5.markers == ["marker", "pause", "resume"]
++    saved = app.terminal(EpisodeOutcome.SAVED, episode_id=resumed.episode_id, generation=resumed.generation, home_after_terminal=False)
++    assert saved.phase.value == "waiting_scene" and not saved.replay_eligible
++    assert task5.finished[-1][1] is EpisodeOutcome.SAVED
++    assert hooks.outcomes[-1] is EpisodeOutcome.ABORTED
++    second = app.start(episode_id=saved.episode_id, generation=saved.generation)
++    assert second.episode_id == 1
++    stopped = app.stop(episode_id=second.episode_id, generation=second.generation)
++    prepared = app.prepare(episode_id=stopped.episode_id, generation=stopped.generation)
++    assert prepared.phase.value == "ready" and prepared.policy_paused
++    restarted = app.start(episode_id=prepared.episode_id, generation=prepared.generation)
++    assert restarted.phase.value == "rollout" and restarted.outcome is None
++
++
++def test_paused_hil_records_only_during_takeover_and_stays_paused_after_release() -> None:
++    from methods.openpi_rlt.cobot_adapter.trace import EpisodeOutcome
++
++    app, task5, _hooks = _app()
++    armed = app.arm_operator()
++    rollout = app.start(episode_id=-1, generation=armed.generation)
++    paused = app.pause(episode_id=0, generation=rollout.generation)
++    assert paused.phase.value == "paused"
++    assert task5.capture_enabled is False
++
++    hil = app.update_takeover(left=False, right=True)
++    assert hil.phase.value == "hil"
++    assert task5.capture_enabled is True
++
++    paused_again = app.update_takeover(left=False, right=False)
++    assert paused_again.phase.value == "paused"
++    assert task5.capture_enabled is False
++    assert task5.capture_changes == [False, True, False]
++
++    app.terminal(
++        EpisodeOutcome.SUCCESS,
++        episode_id=0,
++        generation=paused_again.generation,
++    )
++    assert task5.capture_enabled is False
++    assert task5.capture_changes[-1] is False
++
++
++def test_resume_opens_capture_before_policy_unpauses() -> None:
++    app, task5, hooks = _app()
++    armed = app.arm_operator()
++    rollout = app.start(episode_id=-1, generation=armed.generation)
++    paused = app.pause(episode_id=0, generation=rollout.generation)
++    resumed = app.resume(episode_id=0, generation=paused.generation)
++    assert resumed.phase.value == "rollout"
++    assert task5.capture_changes == [False, True]
++    assert hooks.pauses[-1] is False
+ 
+ 
+ class _Hooks:
+@@ -37,6 +116,7 @@
+         self.pauses: list[bool] = []
+         self.outcomes: list[object] = []
+         self.ready = 0
++        self.armed = 0
+         self.homes = 0
+         self.policy_mode = True
+ 
+@@ -52,11 +132,14 @@
+     def signal_episode_ready(self):
+         self.ready += 1
+ 
++    def signal_policy_armed(self):
++        self.armed += 1
++
+     def request_front_home(self):
+         self.homes += 1
+ 
+ 
+-def _app(*, home_hook=None, recording_enabled=True):
++def _app(*, home_hook=None):
+     from methods.openpi_rlt.cobot_adapter.session import RltSessionController
+     from methods.openpi_rlt.cobot_adapter.session_http import (
+         RltSessionApplication,
+@@ -72,6 +155,7 @@
+         submit_outcome=raw_hooks.submit_outcome,
+         signal_episode_ready=raw_hooks.signal_episode_ready,
+         request_front_home=home_hook or raw_hooks.request_front_home,
++        signal_policy_armed=raw_hooks.signal_policy_armed,
+     )
+     identity = Task5EpisodeIdentity("in_the_pot", "openpi_rlt", "step_4999", "online_r1", "/rlt", 600)
+     app = RltSessionApplication(
+@@ -80,7 +164,6 @@
+         identity_factory=lambda _episode_id: identity,
+         hooks=hooks,
+         home_after_terminal=True,
+-        recording_enabled=recording_enabled,
+     )
+     return app, task5, raw_hooks
+ 
+@@ -109,6 +192,32 @@
+     assert hooks.homes == 1
+ 
+ 
++def test_aborted_episode_skips_replay_committing_and_late_finalize_is_idempotent() -> None:
++    from methods.openpi_rlt.cobot_adapter.trace import EpisodeOutcome
++
++    app, task5, hooks = _app()
++    armed = app.arm_operator()
++    rollout = app.start(episode_id=-1, generation=armed.generation)
++
++    waiting = app.terminal(
++        EpisodeOutcome.ABORTED,
++        episode_id=0,
++        generation=rollout.generation,
++    )
++
++    assert waiting.phase.value == "waiting_scene"
++    assert waiting.replay_eligible is False
++    assert waiting.task5_episode_uuid == "uuid-0"
++    assert task5.finished[0][1] is EpisodeOutcome.ABORTED
++    assert hooks.outcomes == [EpisodeOutcome.ABORTED]
++    assert hooks.homes == 1
++
++    # EnvDriver can return after the HTTP request has already completed.
++    repeated = app.mark_replay_finalized()
++    assert repeated.phase.value == "waiting_scene"
++    assert hooks.homes == 1
++
++
+ def test_shadow_replay_finalize_never_requests_front_home() -> None:
+     from methods.openpi_rlt.cobot_adapter.trace import EpisodeOutcome
+ 
+@@ -127,19 +236,17 @@
+ def test_front_home_failure_faults_before_waiting_scene() -> None:
+     from methods.openpi_rlt.cobot_adapter.trace import EpisodeOutcome
+ 
+-    def failing_home() -> None:
+-        raise RuntimeError("home failed")
+-
++    failing_home = lambda: (_ for _ in ()).throw(RuntimeError("home failed"))
+     app, _task5, _hooks = _app(home_hook=failing_home)
+     armed = app.arm_operator()
+     rollout = app.start(episode_id=-1, generation=armed.generation)
+     app.terminal(EpisodeOutcome.FAILURE, episode_id=0, generation=rollout.generation)
+ 
+-    result = app.mark_replay_finalized()
+-    assert result.phase.value == "fault"
++    with pytest.raises(RuntimeError, match="home failed"):
++        app.mark_replay_finalized()
+ 
+     assert app.snapshot().phase.value == "fault"
+-    assert app.snapshot().fault_reason == "task2_home_failed"
++    assert app.snapshot().fault_reason == "front_home_failed"
+ 
+ 
+ def test_shadow_status_never_advertises_replay_eligibility() -> None:
+@@ -217,180 +324,40 @@
+         server.shutdown()
+ 
+ 
+-def test_routine_status_poll_does_not_flood_operator_console(capsys) -> None:
++def test_http_api_exposes_guarded_operator_arm() -> None:
+     from methods.openpi_rlt.cobot_adapter.session_http import RltSessionHttpServer
+ 
+-    app, _task5, _hooks = _app()
++    app, _task5, hooks = _app()
+     server = RltSessionHttpServer(app, host="127.0.0.1", port=0)
+     server.start()
+     opener = build_opener(ProxyHandler({}))
+     try:
+-        with opener.open(server.url + "/api/session", timeout=2) as response:
+-            assert response.status == 200
++        request = Request(
++            server.url + "/api/session/arm",
++            data=json.dumps({"episode_id": -1, "generation": 0}).encode(),
++            headers={"Content-Type": "application/json"},
++            method="POST",
++        )
++        with opener.open(request, timeout=2) as response:
++            status = json.load(response)
++        assert status["phase"] == "ready"
++        assert status["generation"] == 1
++        assert hooks.armed == 1
++        assert hooks.pauses == [True]
+     finally:
+         server.shutdown()
+-    assert "GET /api/session" not in capsys.readouterr().out
+ 
+ 
+-def test_timeout_log_before_request_line(capsys):
+-    from methods.openpi_rlt.cobot_adapter.session_http import _SessionHandler
+-    handler = object.__new__(_SessionHandler)
+-    handler.client_address = ("127.0.0.1", 12345)
+-    handler.log_message("Request timed out: %r", TimeoutError("idle"))
+-    assert "Request timed out" in capsys.readouterr().out
+-
+-
+-def test_hil_release_waits_for_operator_resume_or_terminal():
+-    from methods.openpi_rlt.cobot_adapter.trace import EpisodeOutcome
+-    app, task5, hooks = _app()
+-    armed = app.arm_operator()
+-    app.start(episode_id=-1, generation=armed.generation)
+-    app.update_takeover(left=False, right=True)
+-    released = app.update_takeover(left=False, right=False)
+-    assert released.phase.value == "paused"
+-    assert released.policy_paused
+-    assert hooks.pauses[-1] is True
+-    assert app.update_takeover(left=False, right=False).phase.value == "paused"
+-    resumed = app.resume(episode_id=0, generation=released.generation)
+-    assert resumed.phase.value == "rollout"
+-    assert resumed.fresh_plan_required
+-    app.update_takeover(left=False, right=True)
+-    released = app.update_takeover(left=False, right=False)
+-    terminal = app.terminal(EpisodeOutcome.SUCCESS, episode_id=0, generation=released.generation)
+-    assert terminal.phase.value == "replay_committing"
+-    assert len(task5.finished) == 1
+-
+-
+-def test_stop_active_drains_aborted_trace_before_supervisor_exit(tmp_path, monkeypatch):
+-    marker = tmp_path / "stopped"
+-    monkeypatch.setenv("COBOT_RLT_OPERATOR_SHUTDOWN_MARKER", str(marker))
+-    app, task5, hooks = _app()
+-    armed = app.arm_operator()
+-    current = app.start(episode_id=-1, generation=armed.generation)
+-    stopping = app.stop(episode_id=0, generation=current.generation)
+-    assert stopping.phase.value == "replay_committing"
+-    assert not marker.exists()
+-    assert task5.finished[0][1].value == "aborted"
+-    result = app.mark_replay_finalized()
+-    assert result.phase.value == "stopped"
+-    assert marker.exists()
+-    assert hooks.homes == 0
+-
+-
+-def test_stop_after_success_preserves_terminal_outcome(tmp_path, monkeypatch):
+-    from methods.openpi_rlt.cobot_adapter.trace import EpisodeOutcome
+-    marker = tmp_path / "stopped"
+-    monkeypatch.setenv("COBOT_RLT_OPERATOR_SHUTDOWN_MARKER", str(marker))
+-    app, task5, hooks = _app()
+-    armed = app.arm_operator()
+-    current = app.start(episode_id=-1, generation=armed.generation)
+-    committing = app.terminal(EpisodeOutcome.SUCCESS, episode_id=0, generation=current.generation)
+-    app.stop(episode_id=0, generation=committing.generation)
+-    assert not marker.exists()
+-    result = app.mark_replay_finalized()
+-    assert result.outcome is EpisodeOutcome.SUCCESS
+-    assert len(task5.finished) == 1
+-    assert marker.exists()
+-    assert hooks.homes == 0
+-
+-def test_status_exposes_online_cycle_without_overwriting_episode_actor(tmp_path,monkeypatch):
+-    from methods.openpi_rlt.cobot_adapter.online_cycle import atomic_json
+-    monkeypatch.setenv("COBOT_RLT_ONLINE_CYCLE_RUN",str(tmp_path))
+-    atomic_json(tmp_path/"metrics/learner_status.json",dict(phase="updating",global_step=10000,actor_version=5000))
+-    app,_,_=_app()
+-    app.update_metrics(actor_version=5000)
+-    status=app.status()
+-    assert status["online_update"]["phase"]=="updating"
+-    assert status["learner_version"]==10000
+-
+-def test_pause_accepts_old_generation_and_is_idempotent_but_resume_is_strict():
+-    from methods.openpi_rlt.cobot_adapter.session import SessionConflict
+-    app, _, hooks = _app()
+-    armed = app.arm_operator()
+-    current = app.start(episode_id=-1, generation=armed.generation)
+-    paused = app.pause(episode_id=0, generation=armed.generation)
+-    assert paused.policy_paused and paused.phase.value == "paused"
+-    assert hooks.pauses[-1] is True
+-    again = app.pause(episode_id=0, generation=current.generation)
+-    assert again.generation == paused.generation
+-    with pytest.raises(SessionConflict):
+-        app.resume(episode_id=0, generation=armed.generation)
+-    with pytest.raises(SessionConflict):
+-        app.pause(episode_id=99, generation=paused.generation)
+-    with pytest.raises(SessionConflict):
+-        app.pause(episode_id=0, generation=paused.generation+1)
+-
+-
+-def test_http_arm_is_paused_idempotent_and_does_not_record():
++def test_routine_status_poll_does_not_flood_operator_console(capsys) -> None:
+     from methods.openpi_rlt.cobot_adapter.session_http import RltSessionHttpServer
+-    app, task5, hooks = _app()
++
++    app, _task5, _hooks = _app()
+     server = RltSessionHttpServer(app, host="127.0.0.1", port=0)
+     server.start()
+     opener = build_opener(ProxyHandler({}))
+     try:
+-        def arm(generation):
+-            request = Request(server.url + "/api/session/arm",
+-                data=json.dumps({"episode_id": -1, "generation": generation}).encode(),
+-                headers={"Content-Type": "application/json"}, method="POST")
+-            with opener.open(request, timeout=2) as response:
+-                return json.load(response)
+-        first = arm(0)
+-        second = arm(first["generation"])
+-        assert first["phase"] == second["phase"] == "ready"
+-        assert first["generation"] == second["generation"]
+-        assert first["policy_paused"]
+-        assert task5.started == []
+-        assert hooks.ready == 0
++        with opener.open(server.url + "/api/session", timeout=2) as response:
++            assert response.status == 200
+     finally:
+         server.shutdown()
+-
+-
+-def test_arm_rejects_wrong_task2_mode_before_any_hook():
+-    from methods.openpi_rlt.cobot_adapter.session import SessionConflict
+-    app, task5, hooks = _app()
+-    hooks.policy_mode = False
+-    with pytest.raises(SessionConflict, match="task2_not_policy"):
+-        app.arm_operator(episode_id=-1, generation=0)
+-    assert hooks.pauses == []
+-    assert task5.started == []
+-
+-
+-def test_tracking_pending_handles_concurrent_pause_and_preserves_terminal_decision():
+-    from methods.openpi_rlt.cobot_adapter.trace import EpisodeOutcome
+-    app, task5, hooks = _app()
+-    armed = app.arm_operator()
+-    rollout = app.start(episode_id=-1, generation=armed.generation)
+-    app.pause(episode_id=0, generation=rollout.generation)
+-    pending = app.mark_terminal_pending("command_tracking_bounds_conflict")
+-    assert pending.phase.value == "terminal_pending"
+-    assert pending.policy_paused
+-    committing = app.terminal(EpisodeOutcome.FAILURE, episode_id=0, generation=pending.generation)
+-    repeated = app.mark_terminal_pending("command_tracking_bounds_conflict")
+-    assert repeated.phase.value == "replay_committing"
+-    assert repeated.generation == committing.generation
+-    assert repeated.outcome is EpisodeOutcome.FAILURE
+-    assert hooks.pauses[-1] is True
+-
+-
+-def test_no_record_success_and_next_never_call_task5():
+-    from methods.openpi_rlt.cobot_adapter.trace import EpisodeOutcome
+-    app, task5, hooks = _app(recording_enabled=False)
+-    task5.status = lambda: (_ for _ in ()).throw(AssertionError("recorder must not be queried"))
+-    armed = app.arm_operator()
+-    rollout = app.start(episode_id=-1, generation=armed.generation)
+-    assert app.ensure_recorder_active()
+-    committing = app.terminal(EpisodeOutcome.SUCCESS, episode_id=0, generation=rollout.generation)
+-    assert committing.phase.value == "replay_committing"
+-    assert app.status()["recording_enabled"] is False
+-    assert app.status()["replay_eligible"] is False
+-    waiting = app.mark_replay_finalized()
+-    assert waiting.phase.value == "waiting_scene"
+-    assert hooks.homes == 1
+-    second = app.next_episode(episode_id=0, generation=waiting.generation)
+-    assert second.phase.value == "rollout"
+-    stopped = app.stop(episode_id=1, generation=second.generation)
+-    assert stopped.phase.value == "replay_committing"
+-    assert hooks.outcomes == [EpisodeOutcome.SUCCESS, EpisodeOutcome.ABORTED]
+-    assert app.mark_replay_finalized().phase.value == "stopped"
+-    assert hooks.homes == 1  # stop must not home
+-    assert task5.started == [] and task5.finished == []
++    assert "GET /api/session" not in capsys.readouterr().out
+
+--- /data/LFT-W02_data/jiaan/projects/proj-20260904-cobot-realworld-rl/methods/openpi_rlt/plug_v3_yyshadow/online_rl.yaml	2026-09-24 16:19:41.128780332 +0800
++++ /data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/site/methods/openpi_rlt/plug_v3_yyshadow/online_rl.yaml	2026-09-25 23:54:11.612284800 +0800
+@@ -26,7 +26,7 @@
+     actor_update_period: 2
+ 
+     warmup_min_size: 600
+-    warmup_post_collect_updates: 20000
++    warmup_post_collect_updates: 5000
+     freeze_after_warmup: false
+     grad_updates_per_cycle: 5
+ 
+
+--- /data/LFT-W02_data/jiaan/projects/proj-20260904-cobot-realworld-rl/methods/openpi_rlt/web/rlt_session/app.js	2026-09-11 00:55:38.617531873 +0800
++++ /data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/site/methods/openpi_rlt/web/rlt_session/app.js	2026-09-06 13:41:30.775878700 +0800
+@@ -18,21 +18,17 @@
+ 
+ function guidanceText(state) {
+   const phase = state.phase;
+-  const update = state.online_update;
+-  if (update && update.phase === "updating") return "本轮已固化，正在执行32步在线更新与回归检查；保持暂停，完成后才允许下一轮。";
+-  if (update && phase === "waiting_scene" && update.last_decision === "rejected_kept_previous") return "本轮数据已保存；新actor未通过回归检查，保留上一版。请复位场景后开始下一轮。";
+-
+   if (phase === "ready") return "模型已就绪且保持暂停：点击“开始 Session”后才开始本轮推理与录制。";
+   if (phase === "rollout") return "本轮正在推理：完成后请选择成功、失败或放弃；示教按钮可随时接管。";
+-  if (phase === "hil") return "HIL 接管中：策略已暂停；退出示教后保持暂停，点击继续才恢复策略。";
++  if (phase === "hil") return "HIL 接管中：策略已暂停；释放最后一个示教按钮后会 fresh replan。";
+   if (phase === "paused") return "本轮已人工暂停：可继续，也可选择成功、失败或放弃。";
+   if (phase === "terminal_pending") return "本轮已暂停并等待终局：现在请选择成功、失败或放弃。";
+   if (phase === "replay_committing") return state.home_after_terminal
+-    ? "正在固化本轮数据；完成后将自动执行all --pose plug 全部归位，请勿进入机械臂工作区。"
++    ? "正在固化本轮数据；完成后将自动执行前双臂归位，请勿进入机械臂工作区。"
+     : "正在固化本轮数据，请稍候。";
+   if (phase === "waiting_scene") return "本轮已保存：请复位场景，然后点击“场景已复位，开始下一轮”。";
+   if (phase === "fault") return "系统已 fail-closed：不要继续动作，请查看下方故障信息。";
+-  if (phase === "stopped") return "Session 已结束，interface 正在退出；模型保持预加载。";
++  if (phase === "stopped") return "Session 已结束。";
+   return "正在准备 RLT Session。";
+ }
+ 
+@@ -65,11 +61,8 @@
+     $("task5").textContent = `Task5 index ${task5Index} / UUID ${state.task5_episode_uuid || "pending"}`;
+     $("hil").textContent = `HIL left=${Boolean(mask[0])} right=${Boolean(mask[1])}`;
+     $("versions").textContent = `actor ${actorVersion} / learner ${learnerVersion}`;
+-    const update = state.online_update;
+-    if (update) $("versions").textContent += ` · 下一轮 actor ${state.next_actor_version ?? "—"} · 更新 ${update.phase} · ${update.last_update_steps || 0}步 / ${Number(update.last_update_sec || 0).toFixed(2)}s · ${update.training_enabled ? "每1轮更新32步" : "固定actor，不更新"}`;
+     $("fault").textContent = state.fault_reason ? `FAULT: ${state.fault_reason}` : "";
+     const enabled = buttonsFor(state.phase);
+-    $("stop").textContent = ["rollout", "hil", "paused", "terminal_pending"].includes(state.phase) ? "结束并放弃本轮" : "结束 Session";
+     for (const name of Object.keys(actions)) $(name).disabled = posting || !enabled[name];
+   }
+ 
+
+--- /data/LFT-W02_data/jiaan/projects/proj-20260904-cobot-realworld-rl/methods/openpi_rlt/cobot_adapter/session_shutdown.py	2026-09-16 21:07:01.706839285 +0800
++++ /data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/site/methods/openpi_rlt/cobot_adapter/session_shutdown.py	2026-09-06 13:40:55.777395000 +0800
+@@ -38,12 +38,12 @@
+             },
+             timeout_sec=timeout_sec,
+         )
+-    deadline = time.monotonic() + timeout_sec
+-    while status.get("phase") in {"recording_starting", "finalizing", "replay_committing"}:
+-        if time.monotonic() >= deadline:
+-            raise TimeoutError("session finalization did not finish; keep data console running")
+-        time.sleep(0.05)
+-        status = _request(opener, base_url, "GET", "/api/session", timeout_sec=timeout_sec)
++        deadline = time.monotonic() + timeout_sec
++        while status.get("phase") == "replay_committing" and time.monotonic() < deadline:
++            time.sleep(0.05)
++            status = _request(
++                opener, base_url, "GET", "/api/session", timeout_sec=timeout_sec
++            )
+     if status.get("phase") not in {"disarmed", "stopped"}:
+         status = _request(
+             opener,
+
+--- /data/LFT-W02_data/jiaan/projects/proj-20260904-cobot-realworld-rl/methods/openpi_rlt/cobot_adapter/online_runtime.py	2026-09-24 21:26:24.436835998 +0800
++++ /data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/site/methods/openpi_rlt/cobot_adapter/online_runtime.py	2026-09-24 21:25:33.595924200 +0800
+@@ -8,15 +8,12 @@
+ 
+ from __future__ import annotations
+ 
+-import dataclasses
+-import os
+ import sys
+ import time
+ 
+ import jax.numpy as jnp
+ import numpy as np
+ import rlt_online_rl.action_representation as upstream_actions
+-from methods.openpi_rlt.cobot_adapter.actor_pinning import EpisodeActorPin
+ 
+ _ORIGINAL_ADAPTER = upstream_actions.ActionRepresentationAdapter
+ _ORIGINAL_JAX_DENORMALIZE = upstream_actions.jax_denormalize_to_abs_chunk
+@@ -61,8 +58,6 @@
+                 timestamp=time.time(),
+                 source=int(TransitionSource.BASE),
+             )
+-        if os.environ.get("COBOT_RLT_MODE") == "eval" and not request.deterministic:
+-            request = dataclasses.replace(request, deterministic=True)
+         return self._actor_client.infer(request)
+ 
+     def get_actor_param_version(self) -> int:
+@@ -146,8 +141,11 @@
+                 and kwargs.get("done")
+                 and not kwargs.get("trace_records")
+             ):
+-                # A terminal after Pause has no new action. Upstream would append
+-                # an empty chunk whose step_start has no replay position.
++                # The outcome can arrive after an operator pause, without any
++                # new action.  Upstream always appends a chunk, even for an
++                # empty trace; that chunk's step_start has no replay position
++                # and crashes replay window construction.  Attribute the
++                # result to the last executed action and omit the empty chunk.
+                 _mark_previous_step_terminal(raw_episode, int(kwargs.get("success", 0)))
+                 return kwargs["observation_idx"]
+             return original_append_raw_chunk(driver, raw_episode, **kwargs)
+@@ -155,93 +153,6 @@
+         _append_raw_chunk_with_terminal_last_action._cobot_terminal_last_action = True
+         inference.EnvDriver._append_raw_chunk = _append_raw_chunk_with_terminal_last_action
+ 
+-    if not getattr(inference.RLTPolicyInferenceWrapper._forward_sample, "_cobot_chunk_noise", False):
+-        original_forward_sample = inference.RLTPolicyInferenceWrapper._forward_sample
+-
+-        def _forward_sample_with_chunk_noise(wrapper, actor_params, rng, z_rl, proprio, ref_chunk):
+-            if os.environ.get("COBOT_RLT_EXPLORATION_PROFILE", "upstream") != "linear_endpoints":
+-                return original_forward_sample(wrapper, actor_params, rng, z_rl, proprio, ref_chunk)
+-            import jax
+-
+-            mean = wrapper._actor.actor_mean(actor_params, z_rl, proprio, ref_chunk)
+-            start_key, end_key = jax.random.split(rng)
+-            start = jax.random.normal(
+-                start_key, (mean.shape[0], 1, mean.shape[-1]), dtype=mean.dtype
+-            )
+-            end = jax.random.normal(
+-                end_key, (mean.shape[0], 1, mean.shape[-1]), dtype=mean.dtype
+-            )
+-            alpha = jnp.linspace(0.0, 1.0, mean.shape[1], dtype=mean.dtype)[None, :, None]
+-            active_arm = os.environ.get("COBOT_RLT_ACTIVE_ARM", "both")
+-            if active_arm not in {"left", "right", "both"}:
+-                raise ValueError("COBOT_RLT_ACTIVE_ARM must be left, right, or both")
+-            mask = np.zeros(14, dtype=np.float32)
+-            if active_arm in {"left", "both"}:
+-                mask[:6] = 1.0
+-            if active_arm in {"right", "both"}:
+-                mask[7:13] = 1.0
+-            if os.environ.get("COBOT_RLT_EXPLORE_GRIPPER", "0") == "1":
+-                mask[[6, 13]] = 1.0
+-            noise = (start * (1.0 - alpha) + end * alpha) * jnp.asarray(mask)[None, None, :]
+-            return mean + jnp.asarray(wrapper._rl_config.fixed_std, dtype=mean.dtype) * noise
+-
+-        _forward_sample_with_chunk_noise._cobot_chunk_noise = True
+-        inference.RLTPolicyInferenceWrapper._forward_sample = _forward_sample_with_chunk_noise
+-
+-    if os.environ.get("COBOT_RLT_PIN_ACTOR_PER_EPISODE", "0") == "1" and not getattr(
+-        inference.ActorService.infer, "_cobot_episode_actor_pin", False
+-    ):
+-
+-        def _infer_with_episode_pin(service, request):
+-            with service._lock:
+-                pin = getattr(service, "_cobot_episode_actor_pin_state", None)
+-                if pin is None:
+-                    pin = EpisodeActorPin()
+-                    service._cobot_episode_actor_pin_state = pin
+-                actor_params, actor_version = pin.select(
+-                    episode_id=request.episode_id,
+-                    latest_params=service._actor_params,
+-                    latest_version=service._actor_version,
+-                )
+-                infer_rng = None
+-                if actor_params is not None and not request.deterministic:
+-                    service._rng, infer_rng = inference.jax.random.split(service._rng)
+-            if actor_params is None:
+-                return inference.ActorResponse(
+-                    refined_chunk=np.asarray(request.ref_chunk, dtype=np.float32),
+-                    actor_param_version=actor_version,
+-                    request_id=request.request_id,
+-                    timestamp=time.time(),
+-                    source=int(inference.TransitionSource.BASE),
+-                )
+-            model_ref_chunk = np.asarray(request.ref_chunk, dtype=np.float32)
+-            if service._action_adapter is not None:
+-                model_ref_chunk = service._action_adapter.normalize_ref_chunk(
+-                    model_ref_chunk, request.proprio
+-                )
+-            refined_chunk = service._wrapper.infer(
+-                actor_params,
+-                request.z_rl,
+-                request.proprio,
+-                model_ref_chunk,
+-                rng=infer_rng,
+-                deterministic=request.deterministic,
+-            )
+-            if service._action_adapter is not None:
+-                refined_chunk = service._action_adapter.denormalize_to_abs_chunk(
+-                    refined_chunk, request.proprio
+-                )
+-            return inference.ActorResponse(
+-                refined_chunk=refined_chunk,
+-                actor_param_version=actor_version,
+-                request_id=request.request_id,
+-                timestamp=time.time(),
+-                source=int(inference.TransitionSource.RL),
+-            )
+-
+-        _infer_with_episode_pin._cobot_episode_actor_pin = True
+-        inference.ActorService.infer = _infer_with_episode_pin
+-
+     if not getattr(inference.EnvDriver.__init__, "_cobot_phase_aware_actor", False):
+         original_driver_init = inference.EnvDriver.__init__
+ 
+@@ -381,11 +292,3 @@
+             module.ActionRepresentationAdapter = CobotBimanualActionRepresentationAdapter
+         if hasattr(module, "jax_denormalize_to_abs_chunk"):
+             module.jax_denormalize_to_abs_chunk = cobot_jax_denormalize_to_abs_chunk
+-
+-    if os.environ.get("COBOT_RLT_R2_SMOOTHNESS", "0") == "1":
+-        from methods.openpi_rlt.cobot_adapter.learner_patch import (
+-            install_symmetric_smoothness_patch,
+-        )
+-        from rlt_online_rl import trainer
+-
+-        install_symmetric_smoothness_patch(trainer)
+
+--- /data/LFT-W02_data/jiaan/projects/proj-20260904-cobot-realworld-rl/methods/openpi_rlt/cobot_adapter/session.py	2026-09-26 18:30:08.459542226 +0800
++++ /data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/site/methods/openpi_rlt/cobot_adapter/session.py	2026-09-26 18:26:08.946131600 +0800
+@@ -207,7 +207,7 @@
+         with self._lock:
+             self._require_generation(expected_generation)
+             self._require_episode(expected_episode_id)
+-            self._require_phase(SessionPhase.ROLLOUT, SessionPhase.HIL, SessionPhase.PAUSED)
++            self._require_phase(SessionPhase.ROLLOUT, SessionPhase.HIL)
+             self._phase = SessionPhase.TERMINAL_PENDING
+             self._terminal_reason = str(reason)
+             self._expert_mask = (False, False)
+
+--- /data/LFT-W02_data/jiaan/projects/proj-20260904-cobot-realworld-rl/methods/openpi_rlt/cobot_adapter/rollout_phase.py	2026-09-10 21:18:27.419869549 +0800
++++ /data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/site/methods/openpi_rlt/cobot_adapter/rollout_phase.py	2026-09-05 00:02:34.412111400 +0800
+@@ -17,7 +17,6 @@
+         replay_stats_getter: Callable[[], Mapping[str, Any]],
+         actor_version_getter: Callable[[], int],
+         learner_status_getter: Callable[[], Mapping[str, Any]],
+-        collection_only: bool = False,
+         warmup_min_size: int,
+         min_online_actor_version: int,
+         shutdown_requested: Callable[[], bool] = lambda: False,
+@@ -25,7 +24,6 @@
+         wait_interval_sec: float = 0.25,
+         logger: logging.Logger | None = None,
+     ) -> None:
+-        self._collection_only = bool(collection_only)
+         self._replay_stats_getter = replay_stats_getter
+         self._actor_version_getter = actor_version_getter
+         self._learner_status_getter = learner_status_getter
+@@ -42,9 +40,6 @@
+         return self._episode_phase
+ 
+     def begin_episode(self) -> str:
+-        if self._collection_only:
+-            self._episode_phase = "warmup"
+-            return self._episode_phase
+         if self._warmup_min_size == 0:
+             self._episode_phase = "online"
+             return self._episode_phase
+
+--- /data/LFT-W02_data/jiaan/projects/proj-20260904-cobot-realworld-rl/methods/openpi_rlt/cobot_adapter/task2_runtime.py	2026-09-14 17:20:04.615822052 +0800
++++ /data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/site/methods/openpi_rlt/cobot_adapter/task2_runtime.py	2026-09-04 23:38:31.086175200 +0800
+@@ -3,50 +3,31 @@
+ from __future__ import annotations
+ 
+ import numpy as np
+-from methods.openpi_rlt.cobot_adapter.action_conditioning import ActionConditioner
+-from methods.openpi_rlt.cobot_adapter.episode_control import (
+-    EpisodeController,
+-    EpisodeSnapshot,
+-)
+-from methods.openpi_rlt.cobot_adapter.trace import ControlSource, EpisodeOutcome
++
++from methods.openpi_rlt.cobot_adapter.episode_control import EpisodeController
++from methods.openpi_rlt.cobot_adapter.episode_control import EpisodeSnapshot
++from methods.openpi_rlt.cobot_adapter.trace import ControlSource
++from methods.openpi_rlt.cobot_adapter.trace import EpisodeOutcome
++
++
++_JOINT_INDICES = np.asarray([0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12])
++_GRIPPER_INDICES = np.asarray([6, 13])
+ 
+ 
+ class Task2PolicyRuntime:
+     """Bind Task2's authoritative mode to a fail-closed episode controller."""
+ 
+-    def __init__(
+-        self,
+-        *,
+-        joint_step_limit: float,
+-        gripper_step_limit: float,
+-        joint_accel_limit: float | None = None,
+-        active_arm: str = "both",
+-        hold_grippers: bool = False,
+-        command_smoothing_alpha: float = 1.0,
+-        command_step_limit: float | None = None,
+-    ) -> None:
++    def __init__(self, *, joint_step_limit: float, gripper_step_limit: float) -> None:
+         if joint_step_limit <= 0 or gripper_step_limit <= 0:
+             raise ValueError("action step limits must be positive")
+         self._controller = EpisodeController()
+-        self._conditioner = ActionConditioner(
+-            active_arm=active_arm,
+-            hold_grippers=hold_grippers,
+-            command_smoothing_alpha=command_smoothing_alpha,
+-            command_step_limit=command_step_limit,
+-            joint_step_limit=joint_step_limit,
+-            joint_accel_limit=(joint_step_limit if joint_accel_limit is None else joint_accel_limit),
+-            gripper_step_limit=gripper_step_limit,
+-        )
+-        self._last_conditioning_report = None
+-
+-    def reset_action_conditioning(self) -> None:
+-        self._conditioner.reset()
++        self._joint_step_limit = float(joint_step_limit)
++        self._gripper_step_limit = float(gripper_step_limit)
+ 
+     def snapshot(self) -> EpisodeSnapshot:
+         return self._controller.snapshot()
+ 
+     def arm(self) -> EpisodeSnapshot:
+-        self._conditioner.reset()
+         return self._controller.arm()
+ 
+     def install_fresh_plan(self, generation: int) -> EpisodeSnapshot:
+@@ -56,7 +37,6 @@
+         return self._controller.accepts_policy_result(generation)
+ 
+     def finish_episode(self, outcome: EpisodeOutcome) -> EpisodeSnapshot:
+-        self._conditioner.reset()
+         return self._controller.finish_episode(outcome)
+ 
+     def mark_robot_reset_complete(self) -> EpisodeSnapshot:
+@@ -80,10 +60,7 @@
+         else:
+             self._controller.fail(f"unknown Task2 mode: {mode}")
+             raise RuntimeError(f"unknown Task2 mode: {mode}")
+-        snapshot = self._controller.update_takeover(left=mask[0], right=mask[1])
+-        if any(mask) or snapshot.fresh_plan_required:
+-            self._conditioner.reset()
+-        return snapshot
++        return self._controller.update_takeover(left=mask[0], right=mask[1])
+ 
+     def control_source(self, policy_source: ControlSource | int) -> ControlSource:
+         source = ControlSource(policy_source)
+@@ -108,12 +85,14 @@
+         except ValueError as error:
+             self._controller.fail(str(error))
+             raise
+-        output, report = self._conditioner.condition(target, measured)
+-        self._last_conditioning_report = report
+-        return output
+-
+-    def last_conditioning_report(self):
+-        return self._last_conditioning_report
++        delta = target - measured
++        delta[_JOINT_INDICES] = np.clip(
++            delta[_JOINT_INDICES], -self._joint_step_limit, self._joint_step_limit
++        )
++        delta[_GRIPPER_INDICES] = np.clip(
++            delta[_GRIPPER_INDICES], -self._gripper_step_limit, self._gripper_step_limit
++        )
++        return np.asarray(measured + delta, dtype=np.float32)
+ 
+     @staticmethod
+     def _finite_14d(name: str, value: object) -> np.ndarray:
+
+--- /data/LFT-W02_data/jiaan/projects/proj-20260904-cobot-realworld-rl/methods/openpi_rlt/plug_v2/__init__.py	2026-09-18 01:10:25.540541804 +0800
++++ /data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/site/methods/openpi_rlt/plug_v2/__init__.py	2026-09-18 01:39:39.228266700 +0800
+@@ -1 +0,0 @@
+-"""New-camera plug_v2 preparation and matched training."""
+
+--- /data/LFT-W02_data/jiaan/projects/proj-20260904-cobot-realworld-rl/methods/openpi_rlt/scripts/online_role.py	2026-09-10 20:44:25.909167184 +0800
++++ /data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/site/methods/openpi_rlt/scripts/online_role.py	2026-09-06 12:50:56.186632700 +0800
+@@ -10,39 +10,11 @@
+ from pathlib import Path
+ 
+ 
+-def _parse_wrapper_args() -> tuple[Path, Path | None, list[str]]:
++def _parse_wrapper_args() -> tuple[Path, list[str]]:
+     parser = argparse.ArgumentParser(add_help=False)
+     parser.add_argument("--upstream-root", type=Path, required=True)
+-    parser.add_argument("--r2-config", type=Path)
+     args, upstream_args = parser.parse_known_args()
+-    r2_config = None if args.r2_config is None else args.r2_config.expanduser().resolve()
+-    return args.upstream_root.expanduser().resolve(), r2_config, upstream_args
+-
+-
+-def configure_r2_environment(config_path: Path) -> None:
+-    from methods.openpi_rlt.cobot_adapter.r2_config import load_r2_config
+-
+-    config = load_r2_config(config_path)
+-    exploration = config.payload.get("exploration", {})
+-    conditioning = config.payload.get("conditioning", {})
+-    os.environ["COBOT_RLT_MODE"] = config.mode
+-    os.environ["COBOT_RLT_ACTIVE_ARM"] = config.active_arm
+-    os.environ["COBOT_RLT_EXPLORE_GRIPPER"] = "1" if config.explore_gripper else "0"
+-    os.environ["COBOT_RLT_EXPLORATION_PROFILE"] = str(
+-        exploration.get("profile", "linear_endpoints")
+-    )
+-    os.environ["COBOT_RLT_PIN_ACTOR_PER_EPISODE"] = "1"
+-    os.environ["COBOT_RLT_R2_SMOOTHNESS"] = "1"
+-    os.environ["COBOT_RLT_JOINT_STEP_LIMIT"] = str(
+-        conditioning.get("joint_step_limit", 0.02)
+-    )
+-    os.environ["COBOT_RLT_JOINT_ACCEL_LIMIT"] = str(
+-        conditioning.get("joint_accel_limit", 0.005)
+-    )
+-    os.environ["COBOT_RLT_GRIPPER_STEP_LIMIT"] = str(
+-        conditioning.get("gripper_step_limit", 0.001)
+-    )
+-    os.environ["COBOT_RLT_HOLD_GRIPPERS"] = "1" if conditioning.get("hold_grippers", True) else "0"
++    return args.upstream_root.expanduser().resolve(), upstream_args
+ 
+ 
+ def _is_expected_operator_shutdown(error: RuntimeError) -> bool:
+@@ -55,7 +27,7 @@
+ 
+ 
+ def main() -> None:
+-    upstream_root, r2_config, upstream_args = _parse_wrapper_args()
++    upstream_root, upstream_args = _parse_wrapper_args()
+     runtime_root = upstream_root / "rlt_online_rl"
+     runner = runtime_root / "scripts" / "run_online_rl.py"
+     runtime_src = runtime_root / "src"
+@@ -67,21 +39,11 @@
+         if str(path) not in sys.path:
+             sys.path.insert(0, str(path))
+ 
+-    if r2_config is not None:
+-        configure_r2_environment(r2_config)
+-
+     from methods.openpi_rlt.cobot_adapter.online_runtime import (
+         install_bimanual_runtime_patch,
+     )
+ 
+     install_bimanual_runtime_patch()
+-    from methods.openpi_rlt.cobot_adapter.status_io import install_status_write_throttle
+-
+-    if os.environ.get("COBOT_RLT_COLLECTION_ONLY") == "1":
+-        from methods.openpi_rlt.cobot_adapter.collection_gate import install_collection_gate
+-
+-        install_collection_gate()
+-    install_status_write_throttle()
+     sys.argv = [str(runner), *upstream_args]
+     try:
+         runpy.run_path(str(runner), run_name="__main__")
+
+--- /data/LFT-W02_data/jiaan/projects/proj-20260904-cobot-realworld-rl/methods/openpi_rlt/scripts/resolve_online_config.py	2026-09-11 01:04:24.936344242 +0800
++++ /data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/site/methods/openpi_rlt/scripts/resolve_online_config.py	2026-09-06 11:26:39.237426400 +0800
+@@ -8,7 +8,6 @@
+ from pathlib import Path
+ 
+ import yaml
+-from methods.openpi_rlt.cobot_adapter.r2_config import load_r2_config
+ 
+ RUN_RELATIVE = Path("runs/openpi-rlt/online-r1-legacy40-v2.1")
+ 
+@@ -24,8 +23,6 @@
+     project_root: Path,
+     *,
+     run_relative: Path = RUN_RELATIVE,
+-    r2_config: Path | None = None,
+-    action_stats_path: Path | None = None,
+ ) -> dict:
+     payload = yaml.safe_load(template.read_text(encoding="utf-8"))
+     if not isinstance(payload, dict):
+@@ -34,39 +31,15 @@
+     run = project / _validate_run_relative(run_relative)
+     experiment = payload["experiment"]
+     runtime = payload["runtime"]
+-    stats_path = (
++    experiment["rl"]["action_norm_stats_path"] = str(
+         project / "methods/openpi_rlt/configs/stats/legacy40-v2.1-action-delta-chunk10.json"
+-        if action_stats_path is None
+-        else action_stats_path.resolve()
+     )
+-    if action_stats_path is not None and not stats_path.is_file():
+-        raise FileNotFoundError(f"action stats are missing: {stats_path}")
+-    experiment["rl"]["action_norm_stats_path"] = str(stats_path)
+     snapshot = str(run / "actor_snapshot/actor_snapshot.pkl")
+     runtime["actor_service"]["snapshot_path"] = snapshot
+     runtime["learner_service"]["checkpoint_dir"] = str(run / "checkpoints")
+     runtime["learner_service"]["actor_snapshot_path"] = snapshot
+     runtime["replay"]["journal_path"] = str(run / "replay/replay_journal.pkl")
+     runtime["monitoring"]["wandb_dir"] = str(run / "wandb")
+-    if r2_config is not None:
+-        r2 = load_r2_config(r2_config)
+-        experiment["rl"]["fixed_std"] = float(r2.payload["exploration"]["fixed_std"])
+-        experiment["rl"]["warmup_min_size"] = r2.warmup.min_transitions
+-        # The upstream learner accepts one fixed warmup budget; it does not
+-        # implement min/max early stopping.  Use the reviewed minimum so the
+-        # first online rollout is not blocked by an unnecessary 1,000-update
+-        # fit.  Publish at each review interval so the actor service can see
+-        # the version produced at the end of warmup.
+-        experiment["rl"]["warmup_post_collect_updates"] = r2.warmup.min_updates
+-        runtime["learner_service"]["push_actor_interval_steps"] = min(
+-            int(runtime["learner_service"]["push_actor_interval_steps"]),
+-            r2.warmup.eval_interval,
+-        )
+-        runtime["learner_service"]["checkpoint_interval_steps"] = min(
+-            int(runtime["learner_service"]["checkpoint_interval_steps"]),
+-            r2.warmup.min_updates,
+-        )
+-        runtime["env_driver"]["actor_deterministic"] = r2.mode == "eval"
+     return payload
+ 
+ 
+@@ -75,18 +48,12 @@
+     parser.add_argument("--template", required=True, type=Path)
+     parser.add_argument("--project-root", required=True, type=Path)
+     parser.add_argument("--run-relative", default=RUN_RELATIVE, type=Path)
+-    parser.add_argument("--r2-config", type=Path)
+-    parser.add_argument("--action-stats-path", type=Path)
+     parser.add_argument("--output", required=True, type=Path)
+     args = parser.parse_args()
+     payload = build_runtime_payload(
+         args.template.resolve(),
+         args.project_root.resolve(),
+         run_relative=args.run_relative,
+-        r2_config=None if args.r2_config is None else args.r2_config.resolve(),
+-        action_stats_path=(
+-            None if args.action_stats_path is None else args.action_stats_path.resolve()
+-        ),
+     )
+     args.output.parent.mkdir(parents=True, exist_ok=True)
+     temporary = args.output.with_name(f".{args.output.name}.{os.getpid()}.tmp")
+
+--- /data/LFT-W02_data/jiaan/projects/proj-20260904-cobot-realworld-rl/methods/openpi_rlt/scripts/serve_machine_a.py	2026-09-06 18:55:29.182614659 +0800
++++ /data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/site/methods/openpi_rlt/scripts/serve_machine_a.py	2026-09-06 13:51:39.178915300 +0800
+@@ -13,14 +13,14 @@
+ if str(PROJECT_SOURCE_ROOT) not in sys.path:
+     sys.path.insert(0, str(PROJECT_SOURCE_ROOT))
+ 
+-from methods.openpi_rlt.cobot_adapter.machine_a import (  # noqa: E402
++from methods.openpi_rlt.cobot_adapter.machine_a import (
+     ACTION_DIM,
+     CHUNK_LEN,
+     PROPRIO_DIM,
+     configure_serve_module,
+ )
+-from methods.openpi_rlt.scripts.stage1 import inspect_inputs  # noqa: E402
+-from methods.openpi_rlt.stage1_entry import prepare_environment  # noqa: E402
++from methods.openpi_rlt.scripts.stage1 import inspect_inputs
++from methods.openpi_rlt.stage1_entry import prepare_environment
+ 
+ 
+ def _parser() -> argparse.ArgumentParser:

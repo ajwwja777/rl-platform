@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'">
+    <title>Cobot RLT Session</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">COBOT · OPENPI-RLT</p>
+        <h1 id="headline">正在连接会话……</h1>
+      </header>
+      <section class="status-grid" aria-live="polite">
+        <p id="identity">—</p><p id="task5">—</p><p id="hil">—</p><p id="versions">—</p>
+      </section>
+      <p id="guidance" class="guidance">请等待会话状态。</p>
+      <p id="fault" class="fault"></p>
+      <section class="actions">
+        <button id="start">开始 Session</button>
+        <button id="pause" class="secondary">暂停</button>
+        <button id="resume" class="secondary">继续</button>
+        <button id="success" class="success">成功</button>
+        <button id="failure" class="failure">失败</button>
+        <button id="abort" class="secondary">放弃本轮</button>
+        <button id="next">场景已复位，开始下一轮</button>
+        <button id="stop" class="danger">结束 Session</button>
+      </section>
+      <aside>成功/失败会进入 replay；放弃与 SHADOW 永不进入正式 replay。单轮由操作员判定终局，不因 600 个控制步自动结束。</aside>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>

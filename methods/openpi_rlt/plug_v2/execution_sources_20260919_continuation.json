@@ -1,0 +1,18 @@
+{
+  "status": "offline_not_released",
+  "snapshot_date": "2026-09-20",
+  "task_date": "2026-09-19",
+  "files": {
+    "/media/agilex/Getea1/jiaan/projects/rlt/methods/openpi_rlt/plug_v2/decision_trace.py": "35714451791682dac8b390cfce2d989e99f426c0037136027cfbb2aa57252629",
+    "/media/agilex/Getea1/jiaan/projects/rlt/methods/openpi_rlt/plug_v2/rtc_history_audit.py": "9692676b53b51b52dd21c1f5af1ffb45e6f0110e0fbe0d2c0f8d4e4f6d0b83f4",
+    "/media/agilex/Getea1/jiaan/projects/rlt/methods/openpi_rlt/plug_v2/rtc_reference_reconstruction.py": "a499b46b8beef975dac2e5cc981e65d5e6f558578430145d8cddad285e58c73a",
+    "/media/agilex/Getea1/jiaan/projects/rlt/methods/openpi_rlt/plug_v2/runtime.py": "1bf27496e843e02444f1ab12dc78df65c0508edc9fc0858e036ecf0939bdd841",
+    "/media/agilex/Getea1/jiaan/projects/rlt/methods/openpi_rlt/plug_v2/rtc_queue.py": "b9a435255a91e6ee1b527e5ddbe2736cd27aeb9b3e3a0e38b75b6759810ddc75",
+    "/media/agilex/Getea1/jiaan/projects/rlt/methods/openpi_rlt/plug_v2/online_contract.py": "97d283d235c741655af1a356055da13050ec32b7a853a6f9779c696d7fb30968",
+    "/media/agilex/Getea1/jiaan/projects/rlt/methods/openpi_rlt/plug_v2/control_clock.py": "97019490f8587c3f2531e6426f62729162f6385ac8613c698d75ec163c91c447",
+    "/media/agilex/Getea1/jiaan/projects/rlt/methods/openpi_rlt/plug_v2/tests/test_decision_trace.py": "78c9b7a654f43015be856df2144ce558ec6865e8b328e87e397f438b206b2ddc",
+    "/media/agilex/Getea1/jiaan/projects/rlt/runs/plug_v2/diagnostics/upstream-audit-20260919/rtc-decision-coverage.json": "6d5185d1c993d4742e262e68ccc033546ef932104f5cb24e001c76a4cf3a7aba",
+    "/media/agilex/Getea1/jiaan/projects/rlt/runs/plug_v2/diagnostics/upstream-audit-20260919/rtc-reference-reconstruction.json": "26ae860d306efc66412afd1fcdb2cb9ccc29d6b177c3f80ffab145f7c0e86572",
+    "/media/agilex/Getea1/jiaan/projects/rlt/runs/plug_v2/diagnostics/upstream-audit-20260919/numeric-next-action-test.json": "cf8ac069871c5ad4f95cabbf631cc75db9bf925564411c1c87fea16d64cff3f9"
+  }
+}

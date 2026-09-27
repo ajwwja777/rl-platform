@@ -1,0 +1,268 @@
+[
+  {
+    "step": 0,
+    "elapsed_sec": 4.720567370997742,
+    "groups": {
+      "expert": {
+        "right_rmse_rad": 0.03703800379567459,
+        "ref_correction_rms_rad": 0.035006805374424396,
+        "first_delta_p95_rad": 0.040983152389526364,
+        "velocity_p95_rad_per_sample": 0.0861043930053711,
+        "acceleration_p95_rad_per_sample2": 0.12691511511802664,
+        "boundary_jump_p95_rad": 0.11776101589202881,
+        "boundary_joint_values": 216,
+        "gripper_rmse": 0.008435641618534771
+      },
+      "success": {
+        "right_rmse_rad": 0.03841472371720361,
+        "ref_correction_rms_rad": 0.03834395788948448,
+        "first_delta_p95_rad": 0.03980370163917541,
+        "velocity_p95_rad_per_sample": 0.09252342581748957,
+        "acceleration_p95_rad_per_sample2": 0.1444205939769745,
+        "boundary_jump_p95_rad": 0.08352394104003905,
+        "boundary_joint_values": 642,
+        "gripper_rmse": 0.014196140454259135
+      },
+      "failure": {
+        "right_rmse_rad": 0.03770398298232082,
+        "ref_correction_rms_rad": 0.03770398298232082,
+        "first_delta_p95_rad": 0.043278193473815854,
+        "velocity_p95_rad_per_sample": 0.09640014171600314,
+        "acceleration_p95_rad_per_sample2": 0.14557679891586303,
+        "boundary_jump_p95_rad": 0.0832089066505432,
+        "boundary_joint_values": 174,
+        "gripper_rmse": 0.013546168630635942
+      }
+    },
+    "score": 0.0377263637564391,
+    "smoothness_gate": false
+  },
+  {
+    "step": 100,
+    "elapsed_sec": 19.484643759962637,
+    "groups": {
+      "expert": {
+        "right_rmse_rad": 0.01754000476859863,
+        "ref_correction_rms_rad": 0.014342478009789807,
+        "first_delta_p95_rad": 0.015339791774749754,
+        "velocity_p95_rad_per_sample": 0.022691190242767334,
+        "acceleration_p95_rad_per_sample2": 0.040882467105984685,
+        "boundary_jump_p95_rad": 0.06057831645011902,
+        "boundary_joint_values": 216,
+        "gripper_rmse": 0.007658953593923907
+      },
+      "success": {
+        "right_rmse_rad": 0.00953409633476837,
+        "ref_correction_rms_rad": 0.008899123008050843,
+        "first_delta_p95_rad": 0.012592107057571408,
+        "velocity_p95_rad_per_sample": 0.01775002926588058,
+        "acceleration_p95_rad_per_sample2": 0.03156614303588867,
+        "boundary_jump_p95_rad": 0.027823632955551122,
+        "boundary_joint_values": 642,
+        "gripper_rmse": 0.003585533917932108
+      },
+      "failure": {
+        "right_rmse_rad": 0.010786586080933337,
+        "ref_correction_rms_rad": 0.010786586080933337,
+        "first_delta_p95_rad": 0.015501856803894033,
+        "velocity_p95_rad_per_sample": 0.02076151371002197,
+        "acceleration_p95_rad_per_sample2": 0.03711757659912108,
+        "boundary_jump_p95_rad": 0.03191244006156921,
+        "boundary_joint_values": 174,
+        "gripper_rmse": 0.003598354838731481
+      }
+    },
+    "score": 0.0135370505516835,
+    "smoothness_gate": false
+  },
+  {
+    "step": 500,
+    "elapsed_sec": 22.161839652981143,
+    "groups": {
+      "expert": {
+        "right_rmse_rad": 0.014301295210149952,
+        "ref_correction_rms_rad": 0.009319542589144225,
+        "first_delta_p95_rad": 0.015079075098037718,
+        "velocity_p95_rad_per_sample": 0.014961514621973038,
+        "acceleration_p95_rad_per_sample2": 0.025006046891212445,
+        "boundary_jump_p95_rad": 0.04605548828840256,
+        "boundary_joint_values": 216,
+        "gripper_rmse": 0.0029099965286926884
+      },
+      "success": {
+        "right_rmse_rad": 0.00673837443648871,
+        "ref_correction_rms_rad": 0.005602107913605979,
+        "first_delta_p95_rad": 0.012063956260681146,
+        "velocity_p95_rad_per_sample": 0.011368155479431145,
+        "acceleration_p95_rad_per_sample2": 0.018990755081176758,
+        "boundary_jump_p95_rad": 0.021676391363143907,
+        "boundary_joint_values": 642,
+        "gripper_rmse": 0.0012985776706989876
+      },
+      "failure": {
+        "right_rmse_rad": 0.0071393203453574364,
+        "ref_correction_rms_rad": 0.0071393203453574364,
+        "first_delta_p95_rad": 0.011292839050292958,
+        "velocity_p95_rad_per_sample": 0.01589595675468444,
+        "acceleration_p95_rad_per_sample2": 0.026191180944442734,
+        "boundary_jump_p95_rad": 0.02025304436683654,
+        "boundary_joint_values": 174,
+        "gripper_rmse": 0.002206304902823537
+      }
+    },
+    "score": 0.010519834823319332,
+    "smoothness_gate": false
+  },
+  {
+    "step": 2000,
+    "elapsed_sec": 30.277623762958683,
+    "groups": {
+      "expert": {
+        "right_rmse_rad": 0.014217722660840587,
+        "ref_correction_rms_rad": 0.007775846106783065,
+        "first_delta_p95_rad": 0.013762640953063964,
+        "velocity_p95_rad_per_sample": 0.012220442295074463,
+        "acceleration_p95_rad_per_sample2": 0.018250536918640137,
+        "boundary_jump_p95_rad": 0.04175785928964615,
+        "boundary_joint_values": 216,
+        "gripper_rmse": 0.0017627842998542975
+      },
+      "success": {
+        "right_rmse_rad": 0.00574630882885114,
+        "ref_correction_rms_rad": 0.004173397321570365,
+        "first_delta_p95_rad": 0.007604059576988216,
+        "velocity_p95_rad_per_sample": 0.008158990740776062,
+        "acceleration_p95_rad_per_sample2": 0.011939644813537598,
+        "boundary_jump_p95_rad": 0.020741808414459228,
+        "boundary_joint_values": 642,
+        "gripper_rmse": 0.0009534503665121213
+      },
+      "failure": {
+        "right_rmse_rad": 0.0046772175156727875,
+        "ref_correction_rms_rad": 0.0046772175156727875,
+        "first_delta_p95_rad": 0.007448303699493405,
+        "velocity_p95_rad_per_sample": 0.009445971250534053,
+        "acceleration_p95_rad_per_sample2": 0.015161937475204456,
+        "boundary_jump_p95_rad": 0.013359977304935454,
+        "boundary_joint_values": 174,
+        "gripper_rmse": 0.0016582647404378658
+      }
+    },
+    "score": 0.009982015744845864,
+    "smoothness_gate": false
+  },
+  {
+    "step": 5000,
+    "elapsed_sec": 45.359342747949995,
+    "groups": {
+      "expert": {
+        "right_rmse_rad": 0.014244549441760703,
+        "ref_correction_rms_rad": 0.007706216962317441,
+        "first_delta_p95_rad": 0.011937624216079712,
+        "velocity_p95_rad_per_sample": 0.009748190641403198,
+        "acceleration_p95_rad_per_sample2": 0.013541178405284876,
+        "boundary_jump_p95_rad": 0.04398292303085327,
+        "boundary_joint_values": 216,
+        "gripper_rmse": 0.0018628405603571538
+      },
+      "success": {
+        "right_rmse_rad": 0.005440480618235252,
+        "ref_correction_rms_rad": 0.0037636317437889782,
+        "first_delta_p95_rad": 0.00788924098014831,
+        "velocity_p95_rad_per_sample": 0.0060419350862502995,
+        "acceleration_p95_rad_per_sample2": 0.009258078411221504,
+        "boundary_jump_p95_rad": 0.016167110204696633,
+        "boundary_joint_values": 642,
+        "gripper_rmse": 0.0008770902544493695
+      },
+      "failure": {
+        "right_rmse_rad": 0.004505500313871418,
+        "ref_correction_rms_rad": 0.004505500313871418,
+        "first_delta_p95_rad": 0.0069240272045135234,
+        "velocity_p95_rad_per_sample": 0.00716155171394348,
+        "acceleration_p95_rad_per_sample2": 0.010652154684066772,
+        "boundary_jump_p95_rad": 0.013260255753993987,
+        "boundary_joint_values": 174,
+        "gripper_rmse": 0.0015338680996511364
+      }
+    },
+    "score": 0.009842515029997978,
+    "smoothness_gate": true
+  },
+  {
+    "step": 10000,
+    "elapsed_sec": 70.25245354796061,
+    "groups": {
+      "expert": {
+        "right_rmse_rad": 0.013940987811376652,
+        "ref_correction_rms_rad": 0.007832362943651583,
+        "first_delta_p95_rad": 0.012481236457824705,
+        "velocity_p95_rad_per_sample": 0.009637981653213501,
+        "acceleration_p95_rad_per_sample2": 0.012117862701416012,
+        "boundary_jump_p95_rad": 0.042865753173828125,
+        "boundary_joint_values": 216,
+        "gripper_rmse": 0.0020647342205589486
+      },
+      "success": {
+        "right_rmse_rad": 0.005706715675000584,
+        "ref_correction_rms_rad": 0.004103752131155664,
+        "first_delta_p95_rad": 0.007869023084640497,
+        "velocity_p95_rad_per_sample": 0.0061985909938812225,
+        "acceleration_p95_rad_per_sample2": 0.009231094270944595,
+        "boundary_jump_p95_rad": 0.01588267683982846,
+        "boundary_joint_values": 642,
+        "gripper_rmse": 0.0007958711038698166
+      },
+      "failure": {
+        "right_rmse_rad": 0.004686803561695903,
+        "ref_correction_rms_rad": 0.004686803561695903,
+        "first_delta_p95_rad": 0.005997264385223382,
+        "velocity_p95_rad_per_sample": 0.0071422398090362545,
+        "acceleration_p95_rad_per_sample2": 0.010050618648529052,
+        "boundary_jump_p95_rad": 0.012086039781570431,
+        "boundary_joint_values": 174,
+        "gripper_rmse": 0.0015588835045086762
+      }
+    },
+    "score": 0.009823851743188618,
+    "smoothness_gate": true
+  },
+  {
+    "step": 20000,
+    "elapsed_sec": 119.41590960195754,
+    "groups": {
+      "expert": {
+        "right_rmse_rad": 0.013948296644735922,
+        "ref_correction_rms_rad": 0.007927977476773826,
+        "first_delta_p95_rad": 0.009880948066711425,
+        "velocity_p95_rad_per_sample": 0.008453398942947388,
+        "acceleration_p95_rad_per_sample2": 0.010002267360687241,
+        "boundary_jump_p95_rad": 0.04744204878807068,
+        "boundary_joint_values": 216,
+        "gripper_rmse": 0.0021461164211177544
+      },
+      "success": {
+        "right_rmse_rad": 0.0061063207276858085,
+        "ref_correction_rms_rad": 0.004667486216398825,
+        "first_delta_p95_rad": 0.007303130626678466,
+        "velocity_p95_rad_per_sample": 0.006085330247879027,
+        "acceleration_p95_rad_per_sample2": 0.008765578269958496,
+        "boundary_jump_p95_rad": 0.015713168680667862,
+        "boundary_joint_values": 642,
+        "gripper_rmse": 0.0009382384878141414
+      },
+      "failure": {
+        "right_rmse_rad": 0.004843080098458883,
+        "ref_correction_rms_rad": 0.004843080098458883,
+        "first_delta_p95_rad": 0.006585997343063352,
+        "velocity_p95_rad_per_sample": 0.006128406524658199,
+        "acceleration_p95_rad_per_sample2": 0.0076749742031097384,
+        "boundary_jump_p95_rad": 0.01453742980957031,
+        "boundary_joint_values": 174,
+        "gripper_rmse": 0.001943708690219485
+      }
+    },
+    "score": 0.010027308686210865,
+    "smoothness_gate": true
+  }
+]

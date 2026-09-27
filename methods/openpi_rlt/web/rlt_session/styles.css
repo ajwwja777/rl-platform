@@ -1,0 +1,15 @@
+:root { color-scheme: dark; font-family: Inter, system-ui, sans-serif; background: #071016; color: #e8f1f2; }
+body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: radial-gradient(circle at top, #12323b, #071016 65%); }
+main { width: min(900px, calc(100vw - 36px)); }
+.eyebrow { color: #73d9c7; letter-spacing: .18em; font-weight: 700; }
+h1 { font-size: clamp(1.6rem, 4vw, 3rem); margin: .3rem 0 1.4rem; }
+.status-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.status-grid p, aside, .guidance { margin: 0; padding: 14px; background: #102029; border: 1px solid #28414b; border-radius: 10px; }
+.guidance { margin-top: 14px; border-color: #2cc9aa; color: #dcfff8; font-size: 1.08rem; font-weight: 700; line-height: 1.5; }
+.actions { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 18px 0; }
+button { min-height: 58px; border: 0; border-radius: 10px; background: #2cc9aa; color: #06100e; font-weight: 750; font-size: 1rem; cursor: pointer; }
+button.secondary { background: #8ca1aa; } button.success { background: #7ce38b; } button.failure, button.danger { background: #ff8374; }
+button:disabled { cursor: not-allowed; filter: grayscale(1); opacity: .35; }
+.fault { color: #ff9b8e; min-height: 1.4em; font-weight: 700; }
+aside { color: #b7c7cc; line-height: 1.5; }
+@media (max-width: 700px) { .status-grid, .actions { grid-template-columns: 1fr 1fr; } }

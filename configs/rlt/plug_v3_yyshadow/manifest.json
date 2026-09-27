@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "cohort": "plug_v3_yyshadow",
+  "status": "offline_validated",
+  "validated_at": "2026-09-24T03:04:36+08:00",
+  "checkpoint_step": 4999,
+  "checkpoint": "/home/agilex/jiaan/project/rl-platform/models/rlt/plug_v3_yyshadow/stage1/4999",
+  "training": {
+    "hpc_job_id": 646566,
+    "state": "COMPLETED",
+    "elapsed": "01:01:03",
+    "exit_code": "0:0",
+    "upstream_commit": "c1e40ac360185778c98cf20da2820e22d2d415e7",
+    "steps": 5000,
+    "seed": 42,
+    "global_batch_size": 32,
+    "fsdp_devices": 4
+  },
+  "model_contract": {
+    "physical_arm": "right",
+    "physical_state_dim": 7,
+    "physical_action_dim": 7,
+    "model_action_dim": 32,
+    "model_horizon": 50,
+    "online_chunk_len": 10,
+    "z_rl_dim": 2048,
+    "cameras": [
+      "mid",
+      "left_wrist",
+      "right_wrist"
+    ]
+  },
+  "integrity": {
+    "params_assets_tree_sha256": "e73ef3f30c72bc946e7f3e9b5f73d5e97c99021716c0004f8d90aefe40e31270",
+    "params_assets_files": 31,
+    "params_bytes": 15428190918,
+    "assets_bytes": 1903,
+    "norm_stats_sha256": "901a3eec8ee83940ae993695cb5432e1ce9e6c91a4e8072f9cd8288af4f09f8b",
+    "dataset_payload_tree_sha256": "96e6e2b30016d75fdaf099a256f324398fcd472d0c8326bb2ce033edf49af101",
+    "dataset_full_tree_sha256": "c160a1d239a4ee43247cbf7ba3ddefe1f2b86ca33eb3e0cb71fea19a1574d23f",
+    "dataset_manifest_sha256": "c1c3fd4ad2ca0d1602d611c99f9ad97c4792a17882aca22224c7d375e76f1171"
+  },
+  "offline_evaluation": {
+    "hpc_job_id": 646663,
+    "state": "COMPLETED",
+    "elapsed": "00:14:14",
+    "exit_code": "0:0",
+    "selected": 4999,
+    "candidates": [
+      2000,
+      3000,
+      4000,
+      4999
+    ],
+    "selection_reason": "lowest early/late total loss, RL-token loss, VLA loss, and first-10-step action error; no material smoothness regression",
+    "early": {
+      "total_loss": 0.2013558018952608,
+      "rlt_loss": 0.19877068884670734,
+      "vla_loss": 0.0025851104728644714,
+      "action_mae_10_norm": 0.025054018246009946,
+      "sample_acceleration_norm": 0.004339425591751933
+    },
+    "late": {
+      "total_loss": 0.1708900760859251,
+      "rlt_loss": 0.16735403425991535,
+      "vla_loss": 0.003536040836479515,
+      "action_mae_10_norm": 0.03381072613410652,
+      "sample_acceleration_norm": 0.005007393483538181
+    },
+    "limitation": "All 134 episodes participated in Stage-1 training; cohorts are consistency diagnostics, not unseen generalization."
+  },
+  "cobot_validation": {
+    "status": "passed",
+    "receipt": "/home/agilex/jiaan/project/rl-platform/outputs/rlt/plug_v3_yyshadow/model-server/validation.json",
+    "receipt_sha256": "9ae65a008b80dd8194766b996b0e8f7c8ccdbdf8f568f12108facab41ff0d975",
+    "robot_publishers": 0,
+    "inference_ms": [
+      17106.46788100712,
+      76.70552702620625,
+      76.83872198686004
+    ],
+    "note": "Checkpoint restore and fixed-input inference only; no ROS connection or robot action was started."
+  },
+  "migration": {
+    "source_checkpoint": "/media/agilex/Getea1/jiaan/projects/rlt/checkpoints/plug_v3_yyshadow/stage1-faithful-s42/4999",
+    "upstream_revision": "8cef77eb7c5211b45382bf9199c9cdf0aaf60a19",
+    "algorithm_changes": false
+  }
+}

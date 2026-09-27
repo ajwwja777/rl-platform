@@ -1,0 +1,36 @@
+schema_version: 1
+status: prepared-not-trained
+task_id: plug_insertion_local
+task_prompt: Insert the plug into the socket.
+
+# Safe default: evaluation is deterministic. Changing this to explore is an
+# explicit run-level choice and must be captured in the run manifest.
+mode: eval
+# Candidate only: verify which physical arm grips the plug in the first pilot,
+# then freeze the resolved value in the run manifest.
+active_arm: left
+explore_gripper: false
+
+exploration:
+  fixed_std: 0.001
+  profile: linear_endpoints
+  seed: 42
+
+conditioning:
+  joint_step_limit: 0.02
+  joint_accel_limit: 0.005
+  gripper_step_limit: 0.001
+  hold_grippers: true
+
+warmup:
+  min_transitions: 128
+  min_updates: 200
+  max_updates: 2000
+  eval_interval: 100
+  updates_per_new_episode: 32
+
+reset:
+  auto_reset: false
+  verified: false
+  gripper_mode: hold
+  profile: plug_preinsert_v1

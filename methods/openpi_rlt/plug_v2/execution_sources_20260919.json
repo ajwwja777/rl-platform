@@ -1,0 +1,71 @@
+{
+  "date": "2026-09-19",
+  "status": "offline_diagnostics_not_released",
+  "fixed_upstream": "c1e40ac360185778c98cf20da2820e22d2d415e7",
+  "root": "/media/agilex/Getea1/jiaan/projects/rlt",
+  "code_sha256": {
+    "methods/openpi_rlt/plug_v2/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "methods/openpi_rlt/plug_v2/actor_service.py": "27e70b52e7f840ce7436c3d127cfd6435d622b2568bda5ec0f480509a6c32b6f",
+    "methods/openpi_rlt/plug_v2/checkpoint_selection.py": "b4363068302c41b6cfe4c967af308c05ce27b271b2068993ec55b46182d7795b",
+    "methods/openpi_rlt/plug_v2/cli.py": "1811698924af0db9e263be8953e03945327c03dd54566d48c278d57407679175",
+    "methods/openpi_rlt/plug_v2/conditioning_v2.py": "87839f3ca2c682b00f8620cdbb24db7b7a7f4a8544819819bc200141095ff92e",
+    "methods/openpi_rlt/plug_v2/control_clock.py": "97019490f8587c3f2531e6426f62729162f6385ac8613c698d75ec163c91c447",
+    "methods/openpi_rlt/plug_v2/corrective_policy.py": "0a832c028e3495e94337f0f19a7520e52701b0652c33839b407086579d84275b",
+    "methods/openpi_rlt/plug_v2/data_worker.py": "d5f256e7f1f6d135ada59bf1fe362ba697d29c290132a4ee5ebeb3e53b7324d1",
+    "methods/openpi_rlt/plug_v2/fixed_candidate.py": "652e54199f6b750aa4fa8e384c744e1fcadace4619cf378642b50919ad70c0f3",
+    "methods/openpi_rlt/plug_v2/handover_credit.py": "c4256777d024894fe25c2218cc2dbed4320ade1253779e239ecab841440d989f",
+    "methods/openpi_rlt/plug_v2/learning.py": "6c920ea19fbeb45affb1dc807768748ace577de7f9be982f7670270521a555a4",
+    "methods/openpi_rlt/plug_v2/learning_diagnostics.py": "2e96e8eddbc943413e0b4696a86b0e1717cc222776f9689ea00b157ed859f99e",
+    "methods/openpi_rlt/plug_v2/online_contract.py": "a40f6e8676646b60e1686e28a8cf21cc6c9593560c880e8fba2a1524ee5874bc",
+    "methods/openpi_rlt/plug_v2/online_cycle_v4.py": "556ee8c4d3a728fb10608d11f9f03293fa7510e0894193dfad28351846face5b",
+    "methods/openpi_rlt/plug_v2/online_learner.py": "73b8ddc44f3a553f0d528f4a2093e03cd6c1ec7a9eb2d55efdc9cb153fc06bde",
+    "methods/openpi_rlt/plug_v2/online_release.py": "85d7d41bec59e65e18ba936881b182fb8539d8254948f3edaac36c18fe32202e",
+    "methods/openpi_rlt/plug_v2/q_action_probe.py": "0cd02a7716bbdd30d7b0bb09b28911bc3ba261e5019d266f0eea7c0f8c53b4e6",
+    "methods/openpi_rlt/plug_v2/recorder_client.py": "8de587e39aa4ac665c2e0403e4773e0131affbc0bac823213a3b073431fb67bb",
+    "methods/openpi_rlt/plug_v2/replay.py": "e646bf363bcfee6b8bb9607be0ac9e32fad3cbee947a43b0b64f02974c8f953c",
+    "methods/openpi_rlt/plug_v2/replay_contract.py": "a74c196c73502a6a2de46967094bc85c395b414cbbfcc0256830cdad404f223c",
+    "methods/openpi_rlt/plug_v2/ros_io.py": "deaf6dc5fbc6b206025a23f2cb11f99a714a05781fcbd013f4931720371b400a",
+    "methods/openpi_rlt/plug_v2/rpc.py": "606a1c7fd293b36885e40e6b5316a2c9b80eb89f233fbcecdd1387a0ab4697d3",
+    "methods/openpi_rlt/plug_v2/rtc.py": "3a01e669e419262389bad5fbf264e1554beb63162108c18d33bc1d69621368bf",
+    "methods/openpi_rlt/plug_v2/rtc_past_command_supervision.py": "82188750c061b63bb0c52ee8e2f2cd541d600026ba945da17f40a81cd5e5ea7e",
+    "methods/openpi_rlt/plug_v2/rtc_queue.py": "a8932c27fd3808306aa6debe81374c4fd488d9ec0afb700e3c32bf3dea15fe6c",
+    "methods/openpi_rlt/plug_v2/rtc_supervision.py": "9c87d1c3aa5d5f22508399f317d62022340f743bdbc3d2304a5bcf7d6e3c6d2b",
+    "methods/openpi_rlt/plug_v2/runtime.py": "1a68945ecabb13b2de16f784446c53d1af0b9ddf3985d67861ff5207fe5aea73",
+    "methods/openpi_rlt/plug_v2/serve.py": "7aad45cb9258e3e2b43e2705e55e5f501433868bcee0bb37b0868a88be56f863",
+    "methods/openpi_rlt/plug_v2/storage.py": "0b405ad6b797fc8082fdeb296cadbc2ff62ccb5cea992854d2d694927d25d26a",
+    "methods/openpi_rlt/plug_v2/supported_learner.py": "b5c2bc23d41538be11e604a1229c1d9864eb1285303356294ce80a3909cfddd8",
+    "methods/openpi_rlt/plug_v2/terminal.py": "742257518bd5e968c75adad6a897d7cec6fbdec256a3b35a710cd0e041f66d7f",
+    "methods/openpi_rlt/plug_v2/tests/test_control_clock_unittest.py": "ee415facfb1c78f808d9482e71f3053c925c3be6449b1755ce3d9c2e65b7c380",
+    "methods/openpi_rlt/plug_v2/tests/test_online_v4_unittest.py": "cdc6965fb584982acafc4e64172c90fc8780d3847fef61f83abfc3391c7dd0fc",
+    "methods/openpi_rlt/plug_v2/tests/test_replay_v2.py": "7464878f57814a542dc5158a2619dfcadae810ba268c242fb457cd2f4080b7f4",
+    "methods/openpi_rlt/plug_v2/tests/test_rpc_reconnect.py": "dc03befa8551c5034887bfcc70f00fc40ec7eaf0962613669d26e85c7a13da82",
+    "methods/openpi_rlt/plug_v2/tests/test_runtime_conditioning.py": "02e3a80dbcfed1b5839905d13bbe01855dab032a748154ee0fade89d9368b023",
+    "methods/openpi_rlt/plug_v2/training_contract.py": "2420fb72ab0c51730b611dd9f80b3e41e60522d4bdfadce35a864b184a8ae148",
+    "methods/openpi_rlt/plug_v2/training_flow.py": "279f4fa5e7ccb4da5fdcece1dbafadc9fb320c3c55a1c2dd648ec22bee3116e9",
+    "methods/openpi_rlt/plug_v2/upstream_baseline.py": "1a9170d337c124550a7f8a48cc95db9b970fefa86914cea165d32e83ea43b153",
+    "methods/openpi_rlt/plug_v2/upstream_comparison.py": "b33d85e02462f11eb48a1c3757f17422fe8dcf102190e6f2b487faf75faa2e9f",
+    "methods/openpi_rlt/plug_v2/upstream_replay.py": "579c0e584f32b06e879f10f3d7c04c2507aade1c0d894ee2dbf1067d0da1b28e"
+  },
+  "evidence": {
+    "runs/plug_v2/diagnostics/upstream-audit-20260919/model-comparison.json": {
+      "sha256": "bdb82b77949d791871a25a8a5e12a4e08f550a6bed80b7dff2a3e763a0065c3f",
+      "bytes": 100455
+    },
+    "runs/plug_v2/diagnostics/upstream-audit-20260919/time-aligned-q.json": {
+      "sha256": "7956e0b4d4bfbe8fada040681da79e76c7bdf454dcc0bb0be7abea1a981f06d2",
+      "bytes": 3132
+    },
+    "runs/plug_v2/diagnostics/upstream-audit-20260919/outcome-strata.json": {
+      "sha256": "52fc299c11f58e75b7a07c60a2cf17b9075ef7197afe4a99679b5a96023c438b",
+      "bytes": 13161
+    },
+    "runs/plug_v2/diagnostics/upstream-audit-20260919/human-vs-deployment-rate.json": {
+      "sha256": "b88192c761885e031d2f3ed71676d4052ba21ac80f4c1e057c3bb272013f4c56",
+      "bytes": 963
+    },
+    "runs/plug_v2/diagnostics/upstream-audit-20260919/delta-units.json": {
+      "sha256": "f0366039ed13c7ad58cef58ffafb047ab7c52866de2563d7a2cfba2c6b2eba46",
+      "bytes": 834
+    }
+  }
+}

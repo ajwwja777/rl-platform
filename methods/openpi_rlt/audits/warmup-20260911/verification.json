@@ -1,0 +1,64 @@
+{
+  "steps": 20000,
+  "actor_updates": 10000,
+  "metrics_finite": true,
+  "restore": {
+    "100": {
+      "single_vs_batch_difference": 3.981590270996094e-05,
+      "same_batch_restore_difference": 0.0,
+      "sha256": "b5b04acc5681ea531acb5cf57c4e6262148af0356f807cfee75887f7f9adf6c6",
+      "bytes": 37794837
+    },
+    "500": {
+      "single_vs_batch_difference": 3.9696693420410156e-05,
+      "same_batch_restore_difference": 0.0,
+      "sha256": "b7db3957f931e2f41f65a3904fa7286e9081728a9984cd480ed6624c7890866d",
+      "bytes": 37794838
+    },
+    "2000": {
+      "single_vs_batch_difference": 5.167722702026367e-05,
+      "same_batch_restore_difference": 0.0,
+      "sha256": "bdfb7a130be72aa93ea576c35bb6aa3c3ac4163ac21c32ea6c5fd111c7f9b5a9",
+      "bytes": 37794839
+    },
+    "5000": {
+      "single_vs_batch_difference": 5.0067901611328125e-05,
+      "same_batch_restore_difference": 0.0,
+      "sha256": "c9086ed872e9a866d1c32cba5b7f1cf785cb4b4e7df24629902ed9bc1cd9e5a2",
+      "bytes": 37794839
+    },
+    "10000": {
+      "single_vs_batch_difference": 6.091594696044922e-05,
+      "same_batch_restore_difference": 0.0,
+      "sha256": "ea4770d1609c380a3029bcceebe37689d019f10a7f3831e2ef3bcfbf9dc58ccd",
+      "bytes": 37794839
+    },
+    "20000": {
+      "single_vs_batch_difference": 5.5670738220214844e-05,
+      "same_batch_restore_difference": 0.0,
+      "sha256": "e0cbbd0158a576f27651cac791a1f765ef98d3fca0657ad4c8081dfa988ee88d",
+      "bytes": 37794839
+    }
+  },
+  "diagnostics": {
+    "reference": {
+      "expert_human_rmse_rad": 0.012632496654987335,
+      "success_human_rmse_rad": 0.006390776019543409
+    },
+    "5000": {
+      "expert_human_rmse_rad": 0.01424454990774393,
+      "success_human_rmse_rad": 0.006483064964413643
+    },
+    "10000": {
+      "expert_human_rmse_rad": 0.01394098810851574,
+      "success_human_rmse_rad": 0.006659639999270439
+    },
+    "20000": {
+      "expert_human_rmse_rad": 0.013948296196758747,
+      "success_human_rmse_rad": 0.007086612284183502
+    }
+  },
+  "full_state_restore": true,
+  "formal_artifacts_unchanged": true,
+  "release_decision": "offline candidate step_10000 only; live publication withheld: imitation not better than reference and acceleration needs review"
+}

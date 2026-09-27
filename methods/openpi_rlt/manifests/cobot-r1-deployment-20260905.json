@@ -1,0 +1,40 @@
+{
+  "status": "offline_verified_live_pending",
+  "platform": "cobot",
+  "task": "in_the_pot",
+  "method": "openpi-RLT R1 joint Stage 1",
+  "checkpoint_step": 4999,
+  "upstream_commit": "c1e40ac360185778c98cf20da2820e22d2d415e7",
+  "dataset": {
+    "id": "legacy40-v2.1",
+    "episodes": 40,
+    "frames": 29383,
+    "content_tree_sha256": "4bd2987f61900da803c030615b8c612b6547dab8c8219c116a475250aae835a0",
+    "cobot_path": "/media/agilex/Getea1/jiaan/projects/cobot-realworld-rl/datasets/canonical/in-the-pot/legacy40-v2.1"
+  },
+  "checkpoint": {
+    "cobot_path": "/media/agilex/Getea1/jiaan/projects/cobot-realworld-rl/checkpoints/openpi-rlt/cobot_rlt_pi05_joint/r1-joint-legacy40-v2.1-b32w16-s42-20260904/4999",
+    "file_count": 36,
+    "file_bytes": 15428374911,
+    "content_tree_sha256": "95ea4cabaa8c6cf1d24f2048ab8c6f651b83db3953fdd61e0cc286b9f42039c6",
+    "transfer_verification": "relay-to-Cobot rsync --checksum dry-run produced no differences"
+  },
+  "runtime": {
+    "entrypoint": "/home/agilex/cobot_magic/task3/jiaan/realworld_rl/openpi_rlt/interface_task2_teach_rlt_live.sh",
+    "online_python": "/media/agilex/Getea1/jiaan/projects/cobot-realworld-rl/envs/rlt-online-py310/bin/python",
+    "machine_a_python": "/home/agilex/junfeng/workspace/pi05_cobot/.venv-server/bin/python",
+    "machine_a_dependency_overlay": "/media/agilex/Getea1/jiaan/projects/cobot-realworld-rl/envs/machine-a-py311-overlay",
+    "gpu": "NVIDIA GeForce RTX 4090 24564 MiB",
+    "measured_total_gpu_memory_mib": 18045,
+    "machine_a_batch1_warmup_ms": 65.2,
+    "machine_a_output": "z_rl=(2048,), ref_chunk=(50,14)",
+    "actor_output": "finite (10,14), actor_param_version=0"
+  },
+  "safety": {
+    "offline_smoke_used_ros": false,
+    "offline_smoke_created_publishers": false,
+    "robot_motion_performed": false,
+    "live_motion_requires_new_authorization": true,
+    "automatic_home_default": false
+  }
+}
