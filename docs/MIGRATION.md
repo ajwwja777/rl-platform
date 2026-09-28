@@ -86,3 +86,20 @@
 - Cobot旧RLT源文件全量SHA清单完成，39,001条目；跨机历史归档仍在复制。复制时复用已存在的同一文件只用于减少传输，最终按完整SHA清单验收，不能仅以大小相同判定通过。
 - Cobot envs现场快照已生成，包含online/stage1/python311与overlay，排除可重新生成的pyc/cache；7,485,824,462字节，SHA-256 214403a0eeefa5f31bbc7505808fe93ec344d5e656ff4b6d815d92eae7445f2b。A6000备份传输排在历史归档之后，完成前不删除现场暂存。
 - configs/environments/cobot-online.txt（70包）与cobot-stage1.txt（202包）是冻结版本清单，不包含凭据或下载地址；不是已验证的pip从零重建锁文件。现有overlay、ROS、CUDA和SDK依赖需按启动脚本保留，不升级依赖。
+
+## 2026-09-28：RLT 归档、冷启动与旧目录清理完成
+
+本批迁移已收尾。主代码/Git在A6000，现场代码、环境、选定权重和Replay在Cobot新项目，数据在/home/agilex/jiaan/data。本次未开始真机Episode，算法参数和正式训练资产不变。
+
+- 旧RLT完整归档到A6000 outputs/migrations/20260927-rlt/legacy-rlt-source：38,655普通文件、346链接，共122,208,969,870字节；全量SHA及原链接文本通过，条目无缺失/额外文件。复用重复内容仅减少传输，最终每个路径单独验收。
+- 历史模型实体归models/history/stage1-legacy40/4999、stage1-plug-e78/step_2000、step_4000、stage1-plug-v2/3999；当前Stage1/4999重复副本逐文件SHA比对后复用models/rlt/plug_v3_yyshadow/stage1/4999。datasets归data/history/legacy-rlt（165条目、609,616,285字节）。configs/assets/legacy_rlt_models.json保存来源和文件哈希。
+- 原归档通过相对链接保留原查阅位置；343个绝对内部/别名链接重定位，2个原相对链接保留，1个原pytest临时目录链接仅作历史证据保留。跨旧VLA别名的4个脚本经解析链及源manifest核验后指向已验证的相同归档文件。整理后38,655普通文件全部仍可访问、大小一致；原命令与provenance文本未改写。
+- 现场冻结环境快照已在A6000 outputs/environments/cobot-runtime-20260928.tar.gz完成SHA验证，7,485,824,462字节。包含online/stage1/python311及overlay，不升级依赖。校验后删除Cobot本次暂存tar，保留现场实际envs和两机JSON回执。版本清单不能替代已安装ROS/CUDA/SDK或保证从零重建。
+- 隔离旧路径后重启8015（153484→222607），通过真实共享入口加载plug_v3-online-latest：ready/disarmed/policy_paused=true、Session未开始、step=0；learner发布新鲜状态5000/actor2500/Replay2567、pending_update_budget=0、training_frozen=false。释放后offline，正式learner/actor/norm/Replay SHA全部不变。
+- 清理前复核39,001源条目元数据未变化、无活动进程引用；冷启动通过后删除Cobot旧/media/agilex/Getea1/jiaan/projects/rlt及其cobot-realworld-rl链接。对应旧cobot-platform、五个旧数据根、A6000旧RL源码已在各自批次验收清理。共享cobot_magic及π0.5/驱动资产保留。
+- 删除后9类只读接口、37个页面资源和episode171标签/视频/首尾6张图片通过；6个共享模型入口可用。工控机空间查询/，剩余约77.6GiB。无GPU计算进程，模型offline，无活动Session/评测轮次。
+- 当前硬件状态与早先被动测试不同：网页后来启动arms PID148006和cameras PID158179，5臂反馈、5CAN及3相机可用。本会话保留这些新任务；先前测试停止记录对应其他PID，不把后续启动判成停止失败。这些状态不等同于本会话完成上电HIL/动作验收。
+
+证据：outputs/migrations/20260928-cutover中的rlt-source-files.json、rlt-archive-sha256.json、archive-layout.json、organized-archive-access.json、platform-cross-project-links.json；现场完整回执和加载/释放证据在outputs/migrations/20260928-retirement/cobot/。outputs/environments保存环境备份及SHA。当前冷加载/恢复通过，不构成新的模型成功率。
+
+接续使用现有docs/RUNBOOK.md：在线目录选/home/agilex/jiaan/data/rlt/plug_v3_yyshadow/online，模型选plug_v3-online-latest。网页保留原warmup目录选择，没有强行重标历史数据。现场先短轮次确认暂停/HIL、结果提交与所选复位，再连续在线采集。未进行浏览器目视动画验收；两个π0.5共享部署、FluxVLA适配和完整驱动环境重建属于后续批次。

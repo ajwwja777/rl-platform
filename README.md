@@ -7,7 +7,7 @@
 - 数据：`/home/agilex/jiaan/data/rlt/plug_v3_yyshadow/`
 - 操作手册：[RUNBOOK](docs/RUNBOOK.md)
 - 本轮验收与清理：[MIGRATION](docs/MIGRATION.md)
-- 2026-09-28：正式网页已使用新路径；现场加载、独立在线恢复和数据读取通过。历史归档／旧目录清理仍以迁移记录为准。
+- 2026-09-28：正式网页已使用新路径；现场加载、独立在线恢复和数据读取通过。本批历史归档、环境备份及对应旧目录清理已完成，详见迁移记录。
 - 仓库：<https://github.com/ajwwja777/rl-platform>
 
 ## 目录与职责
@@ -20,6 +20,7 @@
 | `scripts/` | 当前启动／状态／释放入口和迁移核验 |
 | `models/rlt/plug_v3_yyshadow/` | Stage 1、固定 warmup 5k、可更新在线权重 |
 | `outputs/rlt/plug_v3_yyshadow/` | Replay、学习指标、日志、推理服务登记和诊断 |
+| `models/history/` / `data/history/` | A6000保存历史模型与训练数据，索引见 configs/assets/legacy_rlt_models.json |
 | `outputs/migrations/` | 原件、差异、校验和切换证据 |
 | `configs/environments/` | 现场包版本清单；不等同于跨机器环境重建保证 |
 | `outputs/environments/` | 现场冻结环境备份及哈希 |
