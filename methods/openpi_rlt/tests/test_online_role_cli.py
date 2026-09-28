@@ -5,7 +5,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 ENTRY = PROJECT_ROOT / "methods" / "openpi_rlt" / "scripts" / "online_role.py"
-_PROJECT_UPSTREAM = PROJECT_ROOT / "code" / "openpi-rlt"
+_PROJECT_UPSTREAM = PROJECT_ROOT / "third_party" / "openpi-rlt"
 UPSTREAM_ROOT = Path(
     os.environ.get(
         "COBOT_RLT_TEST_UPSTREAM_ROOT",

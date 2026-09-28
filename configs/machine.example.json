@@ -1,0 +1,11 @@
+{
+  "ros_setup": "/home/agilex/cobot_magic/Piper_ros_private-ros-noetic/devel/setup.bash",
+  "data_root": "/media/agilex/Getea1/jiaan/data",
+  "rlt_model_root": "/media/agilex/Getea1/jiaan/model/rl-platform/rlt/plug_insertion",
+  "rlt_warmup_root": "/media/agilex/Getea1/jiaan/model/rl-platform/rlt/plug_insertion/warmup_5000",
+  "recorder_url": "http://127.0.0.1:8015/api/rlt-recorder",
+  "rlt_data_roots": {
+    "warmup": "/media/agilex/Getea1/jiaan/data/datasets/plug_insertion/recordings/rl-platform/rlt/warmup/three_camera_v3",
+    "online": "/media/agilex/Getea1/jiaan/data/datasets/plug_insertion/recordings/rl-platform/rlt/online/three_camera_v3"
+  }
+}

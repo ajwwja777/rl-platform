@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "methods": [
+    {
+      "id": "rlt",
+      "root": ".",
+      "native_root": "third_party/openpi-rlt",
+      "adapter": "methods/openpi_rlt",
+      "environment": [
+        "envs/stage1",
+        "envs/online"
+      ],
+      "launch": [
+        "scripts/rlt_up.sh",
+        "online"
+      ],
+      "training_mode": "native actor/replay/learner",
+      "resume_requires": [
+        "learner checkpoint",
+        "replay journal",
+        "action normalization",
+        "stage1 base"
+      ],
+      "status": "integrated"
+    },
+    {
+      "id": "expo-ft",
+      "root": "../expo-ft",
+      "native_root": "../expo-ft",
+      "adapter": null,
+      "environment": "project-owned; see ../expo-ft/pyproject.toml and uv.lock",
+      "training_mode": "original synchronous",
+      "status": "blocked",
+      "reason": "Cobot action/observation adapter and live validation not implemented; not a RLT model",
+      "capabilities": {
+        "load": false,
+        "start": false,
+        "train": false
+      },
+      "optional_features": {
+        "async": false,
+        "rtc": false,
+        "ema": false
+      }
+    }
+  ]
+}

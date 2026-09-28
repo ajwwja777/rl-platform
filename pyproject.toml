@@ -10,3 +10,4 @@ dev = ["pytest==8.3.5", "httpx==0.28.1", "h5py==3.13.0", "fastapi==0.115.12", "j
 
 [tool.pytest.ini_options]
 testpaths = ["methods/openpi_rlt/tests"]
+pythonpath = [".", "../cobot-dagger/src", "../cobot-control/src", "../cobot-web/app/backend", "third_party/openpi-rlt/rlt_online_rl/src", "third_party/openpi-rlt/packages/openpi-client/src"]

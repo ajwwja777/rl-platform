@@ -1,5 +1,21 @@
 # RL 平台
 
+```text
+rl-platform/
+├── methods/openpi_rlt/           # 现有RLT算法适配
+├── third_party/openpi-rlt/       # 固定上游，不合并训练循环
+├── integrations/cobot_runtime/  # 采集/评测边界、路径、目录选择
+├── configs/methods.json         # 方法接入级别与能力
+├── configs/deployment_models.json
+├── configs/rlt/                 # 原始超参数及发布清单
+├── scripts/                     # 启停、preflight、隔离验证
+└── docs/
+```
+
+本地框架与部署：[说明](docs/ARCHITECTURE.md)。
+
+项目结构：[ARCHITECTURE](docs/ARCHITECTURE.md)。换机部署：[DEPLOYMENT](docs/DEPLOYMENT.md)。
+
 本项目维护 RLT 的配置、Replay、采样、学习、模型发布与评测边界。A6000 是代码和 Git 主工作区；Cobot 运行现场推理、采样和在线学习。
 
 - A6000：`/data/LFT-W02_data/jiaan/jiaan/projects/rl-platform`

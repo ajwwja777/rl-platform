@@ -1,0 +1,359 @@
+{
+  "python": "3.10.20 | packaged by conda-forge | (main, Jun 11 2026, 03:31:56) [GCC 14.3.0]",
+  "prefix": "/home/agilex/jiaan/project/rl-platform/envs/online",
+  "packages": [
+    {
+      "name": "docutils",
+      "version": "0.23",
+      "direct_url": null
+    },
+    {
+      "name": "rich",
+      "version": "15.0.0",
+      "direct_url": null
+    },
+    {
+      "name": "nvidia-nvjitlink-cu12",
+      "version": "12.9.86",
+      "direct_url": null
+    },
+    {
+      "name": "etils",
+      "version": "1.13.0",
+      "direct_url": null
+    },
+    {
+      "name": "setuptools",
+      "version": "83.0.0",
+      "direct_url": null
+    },
+    {
+      "name": "protobuf",
+      "version": "7.36.1",
+      "direct_url": null
+    },
+    {
+      "name": "typing_extensions",
+      "version": "4.16.0",
+      "direct_url": null
+    },
+    {
+      "name": "docstring_parser",
+      "version": "0.18.0",
+      "direct_url": null
+    },
+    {
+      "name": "msgpack",
+      "version": "1.2.2",
+      "direct_url": null
+    },
+    {
+      "name": "PyYAML",
+      "version": "6.0.3",
+      "direct_url": null
+    },
+    {
+      "name": "aiofiles",
+      "version": "25.1.0",
+      "direct_url": null
+    },
+    {
+      "name": "nvidia-cuda-runtime-cu12",
+      "version": "12.9.79",
+      "direct_url": null
+    },
+    {
+      "name": "mdurl",
+      "version": "0.1.2",
+      "direct_url": null
+    },
+    {
+      "name": "dm-tree",
+      "version": "0.1.10",
+      "direct_url": null
+    },
+    {
+      "name": "numpy",
+      "version": "1.26.4",
+      "direct_url": null
+    },
+    {
+      "name": "openpi-client",
+      "version": "0.1.0",
+      "direct_url": "{\"dir_info\": {}, \"url\": \"file:///media/agilex/Getea1/jiaan/projects/cobot-realworld-rl/.staging-rlt-20260904/code/openpi-rlt/packages/openpi-client\"}"
+    },
+    {
+      "name": "jax-cuda12-plugin",
+      "version": "0.5.3",
+      "direct_url": null
+    },
+    {
+      "name": "importlib_resources",
+      "version": "7.1.0",
+      "direct_url": null
+    },
+    {
+      "name": "jax",
+      "version": "0.5.3",
+      "direct_url": null
+    },
+    {
+      "name": "Tree",
+      "version": "0.2.4",
+      "direct_url": null
+    },
+    {
+      "name": "Pygments",
+      "version": "2.21.0",
+      "direct_url": null
+    },
+    {
+      "name": "scipy",
+      "version": "1.15.3",
+      "direct_url": null
+    },
+    {
+      "name": "pyparsing",
+      "version": "3.3.2",
+      "direct_url": null
+    },
+    {
+      "name": "rospkg",
+      "version": "1.6.1",
+      "direct_url": null
+    },
+    {
+      "name": "catkin-pkg",
+      "version": "1.1.0",
+      "direct_url": null
+    },
+    {
+      "name": "pluggy",
+      "version": "1.6.0",
+      "direct_url": null
+    },
+    {
+      "name": "opt_einsum",
+      "version": "3.4.0",
+      "direct_url": null
+    },
+    {
+      "name": "pytest",
+      "version": "9.1.1",
+      "direct_url": null
+    },
+    {
+      "name": "attrs",
+      "version": "26.1.0",
+      "direct_url": null
+    },
+    {
+      "name": "svgwrite",
+      "version": "1.4.3",
+      "direct_url": null
+    },
+    {
+      "name": "python-dateutil",
+      "version": "2.9.0.post0",
+      "direct_url": null
+    },
+    {
+      "name": "click",
+      "version": "8.5.0",
+      "direct_url": null
+    },
+    {
+      "name": "nvidia-cuda-cupti-cu12",
+      "version": "12.9.79",
+      "direct_url": null
+    },
+    {
+      "name": "pillow",
+      "version": "12.3.0",
+      "direct_url": null
+    },
+    {
+      "name": "ml_dtypes",
+      "version": "0.5.4",
+      "direct_url": null
+    },
+    {
+      "name": "jax-cuda12-pjrt",
+      "version": "0.5.3",
+      "direct_url": null
+    },
+    {
+      "name": "wheel",
+      "version": "0.47.0",
+      "direct_url": null
+    },
+    {
+      "name": "zipp",
+      "version": "4.1.0",
+      "direct_url": null
+    },
+    {
+      "name": "nest-asyncio",
+      "version": "1.6.0",
+      "direct_url": null
+    },
+    {
+      "name": "markdown-it-py",
+      "version": "4.2.0",
+      "direct_url": null
+    },
+    {
+      "name": "tyro",
+      "version": "1.0.16",
+      "direct_url": null
+    },
+    {
+      "name": "six",
+      "version": "1.17.0",
+      "direct_url": null
+    },
+    {
+      "name": "pip",
+      "version": "26.1.2",
+      "direct_url": "{\"dir_info\": {}, \"url\": \"file:///home/conda/feedstock_root/build_artifacts/pip_1780262725065/work\"}"
+    },
+    {
+      "name": "tensorstore",
+      "version": "0.1.78",
+      "direct_url": null
+    },
+    {
+      "name": "distro",
+      "version": "1.9.0",
+      "direct_url": null
+    },
+    {
+      "name": "optax",
+      "version": "0.2.8",
+      "direct_url": null
+    },
+    {
+      "name": "tomli",
+      "version": "2.4.1",
+      "direct_url": null
+    },
+    {
+      "name": "nvidia-cublas-cu12",
+      "version": "12.9.2.10",
+      "direct_url": null
+    },
+    {
+      "name": "humanize",
+      "version": "4.16.0",
+      "direct_url": null
+    },
+    {
+      "name": "rlt-online-rl",
+      "version": "0.1.0",
+      "direct_url": "{\"dir_info\": {}, \"url\": \"file:///media/agilex/Getea1/jiaan/projects/cobot-realworld-rl/.staging-rlt-20260904/code/openpi-rlt/rlt_online_rl\"}"
+    },
+    {
+      "name": "simplejson",
+      "version": "4.1.2",
+      "direct_url": null
+    },
+    {
+      "name": "typeguard",
+      "version": "4.6.0",
+      "direct_url": null
+    },
+    {
+      "name": "jaxlib",
+      "version": "0.5.3",
+      "direct_url": null
+    },
+    {
+      "name": "flax",
+      "version": "0.10.2",
+      "direct_url": null
+    },
+    {
+      "name": "nvidia-nccl-cu12",
+      "version": "2.31.2",
+      "direct_url": null
+    },
+    {
+      "name": "nvidia-cusolver-cu12",
+      "version": "11.7.5.82",
+      "direct_url": null
+    },
+    {
+      "name": "websockets",
+      "version": "16.1.1",
+      "direct_url": null
+    },
+    {
+      "name": "packaging",
+      "version": "26.2",
+      "direct_url": "{\"dir_info\": {}, \"url\": \"file:///home/conda/feedstock_root/build_artifacts/bld/rattler-build_packaging_1777103621/work\"}"
+    },
+    {
+      "name": "exceptiongroup",
+      "version": "1.3.1",
+      "direct_url": null
+    },
+    {
+      "name": "opencv-python",
+      "version": "4.11.0.86",
+      "direct_url": null
+    },
+    {
+      "name": "nvidia-cuda-nvrtc-cu12",
+      "version": "12.9.86",
+      "direct_url": null
+    },
+    {
+      "name": "iniconfig",
+      "version": "2.3.0",
+      "direct_url": null
+    },
+    {
+      "name": "nvidia-cusparse-cu12",
+      "version": "12.5.10.65",
+      "direct_url": null
+    },
+    {
+      "name": "wrapt",
+      "version": "2.4.0",
+      "direct_url": null
+    },
+    {
+      "name": "fsspec",
+      "version": "2026.7.0",
+      "direct_url": null
+    },
+    {
+      "name": "nvidia-cufft-cu12",
+      "version": "11.4.1.4",
+      "direct_url": null
+    },
+    {
+      "name": "absl-py",
+      "version": "2.5.0",
+      "direct_url": null
+    },
+    {
+      "name": "nvidia-cudnn-cu12",
+      "version": "9.25.1.1",
+      "direct_url": null
+    },
+    {
+      "name": "nvidia-cuda-nvcc-cu12",
+      "version": "12.9.86",
+      "direct_url": null
+    },
+    {
+      "name": "orbax-checkpoint",
+      "version": "0.11.24",
+      "direct_url": null
+    }
+  ],
+  "classification": "installed inventory; not a complete rebuild lock",
+  "source_python": "/home/agilex/jiaan/project/rl-platform/envs/online/bin/python",
+  "observed": "2026-09-29"
+}

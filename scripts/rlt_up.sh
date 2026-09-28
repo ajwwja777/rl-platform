@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # Start/reuse the frozen plug_v3 Stage-1 server, then run upstream online RLT.
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-WEB="${COBOT_PLATFORM_ROOT:-$(dirname "$ROOT")/cobot-web}"
 export COBOT_RLT_PROJECT_ROOT="${COBOT_RLT_PROJECT_ROOT:-$ROOT}"
-source "$WEB/scripts/environment.sh"
+source "$ROOT/scripts/environment.sh"
 # Ctrl-C stops Machine B and the robot Session; the loaded Stage-1 model remains.
 set -Eeuo pipefail
 
@@ -37,9 +36,9 @@ DATA_PHASE="$MODE"
 [[ "$MODE" == frozen ]] && DATA_PHASE=online
 RLT_CONFIG="$ROOT/configs/rlt/plug_v3_yyshadow/online_rl.yaml"
 [[ "$MODE" == frozen ]] && RLT_CONFIG="$ROOT/configs/rlt/plug_v3_yyshadow/online_rl_frozen.yaml"
-DATA_ROOT=$(PYTHONPATH="$WEB/app/backend" /usr/bin/python3 - "$DATA_PHASE" <<'PYDATA'
+DATA_ROOT=$(PYTHONPATH="$ROOT" /usr/bin/python3 - "$DATA_PHASE" <<'PYDATA'
 import sys
-from cobot_console.profile_storage import default_root
+from integrations.cobot_runtime.profile_storage import default_root
 print(default_root(sys.argv[1]))
 PYDATA
 )
@@ -102,7 +101,15 @@ done
 echo "Stage-1 已就绪: $(basename "$checkpoint")"
 
 port_open 11311 || { echo "ROS master 未启动；先启动机械臂和相机节点" >&2; exit 2; }
-port_open 8015 || { echo "数据网页未启动；先运行 cobot-web/scripts/ui_up.sh" >&2; exit 2; }
+/usr/bin/python3 - "$COBOT_RLT_TASK5_URL/api/status" <<'PYRECORDER'
+import sys,urllib.request
+opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
+try:
+ with opener.open(sys.argv[1],timeout=3) as response:
+  if response.status != 200: raise RuntimeError(response.status)
+except Exception as exc:
+ raise SystemExit("Recorder HTTP endpoint unavailable: "+str(exc))
+PYRECORDER
 port_open "$SESSION_PORT" && { echo "旧 RLT Session 仍占用 $SESSION_PORT；先 Ctrl-C 旧 rlt_v3_up 终端" >&2; exit 2; }
 
 source "$TASK5_ROS_SETUP"
@@ -111,7 +118,7 @@ export COBOT_RLT_TRACE_DIR="$COBOT_RLT_TRACE_ROOT/$MODE"
 export COBOT_RLT_SHADOW=0
 export COBOT_RLT_SESSION_UI=1
 export COBOT_RLT_SESSION_UI_PORT="$SESSION_PORT"
-export COBOT_RLT_TASK5_URL=http://127.0.0.1:8015/api/rlt-recorder
+export COBOT_RLT_TASK5_URL
 export RLT_ACTOR_READY_TIMEOUT_SEC="${RLT_ACTOR_READY_TIMEOUT_SEC:-120}"
 export RLT_REPLAY_READY_TIMEOUT_SEC="${RLT_REPLAY_READY_TIMEOUT_SEC:-120}"
 export COBOT_RLT_TASK5_DATA_ROOT="$DATA_ROOT"
@@ -168,28 +175,25 @@ unset HTTP_PROXY HTTPS_PROXY ALL_PROXY http_proxy https_proxy all_proxy
 
 ENV_FACTORY=methods.openpi_rlt.plug_v3_yyshadow.right_arm_env:create_right_arm_online_env
 if [[ "${COBOT_RLT_EVALUATION:-0}" == 1 ]]; then
-  PLATFORM="$COBOT_PLATFORM_ROOT"
-  export PYTHONPATH="$PLATFORM/app/backend:$PYTHONPATH"
-  "$ONLINE_PY" -m cobot_console.evaluation_env "$MODE" "$COBOT_EVAL_SNAPSHOT" "$COBOT_EVAL_CONFIG"
+  "$ONLINE_PY" -m integrations.cobot_runtime.evaluation_env "$MODE" "$COBOT_EVAL_SNAPSHOT" "$COBOT_EVAL_CONFIG"
   RLT_CONFIG="$COBOT_EVAL_CONFIG"
   export RLT_DISABLE_LEARNER=1 COBOT_RLT_DISABLE_PHASE_CONTROLLER=1
   export COBOT_RLT_HOME_AFTER_TERMINAL=0
   export COBOT_RLT_TRACE_DIR="$COBOT_RUNTIME_ROOT/deployment/unused-traces"
-  ENV_FACTORY=cobot_console.evaluation_env:create_evaluation_env
+  ENV_FACTORY=integrations.cobot_runtime.evaluation_env:create_evaluation_env
 fi
 
 # The web owns a single loaded model. Session preparation chooses collection
 # or evaluation; the environment latches that choice before each episode.
 if [[ "${COBOT_RLT_SHARED_MODEL:-0}" == 1 ]]; then
-  export PYTHONPATH="$COBOT_PLATFORM_ROOT/app/backend:$PYTHONPATH"
   if [[ "$MODE" != online ]]; then
-    "$ONLINE_PY" -m cobot_console.shared_model_env "$MODE" "$COBOT_EVAL_SNAPSHOT" "$COBOT_EVAL_CONFIG"
+    "$ONLINE_PY" -m integrations.cobot_runtime.shared_model_env "$MODE" "$COBOT_EVAL_SNAPSHOT" "$COBOT_EVAL_CONFIG"
     RLT_CONFIG="$COBOT_EVAL_CONFIG"
     export RLT_DISABLE_LEARNER=1 COBOT_RLT_DISABLE_PHASE_CONTROLLER=1
   fi
   export COBOT_RLT_HOME_AFTER_TERMINAL=0
   export COBOT_RLT_TRACE_DIR="$COBOT_RLT_TRACE_ROOT/$MODE"
-  ENV_FACTORY=cobot_console.shared_model_env:create_shared_env
+  ENV_FACTORY=integrations.cobot_runtime.shared_model_env:create_shared_env
 fi
 
 echo "RLT $MODE 已启动；操作页沿用 http://127.0.0.1:8015/。Ctrl-C 停止本次 Session，Stage-1 模型保留。"
