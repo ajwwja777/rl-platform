@@ -28,6 +28,24 @@
 
 模型、大数据和运行输出不进入 Git。模型格式、环境版本、来源和校验结果进入文档／发布清单。
 
+## 从哪些源码开始看
+
+当前网页入口使用plug_v3_yyshadow。根目录scripts负责已登记部署，methods保留Cobot适配和历史方法，third_party保留固定上游实现。历史plug_v2及旧脚本保留用于追溯，不与当前发布入口混用；旧Task2/Task5名称在ROS/HTTP协议和历史适配中保持兼容。
+
+| 想审核的内容 | 源码入口 |
+|---|---|
+| 路径、预检与进程启动 | [scripts/rlt_up.sh](scripts/rlt_up.sh)、[scripts/preflight.py](scripts/preflight.py) |
+| 当前学习参数与Replay位置 | [online_rl.yaml](configs/rlt/plug_v3_yyshadow/online_rl.yaml) |
+| 冻结Stage1加载、预处理、固定输入验证 | [serve_stage1.py](methods/openpi_rlt/plug_v3_yyshadow/serve_stage1.py) |
+| 上游角色启动及Cobot补丁边界 | [online_role.py](methods/openpi_rlt/scripts/online_role.py)、[online_runtime.py](methods/openpi_rlt/cobot_adapter/online_runtime.py) |
+| 右臂7D动作与反馈 | [right_arm_env.py](methods/openpi_rlt/plug_v3_yyshadow/right_arm_env.py) |
+| Session、暂停、终止及HIL状态 | [session.py](methods/openpi_rlt/cobot_adapter/session.py)、[task2_runtime.py](methods/openpi_rlt/cobot_adapter/task2_runtime.py) |
+| 录制HTTP及收尾合同 | [task5_client.py](methods/openpi_rlt/cobot_adapter/task5_client.py) |
+| 上游网络、学习更新、Replay | [rlt_online_rl](third_party/openpi-rlt/rlt_online_rl/src/rlt_online_rl) |
+| 无机器人恢复学习验证 | [validate_online_resume.py](scripts/validate_online_resume.py) |
+
+采集/评测共享进程的用途选择在同级cobot-web的app/backend/cobot_console/shared_model_env.py，真实硬件仲裁在同级cobot-control。阅读跨项目调用时沿这些边界查看，避免将网页按钮行为误认为算法实现。
+
 ## 当前方法
 
 plug_v3_yyshadow 使用右臂 7 维动作、三相机、20 Hz 控制、10 帧动作块。当前 warmup 基线是 learner 5000 / actor 2500；迁移不重新训练、不调整奖励、BC/Q 权重、探索强度或数据比例。
