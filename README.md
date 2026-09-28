@@ -62,7 +62,7 @@ rl-platform/
 | 上游网络、学习更新、Replay | [rlt_online_rl](third_party/openpi-rlt/rlt_online_rl/src/rlt_online_rl) |
 | 无机器人恢复学习验证 | [validate_online_resume.py](scripts/validate_online_resume.py) |
 
-采集/评测共享进程的用途选择在同级cobot-web的app/backend/cobot_console/shared_model_env.py，真实硬件仲裁在同级cobot-control。阅读跨项目调用时沿这些边界查看，避免将网页按钮行为误认为算法实现。
+采集/评测共享进程的用途选择在本项目 integrations/cobot_runtime/shared_model_env.py（web 保留兼容导入），真实硬件仲裁在同级cobot-control。阅读跨项目调用时沿这些边界查看，避免将网页按钮行为误认为算法实现。
 
 ## 当前方法
 
@@ -76,7 +76,7 @@ Stage 1 Reference、固定 warmup 5000、最新冻结 Actor、最新在线 Actor
 
 `cobot-control` 管理硬件、CAN、ROS、示教控制权、归位和恢复；`cobot-web` 提供录制 HTTP 接口、共享模型管理、网页与终端兜底；`rl-platform` 负责 RLT 算法和模型状态。调用关系明确，不复制另一项目的运行实现。
 
-当前录制库是 cobot-web 的 `capture_core` / `segmented_capture`，后续若迁到 cobot-dagger，再做单独接口验收。EXPO-FT 仍按自己的既有记录推进。
+录制领域库已归 cobot-dagger/src/{capture_core,segmented_capture}；cobot-web 仅保留 HTTP 提供者和兼容导入。EXPO-FT 保留独立仓库和原始同步训练流程，当前登记为待适配，不能从 RLT 入口启动。
 
 ## 开发检查
 
@@ -85,7 +85,7 @@ uv sync --frozen
 ./.venv/bin/python scripts/audit_migration_config.py
 ```
 
-跨项目测试需要 cobot-web 位于同级目录。现场环境不是通过这份 CPU 开发依赖重新安装；迁移保留现场现有版本与加载顺序。
+跨项目测试需要 cobot-control、cobot-dagger、cobot-web 位于同级目录。现场环境不是通过这份 CPU 开发依赖重新安装；迁移保留现场现有版本与加载顺序。
 
 ## 数据和权重的单份归属（2026-09-28）
 

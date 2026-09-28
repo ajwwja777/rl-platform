@@ -98,7 +98,7 @@ while ! port_open "$MODEL_PORT"; do
   (( SECONDS < deadline )) || { echo "Stage-1 加载超时" >&2; exit 1; }
   sleep 2
 done
-echo "Stage-1 已就绪: $(basename "$checkpoint")"
+echo "Stage-1 端口已监听，模型协议由 Session 就绪检查确认: $(basename "$checkpoint")"
 
 port_open 11311 || { echo "ROS master 未启动；先启动机械臂和相机节点" >&2; exit 2; }
 /usr/bin/python3 - "$COBOT_RLT_TASK5_URL/api/status" <<'PYRECORDER'

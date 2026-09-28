@@ -28,13 +28,15 @@ if registry:
 if model=='loading':
  s=socket.socket();s.settimeout(.2)
  try:
-  if s.connect_ex(('127.0.0.1',8030))==0:model='ready'
+  if s.connect_ex(('127.0.0.1',8030))==0:model='listening'
  finally:s.close()
 replay=get('http://127.0.0.1:9132/stats') or {}
 learner=read(run/'online/metrics/learner_status.json') or {}
 session=get('http://127.0.0.1:8026/api/session') or {}
 print(json.dumps({
  'model':model,
+ 'model_ready': session.get('phase') in {'disarmed','armed','ready','waiting_scene','rollout','paused','hil','terminal_pending'},
+ 'inference_verified':False,
  'session_phase':session.get('phase','offline'),
  'episode':session.get('episode_id'),
  'replay_transitions':replay.get('size',0),

@@ -132,3 +132,13 @@ USB 掉线重连后已完成已迁移资产的全量收据复核；尚不能据�
 ## 2026-09-29：职责边界与部署材料
 
 按实际源码、只读现场状态整理，代码先在A6000开发。结构、安装、依赖来源及验证界限见docs/DEPLOYMENT.md；跨项目关系见cobot-web/docs/ARCHITECTURE.md。数据/模型实体未迁移或删除；公共厂商工作区未删除、硬件未重启。guide只写事实、不提交其Git。现场切换与版本见后续发布回执。
+
+## 2026-09-29：正式切换、清理及交付验收
+
+运行边界首次发布e5fea09：shared_model_env、evaluation_env、profile_storage已归integrations/cobot_runtime；运行脚本不再source或import web配置。录制HTTP仍由web提供，领域实现由dagger提供，单writer保留。configs/local.json登记recorder_url，runtime/storage-selection.json接管目录选择。
+
+现场preflight通过：Learner5000、Actor2500、warmup锚点2567；引用Getea1既有Actor/learner/Replay/normalization，robot_publishers=0。在线契约78项通过；A6000冻结环境独立恢复与模型/训练配置导入通过，Stage1契约35项通过。未更新生产Replay、模型或新一轮真机成功率。
+
+RLT与EXPO-FT保持独立实现和环境；EXPO-FT登记为待适配，不伪造可运行状态。listen、Session-ready与inference_verified分别显示。环境恢复说明见DEPLOYMENT.md。
+
+主代码位于 /data/LFT-W02_data/jiaan/jiaan/projects/rl-platform；现场副本 /home/agilex/jiaan/project/rl-platform。后续收尾版本以Git main和现场.release.json为准。guide仅更新事实摘要，不提交其Git。

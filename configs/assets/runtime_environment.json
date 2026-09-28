@@ -1,0 +1,20 @@
+{
+  "classification": "frozen installed runtime, not a source-build lock",
+  "archive": "cobot-runtime-20260928.tar.gz",
+  "a6000_materials": "/data/LFT-W02_data/jiaan/jiaan/projects/rl-platform/outputs/environments",
+  "sha256": "214403a0eeefa5f31bbc7505808fe93ec344d5e656ff4b6d815d92eae7445f2b",
+  "bytes": 7485824462,
+  "environments": {
+    "online": "Python 3.10.20 / JAX 0.5.3 / Flax 0.10.2 / Optax 0.2.8",
+    "stage1": "Python 3.11.14 / Torch 2.7.1+cu126 / JAX 0.5.3",
+    "machine-a-py311-overlay": "Stage1 supplemental packages retained as a separate path"
+  },
+  "excludes": [
+    "GPU driver",
+    "ROS and hardware workspaces",
+    "model weights",
+    "datasets",
+    "tokenizer assets"
+  ],
+  "verified": "2026-09-29 isolated A6000 relocation, imports and selected CPU contracts; no model weights loaded"
+}

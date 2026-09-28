@@ -131,3 +131,9 @@ preflight 只读权重和配置，不发布机器人指令。通过不代表真�
 本会话的断电被动验收任务已停止；随后网页启动了新的臂／相机任务，最终只读复查为5臂反馈和3相机可用。实际操作前先查当前状态，缺少的节点才按“日常启动”启动，避免重复launch；检查相机和关节反馈，再选择实际所需臂／位姿归位。先做一次短轮次，确认暂停、HIL、成功／失败保存和归位，再连续采集。目录以操作者选择为准，本批不把历史 warmup 重命名为 online。
 
 迁移基线 learner5000/actor2500/replay2567。历史归档与旧RLT清理已完成；模型已释放。已校验数据约158GB，Cobot系统盘最终复查剩余约77.6GiB；采集前检查工控机空间。本轮不删除其他项目共享资产腾空间。
+
+## 2026-09-29 共用入口与验收界限
+
+网页和终端共享模型运行管理，CLI见同级 cobot-web/scripts/models.py；RLT采集/评测用途实现已归本项目 integrations/cobot_runtime。目录选择在 runtime/storage-selection.json，录制HTTP地址在 configs/local.json 的 recorder_url；默认由8015提供，领域录制实现归cobot-dagger。不同时从CLI和网页启动两套Session。
+
+新机器材料、环境恢复、配置替换按 [DEPLOYMENT.md](DEPLOYMENT.md)。本批未改变5000步warmup、reward、loss、数据比例、HIL/mask、20Hz或动作限幅；真实成功率仍需现场评测。
