@@ -7,6 +7,7 @@
 - 数据：`/home/agilex/jiaan/data/rlt/plug_v3_yyshadow/`
 - 操作手册：[RUNBOOK](docs/RUNBOOK.md)
 - 本轮验收与清理：[MIGRATION](docs/MIGRATION.md)
+- 2026-09-28：正式网页已使用新路径；现场加载、独立在线恢复和数据读取通过。历史归档／旧目录清理仍以迁移记录为准。
 - 仓库：<https://github.com/ajwwja777/rl-platform>
 
 ## 目录与职责

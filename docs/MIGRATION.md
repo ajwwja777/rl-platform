@@ -62,3 +62,19 @@
 - Guide 摘要只修改 MD，不由本会话提交／推送；其他 agent 的 expo-ft / storage-cleanup 修改保留。
 
 当前未交付完成项：现场权重加载／新硬件节点验收、网页切换、全部数据／历史资产校验和对应旧目录删除。不得把已复制／已 push 写成已经能够在线真机运行。
+
+## 2026-09-28：现场恢复、新路径运行验收
+
+网络恢复后确认 Cobot 已重启、旧节点已退出。本轮不归位、不启动真机 Episode，不改变奖励、模型计算、warmup 步数或数据比例。
+
+- 新 Stage 1 在 Cobot 实际加载成功：总耗时约44秒；首次固定输入推理16.80秒，随后76.29/76.37ms。动作和 token 尺寸、有限值通过，无机器人发布者。A6000 保存同一 Stage 1，31文件/15,428,192,821字节跨机器 SHA-256 相同。
+- 正式8015已使用新配置、新 rl-platform/control。真实共享模型入口分别加载固定 Warmup 5k 和最新在线 Actor，均 ready/disarmed/policy_paused=true，Session未开始；随后正常释放。
+- 在线恢复5000/Actor2500/Replay2567，无新数据不更新。Cobot Python3.10独立副本测试通过：一条模拟transition→5次更新→5005/2502，重启不重复更新；正式checkpoint、Replay、norm SHA与迁移前一致。
+- 数据 rlt、evaluations、cobot-platform、record、test 已复制到 /home/agilex/jiaan/data；11,123文件/158,037,688,841字节、2内部链接验证完成。HDF5、标签、provenance不改写；内部链接重定位。网页配置和浏览器最近目录按注册前缀迁移。
+- 历史读取：warmup原始历史170条，训练历史筛选111条；episode171的标签、视频和首尾六张相机图均可读。两个计数属于不同筛选口径。
+- rlt_up/down/status 不再被旧网页配置重新指向旧项目；中臂home入口归同级control，9项相关测试通过。
+- configs/rlt/plug_v3_yyshadow/initial_assets_20260927.json 记录迁移基线，不限制今后合法在线变化。
+
+证据：outputs/migrations/20260928-cutover/stage1-cross-machine.json、cobot/stage1-validation.log、cobot/resume-validation-cobot.log；网页证据在相邻 cobot-web/outputs/verification/20260928-cutover/cobot/。原始副本测试报告在 Cobot 同名迁移目录 resume-validation-cobot/report.json。
+
+仍在完成旧 cobot-platform/RLT 历史资产跨机器归档与全量校验，未通过前保留原件。新运行路径、加载、数据读取与独立学习恢复已通过；上电后的 HIL/动作/结果提交需现场短轮次验收，不构成新成功率。
