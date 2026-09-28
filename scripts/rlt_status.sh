@@ -2,6 +2,7 @@
 set -Eeuo pipefail
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 WEB="${COBOT_PLATFORM_ROOT:-$(dirname "$ROOT")/cobot-web}"
+export COBOT_RLT_PROJECT_ROOT="${COBOT_RLT_PROJECT_ROOT:-$ROOT}"
 source "$WEB/scripts/environment.sh"
 ROOT="${COBOT_RLT_PROJECT_ROOT:-$ROOT}"
 RUN="$ROOT/outputs/rlt/plug_v3_yyshadow"

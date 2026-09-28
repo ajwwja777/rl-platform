@@ -164,10 +164,8 @@ def test_request_home_runs_registered_task2_front_cli_without_a_shell(tmp_path: 
             / "scripts"
             / "home_front_once.py"
         ),
-        (
-            "/home/agilex/cobot_magic/aloha-devel/Piper-AVP-Teleop/"
-            "multi_arm_launch_tools/task2_homing/task2_home_cli.py"
-        ),
+        str(Path(__file__).resolve().parents[4] / "cobot-control"
+            / "integrations/legacy_control/task2_homing/task2_home_cli.py"),
         "front",
     ]
     assert kwargs["shell"] is False
@@ -204,7 +202,7 @@ def test_request_home_uses_registered_platform_pose(tmp_path: Path, monkeypatch)
 
     command, kwargs = calls[0]
     assert command == [
-        "/home/agilex/jiaan/project/cobot-control/scripts/home.sh",
+        str(Path(__file__).resolve().parents[4] / "cobot-control/scripts/home.sh"),
         "all", "--pose", "plug2", "--yes",
     ]
     assert kwargs["shell"] is False

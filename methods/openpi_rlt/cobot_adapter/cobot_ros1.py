@@ -19,12 +19,13 @@ from methods.openpi_rlt.cobot_adapter.schema import map_cameras
 from methods.openpi_rlt.cobot_adapter.trace import EpisodeOutcome
 
 ALOHA_PYTHON = "/home/agilex/miniconda3/envs/aloha/bin/python"
-TASK2_HOME_CLI = (
-    "/home/agilex/cobot_magic/aloha-devel/Piper-AVP-Teleop/"
-    "multi_arm_launch_tools/task2_homing/task2_home_cli.py"
-)
+CONTROL_PROJECT = Path(os.environ.get(
+    "COBOT_CONTROL_PROJECT_ROOT",
+    str(Path(__file__).resolve().parents[3].parent / "cobot-control"),
+))
+TASK2_HOME_CLI = str(CONTROL_PROJECT / "integrations/legacy_control/task2_homing/task2_home_cli.py")
 HOME_FRONT_ONCE = str(Path(__file__).resolve().parents[1] / "scripts" / "home_front_once.py")
-COBOT_PLATFORM_HOME = "/home/agilex/jiaan/project/cobot-control/scripts/home.sh"
+COBOT_PLATFORM_HOME = str(CONTROL_PROJECT / "scripts/home.sh")
 DEFAULT_TASK_PROMPT = "Open the pot lid, put the object into the pot, then close the lid."
 
 try:

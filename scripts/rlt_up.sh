@@ -2,6 +2,7 @@
 # Start/reuse the frozen plug_v3 Stage-1 server, then run upstream online RLT.
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 WEB="${COBOT_PLATFORM_ROOT:-$(dirname "$ROOT")/cobot-web}"
+export COBOT_RLT_PROJECT_ROOT="${COBOT_RLT_PROJECT_ROOT:-$ROOT}"
 source "$WEB/scripts/environment.sh"
 # Ctrl-C stops Machine B and the robot Session; the loaded Stage-1 model remains.
 set -Eeuo pipefail

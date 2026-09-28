@@ -2,6 +2,7 @@
 # Release only the registered plug_v3 Stage-1 model process.
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 WEB="${COBOT_PLATFORM_ROOT:-$(dirname "$ROOT")/cobot-web}"
+export COBOT_RLT_PROJECT_ROOT="${COBOT_RLT_PROJECT_ROOT:-$ROOT}"
 source "$WEB/scripts/environment.sh"
 set -Eeuo pipefail
 ROOT="${COBOT_RLT_PROJECT_ROOT:-$ROOT}"
