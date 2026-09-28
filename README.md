@@ -19,7 +19,8 @@
 | `third_party/openpi-rlt/` | 固定版本的上游子模块，自有独立仓库，保留作者历史 |
 | `scripts/` | 当前启动／状态／释放入口和迁移核验 |
 | /media/agilex/Getea1/jiaan/model/rl-platform/rlt/plug_insertion/ | Stage 1、固定 warmup 5k、可更新在线权重 |
-| `outputs/rlt/plug_v3_yyshadow/` | Replay、学习指标、日志、推理服务登记和诊断 |
+| `outputs/rlt/plug_v3_yyshadow/` | 学习指标、日志、推理服务登记和诊断 |
+| `/media/agilex/Getea1/jiaan/data/datasets/plug_insertion/derived/rl-platform/rlt/` | Replay、推理 trace 与验证数据 |
 | `models/history/` / `data/history/` | A6000保存历史模型与训练数据，索引见 configs/assets/legacy_rlt_models.json |
 | `outputs/migrations/` | 原件、差异、校验和切换证据 |
 | `configs/environments/` | 现场包版本清单；不等同于跨机器环境重建保证 |
@@ -72,7 +73,7 @@ uv sync --frozen
 
 ## 数据和权重的单份归属（2026-09-28）
 
-用户确认：采集原始数据、现场评测和当前部署checkpoint长期只在Cobot；训练中间checkpoint与停止部署的历史模型只在A6000。同一场景供多个模型训练，不为每个模型复制原始数据。
+用户最终确认：Cobot 数据与 checkpoint 实体均放 Getea1 的 data/model，本轮不新增 A6000 备份；既有 A6000 历史资产保留。同一场景供多个模型训练，不为每个模型复制原始数据。
 
 迁移前完整盘点与 A6000 历史资产见相邻 cobot-web/docs/storage-inventory-20260928.csv；Cobot 当前存储配置见下节。A6000 原有历史资料本批未新增备份或自动删除。
 
@@ -88,3 +89,7 @@ Cobot 数据与模型统一在 /media/agilex/Getea1/jiaan/data/ 和 /media/agile
 - Replay：/media/agilex/Getea1/jiaan/data/datasets/plug_insertion/derived/rl-platform/rlt/replay_clean_v1/replay_journal.pkl。
 
 本批复制/切换结果见 docs/MIGRATION.md 最新节。奖励、归一化、动作合同与 5,000 步 warmup 不变。
+
+## 2026-09-28 Getea1 迁移当前状态
+
+主体数据/权重已迁移到 /media/agilex/Getea1/jiaan/{data,model}，新路径网页历史及 RLT 加载验收后清理了主体旧副本。20:00 Getea1 USB 掉线，FluxVLA 环境/暂存副本的验收和清理未完成；网页已正常停止，迁移进程已退出。恢复识别后先核对文件系统和资产校验，再续迁移，不要直接开始在线训练。详细证据见实际 cobot-web/docs/STORAGE.md 和所属项目 docs/MIGRATION.md。来源：cobot_rlt 迁移会话；未新增 A6000 数据/权重备份，guide Git 不由本会话提交。
