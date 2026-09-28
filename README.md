@@ -21,6 +21,8 @@
 | `models/rlt/plug_v3_yyshadow/` | Stage 1、固定 warmup 5k、可更新在线权重 |
 | `outputs/rlt/plug_v3_yyshadow/` | Replay、学习指标、日志、推理服务登记和诊断 |
 | `outputs/migrations/` | 原件、差异、校验和切换证据 |
+| `configs/environments/` | 现场包版本清单；不等同于跨机器环境重建保证 |
+| `outputs/environments/` | 现场冻结环境备份及哈希 |
 | `envs/online` / `envs/stage1` | Cobot 的 Python 3.10 学习／3.11 推理环境 |
 | `.venv` / `uv.lock` | A6000 CPU 开发测试环境，不替换现场冻结环境 |
 

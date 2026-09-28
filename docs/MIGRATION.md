@@ -78,3 +78,11 @@
 证据：outputs/migrations/20260928-cutover/stage1-cross-machine.json、cobot/stage1-validation.log、cobot/resume-validation-cobot.log；网页证据在相邻 cobot-web/outputs/verification/20260928-cutover/cobot/。原始副本测试报告在 Cobot 同名迁移目录 resume-validation-cobot/report.json。
 
 仍在完成旧 cobot-platform/RLT 历史资产跨机器归档与全量校验，未通过前保留原件。新运行路径、加载、数据读取与独立学习恢复已通过；上电后的 HIL/动作/结果提交需现场短轮次验收，不构成新成功率。
+
+## 2026-09-28：数据与A6000旧源码清理
+
+- 五个旧数据根完整校验后删除，新Cobot数据位于/home/agilex/jiaan/data；11,123文件共158,037,688,841字节保持原样，2内部链接重定位。网页历史与媒体再次读取通过。删除回执 outputs/migrations/20260927-rlt/data-cleanup-receipt.json。
+- A6000旧proj-20260904-cobot-realworld-rl已清理：479个文件/链接与完整tar归档及可读副本一致，无活动引用。tar和legacy-a6000-source位于outputs/migrations/20260927-rlt，回执outputs/migrations/20260928-cutover/a6000-source-retirement.json。没有提交旧父仓库或其他项目的改动。
+- Cobot旧RLT源文件全量SHA清单完成，39,001条目；跨机历史归档仍在复制。复制时复用已存在的同一文件只用于减少传输，最终按完整SHA清单验收，不能仅以大小相同判定通过。
+- Cobot envs现场快照已生成，包含online/stage1/python311与overlay，排除可重新生成的pyc/cache；7,485,824,462字节，SHA-256 214403a0eeefa5f31bbc7505808fe93ec344d5e656ff4b6d815d92eae7445f2b。A6000备份传输排在历史归档之后，完成前不删除现场暂存。
+- configs/environments/cobot-online.txt（70包）与cobot-stage1.txt（202包）是冻结版本清单，不包含凭据或下载地址；不是已验证的pip从零重建锁文件。现有overlay、ROS、CUDA和SDK依赖需按启动脚本保留，不升级依赖。

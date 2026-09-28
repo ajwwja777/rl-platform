@@ -190,7 +190,7 @@ fi
 echo "RLT $MODE 已启动；操作页沿用 http://127.0.0.1:8015/。Ctrl-C 停止本次 Session，Stage-1 模型保留。"
 # Upstream resolves artifact paths relative to the process working directory,
 # not relative to the YAML file.  Keep it anchored beside the config so every
-# entry under ../../../runs lands in this RLT project's run root regardless of
+# relative models/outputs entry resolves inside this RLT project regardless of
 # whether the caller is a terminal or the web console.
 cd "$ROOT/configs/rlt/plug_v3_yyshadow"
 exec env CUDA_VISIBLE_DEVICES=0 XLA_PYTHON_CLIENT_PREALLOCATE=false \
