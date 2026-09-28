@@ -14,6 +14,6 @@ for filename in ['online_rl.yaml','online_rl_frozen.yaml']:
  diffs={k:[old[k],new[k]] for k in old if old[k]!=new[k]}
  for key,(before,after) in diffs.items():
   assert isinstance(before,str) and before.startswith('../../../runs/'),(key,before,after)
-  assert after.startswith(('../../../models/','../../../outputs/')), (key,before,after)
+  assert after.startswith(('../../../models/','../../../outputs/','/media/agilex/Getea1/jiaan/data/','/media/agilex/Getea1/jiaan/model/')), (key,before,after)
  changed[filename]=diffs
 print(json.dumps({'algorithm_parameters_unchanged':True,'path_changes':changed},indent=2))

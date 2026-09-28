@@ -5,7 +5,7 @@ experiment:
     z_dim: 2048
     proprio_dim: 7
     action_representation: delta_chunk
-    action_norm_stats_path: ../../../models/rlt/plug_v3_yyshadow/online/action_norm_stats.json
+    action_norm_stats_path: /media/agilex/Getea1/jiaan/model/rl-platform/rlt/plug_insertion/online/action_norm_stats.json
 
     gamma: 0.99
     fixed_std: 0.002
@@ -47,7 +47,7 @@ runtime:
     rpc_timeout_sec: 0.2
     bind_host: 127.0.0.1
     port: 9131
-    snapshot_path: ../../../models/rlt/plug_v3_yyshadow/online/actor_snapshot/actor_snapshot.pkl
+    snapshot_path: /media/agilex/Getea1/jiaan/model/rl-platform/rlt/plug_insertion/online/actor_snapshot/actor_snapshot.pkl
     xla_mem_fraction: 0.05
     xla_preallocate: false
 
@@ -55,8 +55,8 @@ runtime:
     push_actor_interval_steps: 500
     checkpoint_interval_steps: 1000
     sample_batch_size: 128
-    checkpoint_dir: ../../../models/rlt/plug_v3_yyshadow/online/checkpoints
-    actor_snapshot_path: ../../../models/rlt/plug_v3_yyshadow/online/actor_snapshot/actor_snapshot.pkl
+    checkpoint_dir: /media/agilex/Getea1/jiaan/model/rl-platform/rlt/plug_insertion/online/checkpoints
+    actor_snapshot_path: /media/agilex/Getea1/jiaan/model/rl-platform/rlt/plug_insertion/online/actor_snapshot/actor_snapshot.pkl
     replay_url: http://127.0.0.1:9132
     poll_interval_sec: 0.01
     xla_mem_fraction: 0.20
@@ -64,7 +64,7 @@ runtime:
 
   replay:
     capacity: 200000
-    journal_path: ../../../outputs/rlt/plug_v3_yyshadow/online/replay_clean_v1/replay_journal.pkl
+    journal_path: /media/agilex/Getea1/jiaan/data/datasets/plug_insertion/derived/rl-platform/rlt/replay_clean_v1/replay_journal.pkl
     bind_host: 127.0.0.1
     port: 9132
     seed: 42

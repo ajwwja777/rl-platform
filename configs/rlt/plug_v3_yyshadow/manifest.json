@@ -4,7 +4,7 @@
   "status": "offline_validated",
   "validated_at": "2026-09-24T03:04:36+08:00",
   "checkpoint_step": 4999,
-  "checkpoint": "/home/agilex/jiaan/project/rl-platform/models/rlt/plug_v3_yyshadow/stage1/4999",
+  "checkpoint": "/media/agilex/Getea1/jiaan/model/rl-platform/rlt/plug_insertion/reference_4999",
   "training": {
     "hpc_job_id": 646566,
     "state": "COMPLETED",
@@ -85,5 +85,7 @@
     "source_checkpoint": "/media/agilex/Getea1/jiaan/projects/rlt/checkpoints/plug_v3_yyshadow/stage1-faithful-s42/4999",
     "upstream_revision": "8cef77eb7c5211b45382bf9199c9cdf0aaf60a19",
     "algorithm_changes": false
-  }
+  },
+  "model_root": "/media/agilex/Getea1/jiaan/model/rl-platform/rlt/plug_insertion",
+  "tokenizer_home": "/media/agilex/Getea1/jiaan/model/rl-platform/rlt/base/openpi"
 }

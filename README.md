@@ -4,7 +4,7 @@
 
 - A6000：`/data/LFT-W02_data/jiaan/jiaan/projects/rl-platform`
 - Cobot：`/home/agilex/jiaan/project/rl-platform`
-- 数据：`/home/agilex/jiaan/data/rlt/plug_v3_yyshadow/`
+- 数据：`/media/agilex/Getea1/jiaan/data/datasets/plug_insertion/recordings/rl-platform/rlt/`
 - 操作手册：[RUNBOOK](docs/RUNBOOK.md)
 - 本轮验收与清理：[MIGRATION](docs/MIGRATION.md)
 - 2026-09-28：正式网页已使用新路径；现场加载、独立在线恢复和数据读取通过。本批历史归档、环境备份及对应旧目录清理已完成，详见迁移记录。
@@ -18,7 +18,7 @@
 | `methods/openpi_rlt/` | Cobot 适配、Session/HIL/录制、训练工具和历史方法 |
 | `third_party/openpi-rlt/` | 固定版本的上游子模块，自有独立仓库，保留作者历史 |
 | `scripts/` | 当前启动／状态／释放入口和迁移核验 |
-| `models/rlt/plug_v3_yyshadow/` | Stage 1、固定 warmup 5k、可更新在线权重 |
+| /media/agilex/Getea1/jiaan/model/rl-platform/rlt/plug_insertion/ | Stage 1、固定 warmup 5k、可更新在线权重 |
 | `outputs/rlt/plug_v3_yyshadow/` | Replay、学习指标、日志、推理服务登记和诊断 |
 | `models/history/` / `data/history/` | A6000保存历史模型与训练数据，索引见 configs/assets/legacy_rlt_models.json |
 | `outputs/migrations/` | 原件、差异、校验和切换证据 |
@@ -74,8 +74,21 @@ uv sync --frozen
 
 用户确认：采集原始数据、现场评测和当前部署checkpoint长期只在Cobot；训练中间checkpoint与停止部署的历史模型只在A6000。同一场景供多个模型训练，不为每个模型复制原始数据。
 
-当前Cobot数据仍在/home/agilex/jiaan/data/rlt/plug_v3_yyshadow/（示范52.82GiB、warmup81.49GiB、online0.31GiB）；模型在/home/agilex/jiaan/project/rl-platform/models/rlt/plug_v3_yyshadow/（约14.45GiB，共享Stage1占14.37GiB）。当前Replay、日志在同项目outputs/rlt/plug_v3_yyshadow/，不是原始数据的替代。
+当前Cobot数据仍在/media/agilex/Getea1/jiaan/data/datasets/plug_insertion/recordings/rl-platform/rlt/（示范52.82GiB、warmup81.49GiB、online0.31GiB）；模型在/home/agilex/jiaan/project/rl-platform/models/rlt/plug_v3_yyshadow/（约14.45GiB，共享Stage1占14.37GiB）。当前Replay、日志在同项目outputs/rlt/plug_v3_yyshadow/，不是原始数据的替代。
 
 A6000历史模型在本项目models/history/（49.17GiB），历史转换数据在data/history/legacy-rlt/（0.57GiB），历史实验原件在outputs/migrations/20260927-rlt/legacy-rlt-source/runs/（45.69GiB）。新A6000 models/rlt/plug_v3_yyshadow/仍有14.44GiB部署迁移副本，旧scratch也有原始数据/权重/实验副本，最新单份规则尚未全部落实；盘点不等于已删除。
 
 完整路径、大小和重复项见同级cobot-web/docs/STORAGE.md；原始盘点位于outputs/storage/20260928-inventory/。场景根目标为Cobot /home/agilex/jiaan/data/plug_insertion/，当前尚未改名，不混并旧相机/动作定义不同的批次。
+
+
+## 2026-09-28 Getea1 存储切换
+
+Cobot 数据与模型统一在 /media/agilex/Getea1/jiaan/data/ 和 /media/agilex/Getea1/jiaan/model/。数据按场景分、模型按项目/模型分；本轮不新增 A6000 权重备份。代码、安装环境、运行日志与 PID 留在 /home/agilex/jiaan/project/<项目>/。完整路径与批次状态见相邻 cobot-web/docs/STORAGE.md。
+
+当前现场路径以以下配置为准：
+- 模型：/media/agilex/Getea1/jiaan/model/rl-platform/rlt/plug_insertion/{reference_4999,warmup_5000,online}。
+- rollout：/media/agilex/Getea1/jiaan/data/datasets/plug_insertion/recordings/rl-platform/rlt/{warmup,online}/three_camera_v3。
+- 专家示范：/media/agilex/Getea1/jiaan/data/datasets/plug_insertion/recordings/demonstrations/three_camera_v3。
+- Replay：/media/agilex/Getea1/jiaan/data/datasets/plug_insertion/derived/rl-platform/rlt/replay_clean_v1/replay_journal.pkl。
+
+上文“当前Cobot数据”“场景根目标”等旧盘点段落是迁移前快照；本批复制/切换结果见 docs/MIGRATION.md 最新节。奖励、归一化、动作合同与 5,000 步 warmup 不变。

@@ -103,3 +103,10 @@
 证据：outputs/migrations/20260928-cutover中的rlt-source-files.json、rlt-archive-sha256.json、archive-layout.json、organized-archive-access.json、platform-cross-project-links.json；现场完整回执和加载/释放证据在outputs/migrations/20260928-retirement/cobot/。outputs/environments保存环境备份及SHA。当前冷加载/恢复通过，不构成新的模型成功率。
 
 接续使用现有docs/RUNBOOK.md：在线目录选/home/agilex/jiaan/data/rlt/plug_v3_yyshadow/online，模型选plug_v3-online-latest。网页保留原warmup目录选择，没有强行重标历史数据。现场先短轮次确认暂停/HIL、结果提交与所选复位，再连续在线采集。未进行浏览器目视动画验收；两个π0.5共享部署、FluxVLA适配和完整驱动环境重建属于后续批次。
+
+
+## 2026-09-28：Getea1 统一存储迁移（进行中）
+
+Cobot 数据与模型统一在 /media/agilex/Getea1/jiaan/data/ 和 /media/agilex/Getea1/jiaan/model/。数据按场景分、模型按项目/模型分；本轮不新增 A6000 权重备份。代码、安装环境、运行日志与 PID 留在 /home/agilex/jiaan/project/<项目>/。完整路径与批次状态见相邻 cobot-web/docs/STORAGE.md。
+
+已在 A6000 接入新存储配置及旧路径映射；逐文件复制/校验正在进行，正式网页已在空闲状态正常停止，机械臂/ROS 进程保留。本段不代表旧源目录已经删除。位姿、回放、示范、RLT rollout/Replay、评测和部署权重按 STORAGE.md 归类。最终运行验证及删除回执待本批完成后追加。

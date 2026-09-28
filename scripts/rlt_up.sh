@@ -14,7 +14,7 @@ MANIFEST="$ROOT/configs/rlt/plug_v3_yyshadow/manifest.json"
 MACHINE_PY="$ROOT/envs/stage1/bin/python"
 ONLINE_PY="$ROOT/envs/online/bin/python"
 "$ONLINE_PY" "$ROOT/scripts/preflight.py"
-export OPENPI_DATA_HOME="$ROOT/cache/openpi"
+export OPENPI_DATA_HOME="$(/usr/bin/python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["tokenizer_home"])' "$MANIFEST")"
 export HF_HUB_OFFLINE=1
 MODEL_PORT=8030
 SESSION_PORT=8026
@@ -37,7 +37,12 @@ DATA_PHASE="$MODE"
 [[ "$MODE" == frozen ]] && DATA_PHASE=online
 RLT_CONFIG="$ROOT/configs/rlt/plug_v3_yyshadow/online_rl.yaml"
 [[ "$MODE" == frozen ]] && RLT_CONFIG="$ROOT/configs/rlt/plug_v3_yyshadow/online_rl_frozen.yaml"
-DATA_ROOT="/home/agilex/jiaan/data/rlt/plug_v3_yyshadow/$DATA_PHASE"
+DATA_ROOT=$(PYTHONPATH="$WEB/app/backend" /usr/bin/python3 - "$DATA_PHASE" <<'PYDATA'
+import sys
+from cobot_console.profile_storage import default_root
+print(default_root(sys.argv[1]))
+PYDATA
+)
 mkdir -p "$RUN/model-server" "$RUN/logs" "$RUN/online/metrics" "$DATA_ROOT"
 
 port_open() {
@@ -102,7 +107,7 @@ port_open "$SESSION_PORT" && { echo "旧 RLT Session 仍占用 $SESSION_PORT；�
 
 source "$TASK5_ROS_SETUP"
 export PYTHONPATH="$ROOT:$ROOT/third_party/openpi-rlt/rlt_online_rl/src${PYTHONPATH:+:$PYTHONPATH}"
-export COBOT_RLT_TRACE_DIR="$RUN/online/traces/$MODE"
+export COBOT_RLT_TRACE_DIR="$COBOT_RLT_TRACE_ROOT/$MODE"
 export COBOT_RLT_SHADOW=0
 export COBOT_RLT_SESSION_UI=1
 export COBOT_RLT_SESSION_UI_PORT="$SESSION_PORT"
@@ -183,7 +188,7 @@ if [[ "${COBOT_RLT_SHARED_MODEL:-0}" == 1 ]]; then
     export RLT_DISABLE_LEARNER=1 COBOT_RLT_DISABLE_PHASE_CONTROLLER=1
   fi
   export COBOT_RLT_HOME_AFTER_TERMINAL=0
-  export COBOT_RLT_TRACE_DIR="$COBOT_RUNTIME_ROOT/deployment/collection-traces/$MODE"
+  export COBOT_RLT_TRACE_DIR="$COBOT_RLT_TRACE_ROOT/$MODE"
   ENV_FACTORY=cobot_console.shared_model_env:create_shared_env
 fi
 

@@ -15,19 +15,23 @@ def check(root=ROOT):
     config_dir = root / "configs/rlt" / COHORT
     config = yaml.safe_load((config_dir / "online_rl.yaml").read_text())
     manifest = json.loads((config_dir / "manifest.json").read_text())
-    model_root = root / "models/rlt" / COHORT
-    checkpoint = model_root / "stage1/4999"
+    model_root = Path(manifest.get("model_root", root / "models/rlt" / COHORT))
+    checkpoint = model_root / ("reference_4999" if manifest.get("model_root") else "stage1/4999")
+    warmup = model_root / ("warmup_5000" if manifest.get("model_root") else "warmup-5000")
     # The manifest is a site deployment registry. Refuse accidental cross-release use.
     if Path(manifest["checkpoint"]).resolve() != checkpoint:
         raise ValueError("manifest points outside this release: " + manifest["checkpoint"])
     required = [
-        root / "cache/openpi/big_vision/paligemma_tokenizer.model",
+        Path(manifest.get("tokenizer_home", str(root / "cache/openpi"))) / "big_vision/paligemma_tokenizer.model",
         checkpoint / "params",
         checkpoint / "assets/plug_v3_yyshadow_demonstrations/norm_stats.json",
-        model_root / "warmup-5000/actor_snapshot/actor_snapshot.pkl",
-        model_root / "warmup-5000/action_norm_stats.json",
+        warmup / "actor_snapshot/actor_snapshot.pkl",
+        warmup / "action_norm_stats.json",
         root / "third_party/openpi-rlt/rlt_online_rl/scripts/run_online_rl.py",
     ]
+    import runpy
+    guard = runpy.run_path(str(root.parent / 'cobot-control/robot/asset_storage.py'))['require_storage']
+    guard(model_root, write=True)
     runtime = config["runtime"]
     rl = config["experiment"]["rl"]
     paths = {
@@ -37,6 +41,8 @@ def check(root=ROOT):
         "normalization": rl["action_norm_stats_path"],
     }
     resolved = {key: (config_dir / value).resolve() for key, value in paths.items()}
+    for path in resolved.values():
+        guard(path, write=True)
     for path in required + list(resolved.values()):
         if not path.exists():
             raise FileNotFoundError(str(path))

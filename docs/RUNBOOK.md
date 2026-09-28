@@ -31,8 +31,8 @@ python3 scripts/console.py recovery status
 
 ## 在线学习
 
-1. 在采集页选择数据目录 `/home/agilex/jiaan/data/rlt/plug_v3_yyshadow/online`，检查并使用；选择目录不需要先加载模型。
-2. 选择在线模型 `plug_v3-online-latest`，核对路径为 `rl-platform/models/rlt/plug_v3_yyshadow/online/actor_snapshot/actor_snapshot.pkl`。固定 warmup 5k／Reference 用于对照，不开启在线 learner。
+1. 在采集页选择数据目录 `/media/agilex/Getea1/jiaan/data/datasets/plug_insertion/recordings/rl-platform/rlt/online/three_camera_v3`，检查并使用；选择目录不需要先加载模型。
+2. 选择在线模型 `plug_v3-online-latest`，核对路径为 `/media/agilex/Getea1/jiaan/model/rl-platform/rlt/plug_insertion/online/actor_snapshot/actor_snapshot.pkl`。固定 warmup 5k／Reference 用于对照，不开启在线 learner。
 3. 点击加载，等待成功提示。加载保持策略暂停；初次编译耗时数分钟，以 ready 状态为准。
 4. 点击开始 Session，然后开始一轮。HIL 沿用后臂示教按钮接管／释放后的新动作规划逻辑。
 5. 开启成功／失败标注：↑ 成功、↓ 失败；空格暂停／继续；→ 开始，暂停时结束保存为未标注；← 放弃。复位按所选机械臂、位姿和复位勾选执行。
@@ -63,9 +63,9 @@ less docs/COMMAND_LINE.md
 
 ## 固定模型评测
 
-评测选择 `plug-v3-reference`、`plug-v3-warmup-5k` 或 `plug_v3-frozen-latest`。保存目录使用 `/home/agilex/jiaan/data/evaluations`。最新在线模型在评测中被禁止，避免边测试边改变权重或把评测样本加入训练。
+评测选择 `plug-v3-reference`、`plug-v3-warmup-5k` 或 `plug_v3-frozen-latest`。保存目录使用 `/media/agilex/Getea1/jiaan/data/evaluations`。最新在线模型在评测中被禁止，避免边测试边改变权重或把评测样本加入训练。
 
-固定 warmup 位于 `models/rlt/plug_v3_yyshadow/warmup-5000`，独立于持续更新的 `models/rlt/plug_v3_yyshadow/online`。不要将最新 Actor 的后续成绩归到固定 warmup 5000。
+固定 warmup 位于 `/media/agilex/Getea1/jiaan/model/rl-platform/rlt/plug_insertion/warmup_5000`，独立于持续更新的 `/media/agilex/Getea1/jiaan/model/rl-platform/rlt/plug_insertion/online`。不要将最新 Actor 的后续成绩归到固定 warmup 5000。
 
 ## HTTP 报错／网页无响应
 
@@ -102,9 +102,9 @@ Input/output error 不是普通 HTTP 故障：先暂停并确保硬件安全，�
 
 | 内容 | 位置 |
 |---|---|
-| Stage 1 | `rl-platform/models/rlt/plug_v3_yyshadow/stage1/4999` |
-| 固定 warmup | `rl-platform/models/rlt/plug_v3_yyshadow/warmup-5000` |
-| 在线权重／优化器 | `rl-platform/models/rlt/plug_v3_yyshadow/online` |
+| Stage 1 | `/media/agilex/Getea1/jiaan/model/rl-platform/rlt/plug_insertion/reference_4999` |
+| 固定 warmup | `/media/agilex/Getea1/jiaan/model/rl-platform/rlt/plug_insertion/warmup_5000` |
+| 在线权重／优化器 | `/media/agilex/Getea1/jiaan/model/rl-platform/rlt/plug_insertion/online` |
 | Replay 和学习指标 | `rl-platform/outputs/rlt/plug_v3_yyshadow/online` |
 | Stage 1 进程登记 | `rl-platform/outputs/rlt/plug_v3_yyshadow/model-server/process.json` |
 | 网页任务／输出 | `cobot-web/runtime/console-jobs`、`runtime/deployment` |
