@@ -69,3 +69,13 @@ uv sync --frozen
 ```
 
 跨项目测试需要 cobot-web 位于同级目录。现场环境不是通过这份 CPU 开发依赖重新安装；迁移保留现场现有版本与加载顺序。
+
+## 数据和权重的单份归属（2026-09-28）
+
+用户确认：采集原始数据、现场评测和当前部署checkpoint长期只在Cobot；训练中间checkpoint与停止部署的历史模型只在A6000。同一场景供多个模型训练，不为每个模型复制原始数据。
+
+当前Cobot数据仍在/home/agilex/jiaan/data/rlt/plug_v3_yyshadow/（示范52.82GiB、warmup81.49GiB、online0.31GiB）；模型在/home/agilex/jiaan/project/rl-platform/models/rlt/plug_v3_yyshadow/（约14.45GiB，共享Stage1占14.37GiB）。当前Replay、日志在同项目outputs/rlt/plug_v3_yyshadow/，不是原始数据的替代。
+
+A6000历史模型在本项目models/history/（49.17GiB），历史转换数据在data/history/legacy-rlt/（0.57GiB），历史实验原件在outputs/migrations/20260927-rlt/legacy-rlt-source/runs/（45.69GiB）。新A6000 models/rlt/plug_v3_yyshadow/仍有14.44GiB部署迁移副本，旧scratch也有原始数据/权重/实验副本，最新单份规则尚未全部落实；盘点不等于已删除。
+
+完整路径、大小和重复项见同级cobot-web/docs/STORAGE.md；原始盘点位于outputs/storage/20260928-inventory/。场景根目标为Cobot /home/agilex/jiaan/data/plug_insertion/，当前尚未改名，不混并旧相机/动作定义不同的批次。
