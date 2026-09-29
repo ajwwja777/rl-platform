@@ -60,13 +60,14 @@ def initialize(project: Path):
     )
 
 
-def load(project: Path, checkpoint: Path, *, num_steps: int = 10):
+def load(project: Path, checkpoint: Path, *, num_steps: int = 10, rtc_overlay: Path | None = None):
     checkpoint = checkpoint.resolve()
     asset_id = "plug_v3_yyshadow_demonstrations"
     norm_file = checkpoint / "assets" / asset_id / "norm_stats.json"
     if not (checkpoint / "params").is_dir() or not norm_file.is_file():
         raise ValueError(f"incomplete Stage-1 release: {checkpoint}")
 
+    rtc_sampler = None
     timing = LoadTiming()
     print("MODEL_LOAD initialize", flush=True)
     (
@@ -83,6 +84,9 @@ def load(project: Path, checkpoint: Path, *, num_steps: int = 10):
         training_config,
     ) = initialize(project)
     timing.mark("imports")
+    if rtc_overlay is not None:
+        from methods.openpi_rlt.experiments.rtc import load_sampler
+        rtc_sampler = load_sampler(rtc_overlay)
     print("MODEL_LOAD config", flush=True)
     config = builder(
         dataset_repo_id=asset_id,
@@ -144,6 +148,14 @@ def load(project: Path, checkpoint: Path, *, num_steps: int = 10):
             actions = self.vla.sample_actions_from_prefix_cache(rng, cache, num_steps=num_steps)
             return actions, z
 
+        def infer_rtc(self, rng, observation, previous, delay, execution):
+            cache = self.vla.prepare_prefix_for_inference(observation)
+            z = self.rlt_module(cache.image_prefix_out.astype(jnp.float32), None, method="encode", train=False)
+            actions = rtc_sampler(self.vla, rng, observation, previous,
+                inference_delay=delay, execution_horizon=execution,
+                num_steps=num_steps, prefix_cache=cache)
+            return actions, z
+
     print("MODEL_LOAD structure", flush=True)
     prefix_len = infer_prefix_len(config.model)
 
@@ -187,6 +199,7 @@ def load(project: Path, checkpoint: Path, *, num_steps: int = 10):
         ]
     )
     infer = nnx_utils.module_jit(model.infer_fixed)
+    infer_rtc = nnx_utils.module_jit(model.infer_rtc) if rtc_sampler is not None else None
     timing.mark("bind_inference")
     print("MODEL_LOAD ready_for_compile", flush=True)
 
@@ -206,6 +219,7 @@ def load(project: Path, checkpoint: Path, *, num_steps: int = 10):
                 "control_hz": 30,
                 "reference_sampling": "fixed_seed_42",
                 "denoising_steps": num_steps,
+                "rtc_prefix_supported": infer_rtc is not None,
                 "checkpoint": str(checkpoint),
                 "norm_stats_sha256": hashlib.sha256(norm_file.read_bytes()).hexdigest(),
             }
@@ -225,7 +239,18 @@ def load(project: Path, checkpoint: Path, *, num_steps: int = 10):
             batched = jax.tree.map(lambda value: jnp.asarray(value)[None, ...], transformed)
             model_observation = model_api.Observation.from_dict(batched)
             started = time.perf_counter()
-            actions, token = infer(jax.random.key(42), model_observation)
+            rtc_request = observation.get("rtc")
+            if rtc_request is not None:
+                if infer_rtc is None:
+                    raise ValueError("RTC is not enabled for this Stage1 server")
+                from methods.openpi_rlt.experiments.rtc import encode_prefix
+                previous, delay, execution = encode_prefix(
+                    {"state": state, "images": images, "prompt": observation.get("prompt", PROMPT)},
+                    rtc_request, input_transform, action_dim=config.model.action_dim)
+                actions, token = infer_rtc(jax.random.key(42), model_observation,
+                    jnp.asarray(previous)[None], jnp.asarray(delay), jnp.asarray(execution))
+            else:
+                actions, token = infer(jax.random.key(42), model_observation)
             actions = np.asarray(actions[0])
             token = np.asarray(token[0], dtype=np.float32).reshape(-1)
             physical = output_transform({"state": np.asarray(transformed["state"]), "actions": actions})["actions"]
