@@ -1,6 +1,5 @@
 """Replay provenance and real-batch composition, separate from the training algorithm."""
 import collections
-import hashlib
 import json
 import os
 import pickle
@@ -112,25 +111,29 @@ class JournalIndex:
                     unique_transitions=len(set(tuple(i) for i in ids)),
                     identity_resolution="ambiguous" if self.duplicates else "phase+episode+step")
 
-def build_report(journal):
-    index = JournalIndex(journal)
-    index.refresh()
+def report_from_index(index):
+    """Build a metadata snapshot without reopening the large journal."""
     episodes = {}
     for row in index.rows:
         key = (row["phase"], row["episode_id"])
         episodes.setdefault(key, dict(row, transitions=0))["transitions"] += 1
-    return {"schema": 1, "generated_at": time.time(), "journal": str(journal),
+    return {"schema": 1, "generated_at": time.time(), "journal": str(index.path),
         "bytes_read": index.offset, "duplicate_identities": index.duplicates,
         "transitions": composition(index.rows), "episodes": composition(list(episodes.values())),
         "episode_rows": list(episodes.values()),
         "definitions": {
             "outcome": "Complete episode terminal label; not transition.success.",
-            "hil": "Transition contains HUMAN/MIXED or an intervention flag; episode_hil is a separate overlapping marginal.",
+            "hil": "Contains HUMAN/MIXED or an intervention flag, including old human demonstrations; this does not always mean online intervention.",
             "age": "warmup / recent online episode ID window of 20 / older online; not wall-clock age.",
             "portion": "Rank thirds of stored windows within each episode; not wall-clock thirds or insertion stages.",
             "sampling": "Current upstream uniform sampling is with replacement; composition does not prove data influence.",
             "identity": "phase + episode_id + step_id. Duplicate identities are reported, never silently disambiguated."
         }}
+
+def build_report(journal):
+    index = JournalIndex(journal)
+    index.refresh()
+    return report_from_index(index)
 
 def atomic_json(path, payload):
     path = Path(path)
@@ -172,7 +175,15 @@ def install_batch_audit(config_path):
             try:
                 if not hasattr(service, "_cobot_audit_index"):
                     service._cobot_audit_index = JournalIndex(journal)
-                report = service._cobot_audit_index.batch(captured["batch"])
+                index = service._cobot_audit_index
+                report = index.batch(captured["batch"])
+                # Publish composition only when new journal metadata arrives, not every update.
+                signature = (index.signature, index.offset)
+                if getattr(service, "_cobot_audit_snapshot", None) != signature:
+                    metrics = Path(service._metrics_path)
+                    snapshot = metrics.parent.parent.parent / "analysis/replay_composition.json"
+                    atomic_json(snapshot, report_from_index(index))
+                    service._cobot_audit_snapshot = signature
                 report.update(run_id=run_id, global_step=int(result["global_step"]),
                               actor_version=int(result["actor_version"]), timestamp=time.time())
                 target = Path(service._metrics_path).with_name("batch_composition.jsonl")

@@ -174,3 +174,18 @@ A6000已有同版4999权重验证：全部3,757,772,560个保留参数逐值一�
 Added lightweight telemetry aggregation and offline Replay posture/action projection; four regression tests passed. No training/driver changes. See docs/ANALYSIS.md. This batch deploys only the new analysis files; concurrent Cobot NVMe/probe edits remain untouched and are not included in this commit.
 
 Live verification: the registered Cobot journal produced 3917 valid transitions, zero skipped; PCA axes explain 19.61% and 11.90%. Output: /home/agilex/jiaan/project/rl-platform/outputs/rlt/plug_v3_yyshadow/analysis/replay_projection.json. Web e775308 consumes it read-only via /api/analysis/rlt. The 9 hardware process identities were unchanged; no inference, learner update or Replay write was requested. The first analysis HTTP read completed in 0.20 seconds. Only newly added analysis files were synchronized; concurrent NVMe/probe files were preserved. Detailed deployment receipt is in the sibling cobot-web runtime/verification/rlt-analysis-20260929/release.json.
+
+## 2026-09-29: Replay provenance and offline learning diagnosis
+
+Added real-batch identity observation at the project Learner entry, composition refresh on journal growth,
+archived Actor/Critic matching-step audits, whole-episode Online holdout sampling experiments,
+loss/input sensitivity and recorded-image occlusion. Pinned upstream/train_step and production assets unchanged.
+A6000 tests: 9 lightweight regressions; 1 frozen-JAX test with two real Learner updates compares
+every state leaf and metrics exactly against an unaudited run. No re-sampling/RNG change.
+12 experimental runs (4 sampling recipes x 3 seeds x 2000 updates), 14 archived Actors,
+checkpoint11000 gradients and 6 recorded frames / 306 occluded Stage1 forwards completed on idle Cobot.
+Full definitions, results, limitations and commands: docs/DIAGNOSIS_20260929.md.
+Reports are ignored outputs; only small report copies returned to A6000. No production weights saved.
+Actual historical batch identities unavailable; production logging starts next Learner launch.
+New GPU version audits require explicit invocation; no automatic live GPU hook.
+Code is developed/pushed on A6000; selected-file Cobot sync follows remote hash checks.

@@ -32,3 +32,14 @@ Projection features are proprio[7] and mean(action_chunk-reference_chunk)[7], st
 ## Verification (2026-09-29)
 
 Four isolated tests passed: repeated-step segmentation; autonomous/assisted and zero-write denominators; partial/missing telemetry; deterministic projection with unchanged journal SHA. Live read-only results and UI release evidence are recorded in cobot-web/docs/MIGRATION.md. No motion or training parameter change is part of this feature.
+
+## Replay/batch audit and offline experiments (2026-09-29)
+
+See [the reproducible diagnosis report](DIAGNOSIS_20260929.md) for actual composition,
+12 sampling runs, 14 Actor audits, gradients and recorded-image sensitivity.
+The Learner entry observes the original sampled batch without re-sampling.
+Composition refreshes on journal growth during training; PCA remains an explicit job.
+Historical batch identities are not recoverable. HUMAN includes old demonstrations;
+episode success is not transition.success; rank thirds are not semantic task phases.
+Published-version audits are training-seen. Sampling experiments hold out complete
+Online episodes from a Warmup5000 start. Production weights/parameters are unchanged.

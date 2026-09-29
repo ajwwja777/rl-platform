@@ -55,7 +55,8 @@ def test_instrumentation_does_not_resample_or_change_training(tmp_path,monkeypat
             return batch
     class Service:
         def __init__(self):
-            self._replay_source=Source();self._metrics_path=str(tmp_path/"learner_metrics.jsonl")
+            self._replay_source=Source();self._metrics_path=str(tmp_path/"run/online/metrics/learner_metrics.jsonl")
+            Path(self._metrics_path).parent.mkdir(parents=True)
         def train_once(self):
             self.seen=self._replay_source.sample_batch(1)
             return dict(global_step=1,actor_version=0)
@@ -67,6 +68,13 @@ def test_instrumentation_does_not_resample_or_change_training(tmp_path,monkeypat
     install_batch_audit(config)
     result=service.train_once()
     assert service._replay_source is source and source.calls==1 and service.seen is batch
-    report=json.loads((tmp_path/"batch_composition.jsonl").read_text())
+    report=json.loads((tmp_path/"run/online/metrics/batch_composition.jsonl").read_text())
     assert report["global_step"]==result["global_step"]
     assert report["dimensions"]["outcome"][0]["label"]=="success"
+
+    snapshot=json.loads((tmp_path/"run/analysis/replay_composition.json").read_text())
+    assert snapshot["transitions"]["count"]==1
+    first_time=(tmp_path/"run/analysis/replay_composition.json").stat().st_mtime_ns
+    service.train_once()
+    assert source.calls==2
+    assert (tmp_path/"run/analysis/replay_composition.json").stat().st_mtime_ns==first_time
