@@ -4,6 +4,8 @@ import argparse,base64,io,json,os,sys,time
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT))
+overlay=ROOT/"envs/machine-a-py311-overlay"
+if overlay.is_dir():sys.path.insert(0,str(overlay))
 os.environ.setdefault("XLA_PYTHON_CLIENT_PREALLOCATE","false")
 os.environ.setdefault("XLA_PYTHON_CLIENT_MEM_FRACTION",".55")
 
