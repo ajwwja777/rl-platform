@@ -172,3 +172,5 @@ A6000已有同版4999权重验证：全部3,757,772,560个保留参数逐值一�
 ## 2026-09-29: read-only training diagnostics
 
 Added lightweight telemetry aggregation and offline Replay posture/action projection; four regression tests passed. No training/driver changes. See docs/ANALYSIS.md. This batch deploys only the new analysis files; concurrent Cobot NVMe/probe edits remain untouched and are not included in this commit.
+
+Live verification: the registered Cobot journal produced 3917 valid transitions, zero skipped; PCA axes explain 19.61% and 11.90%. Output: /home/agilex/jiaan/project/rl-platform/outputs/rlt/plug_v3_yyshadow/analysis/replay_projection.json. Web e775308 consumes it read-only via /api/analysis/rlt. The 9 hardware process identities were unchanged; no inference, learner update or Replay write was requested. The first analysis HTTP read completed in 0.20 seconds. Only newly added analysis files were synchronized; concurrent NVMe/probe files were preserved. Detailed deployment receipt is in the sibling cobot-web runtime/verification/rlt-analysis-20260929/release.json.
