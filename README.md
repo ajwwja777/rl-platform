@@ -111,3 +111,7 @@ Cobot 数据与模型统一在 /media/agilex/Getea1/jiaan/data/ 和 /media/agile
 Diagnostic UI and offline Replay projection: [ANALYSIS](docs/ANALYSIS.md).
 
 RLT Replay, sampling experiments and recorded-image diagnosis: [2026-09-29 report](docs/DIAGNOSIS_20260929.md).
+
+## 2026-09-30: opt-in credit experiments
+
+See [RLT experiments and candidate operation](docs/EXPERIMENTS_20260930.md) for the module structure, 21-run comparison, MC30 registration, recorded-data RTC results and rollback. The original online entry remains unchanged; the candidate has separate weights and logs, shares Replay, and still needs robot acceptance.

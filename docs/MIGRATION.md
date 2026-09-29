@@ -197,3 +197,7 @@ configuration. Formal8015 returns3917 transitions,14 retained versions,12 sampli
 Actual batch history is correctly empty until next Learner launch. Fixed-cohort regression added:
 --versions-only reuses saved episode IDs as Replay grows and refuses changed cohort size.
 10 lightweight tests plus1 real-JAX equality regression passed. No model/policy was started.
+
+## 2026-09-30: registered credit candidate and execution diagnostics
+
+A6000 development -> tests -> project Git push -> selected Cobot files with SHA256 verification. Added method-owned sampling/MC experiments, seven recipes x three seeds x 2,000 updates. Native upstream and journal rewards remain unchanged. MC30 candidate at /media/agilex/Getea1/jiaan/model/rl-platform/rlt/plug_insertion/history/candidates/credit_20260930/mc_30/online_candidate; runtime config /home/agilex/jiaan/project/rl-platform/runtime/experiments/credit_mc30/online.yaml. Actual Learner restore/update/publish/restart passed; isolated spawned Replay/Learner/Actor passed without EnvDriver. Fixed candidate shutdown ordering so Learner flush completes before Replay stops. Recorded 7D Stage1 RTC inference passed, but RTC/high-frequency publication remain disabled pending integrated control/Replay tests and field acceptance. Full results, paths, limitations and CLI: docs/EXPERIMENTS_20260930.md. Source: cobot_rlt conversation; no robot motion, no guide Git submission.
