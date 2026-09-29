@@ -140,6 +140,10 @@ export COBOT_RLT_TASK5_DATA_ROOT="$DATA_ROOT"
 export COBOT_RLT_TASK_ID=plug_v3_yyshadow
 export COBOT_RLT_MODEL_ID=openpi_rlt
 export COBOT_RLT_CHECKPOINT_ID="$(basename "$checkpoint")"
+if [[ -n "$EXPERIMENT_RUN" ]]; then
+  # Actor versions overlap between branches; retain the selected lineage in recordings.
+  export COBOT_RLT_CHECKPOINT_ID="$COBOT_DEPLOYMENT_MODEL_ID"
+fi
 export COBOT_RLT_DATASET_ROUND="$DATA_PHASE"
 export COBOT_RLT_COLLECTION_PHASE="$DATA_PHASE"
 export COBOT_RLT_WARMUP_MIN_SIZE=600

@@ -62,6 +62,13 @@ def run_learner(system,profile,config_path):
     from run_online_rl import _run_learner_service
     _run_learner_service(system)
 
+def guarded_worker(target,*args,**kwargs):
+    # A terminal Ctrl-C / web unload reaches the whole process group.
+    # The supervisor owns shutdown; children wait for its ordered SIGTERM.
+    import signal
+    signal.signal(signal.SIGINT,signal.SIG_IGN)
+    return target(*args,**kwargs)
+
 def run_registered(upstream_root,argv,profile_name):
     import functools,json,multiprocessing as mp,sys
     project=Path(__file__).resolve().parents[3]
@@ -83,7 +90,7 @@ def run_registered(upstream_root,argv,profile_name):
     def spawn(name,target,*args,**kwargs):
         if name=="learner_service":
             target=functools.partial(run_learner,profile=profile,config_path=config_path)
-        return original(name,target,*args,**kwargs)
+        return original(name,guarded_worker,target,*args,**kwargs)
     native._spawn_process=spawn
     def stop_in_dependency_order(processes, *, logger, grace_sec=5.0):
         # Stop commands first, then flush Learner while Replay is reachable.
