@@ -201,7 +201,7 @@ envs/online/bin/python scripts/diagnose_online_learning.py \
   --updates 2000 --seeds 41,42,43 \
   --output outputs/rlt/plug_v3_yyshadow/analysis/learning_diagnosis.json
 
-# Refresh archived-version audits, preserving prior sampling experiments
+# Refresh audits on the saved episode cohort; preserve sampling experiments
 envs/online/bin/python scripts/diagnose_online_learning.py \
   --versions-only \
   --output outputs/rlt/plug_v3_yyshadow/analysis/learning_diagnosis.json
@@ -236,3 +236,5 @@ deployment weights; no production checkpoint/Replay writes occur.
   [Quantifying Attention Flow](https://aclanthology.org/2020.acl-main.385/):
   raw attention alone has explanatory limits; use interventions and validate
   applicability to this VLA before treating a heatmap as a failure explanation.
+
+Validation: 10 lightweight regressions and one frozen-JAX real-Learner equality test passed. Web release checks and verification boundaries are in cobot-web/docs/MIGRATION.md. No independent robot success test was run in this batch.

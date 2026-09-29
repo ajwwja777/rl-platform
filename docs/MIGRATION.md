@@ -189,3 +189,11 @@ Reports are ignored outputs; only small report copies returned to A6000. No prod
 Actual historical batch identities unavailable; production logging starts next Learner launch.
 New GPU version audits require explicit invocation; no automatic live GPU hook.
 Code is developed/pushed on A6000; selected-file Cobot sync follows remote hash checks.
+
+### Live release verification
+
+The audit and diagnostic scripts are synced on Cobot, preserving concurrent local NVMe/probe
+configuration. Formal8015 returns3917 transitions,14 retained versions,12 sampling runs and6 image frames.
+Actual batch history is correctly empty until next Learner launch. Fixed-cohort regression added:
+--versions-only reuses saved episode IDs as Replay grows and refuses changed cohort size.
+10 lightweight tests plus1 real-JAX equality regression passed. No model/policy was started.

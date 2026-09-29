@@ -109,3 +109,5 @@ Cobot 数据与模型统一在 /media/agilex/Getea1/jiaan/data/ 和 /media/agile
 当前存储迁移已验收清理，USB 掉线后的资产复核通过；完整限制与回执见同级 cobot-web/docs/STORAGE.md。
 
 Diagnostic UI and offline Replay projection: [ANALYSIS](docs/ANALYSIS.md).
+
+RLT Replay, sampling experiments and recorded-image diagnosis: [2026-09-29 report](docs/DIAGNOSIS_20260929.md).
