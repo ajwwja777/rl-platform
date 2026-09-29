@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "profiles": {
+    "credit_mc30": {
+      "experiment": "mc_30",
+      "config": "runtime/experiments/credit_mc30/online.yaml",
+      "run_dir": "outputs/rlt/candidates/credit_mc30",
+      "validation": "Offline candidate; robot acceptance pending",
+      "rtc": false,
+      "logical_hz": 20,
+      "publish_hz": 20,
+      "execute_steps": 10,
+      "noise_std": 0.002
+    }
+  }
+}

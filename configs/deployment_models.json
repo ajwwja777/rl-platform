@@ -116,6 +116,48 @@
       "stage1_step": 4999,
       "learner_step": null,
       "code_version_source": "Git revision + configs/assets manifests"
+    },
+    {
+      "id": "plug-v3-credit-mc30",
+      "label": "RLT credit MC30 candidate",
+      "kind": "rlt",
+      "mode": "online",
+      "checkpoint": "{RLT_MODELS}/history/candidates/credit_20260930/mc_30/online_candidate/actor_snapshot/actor_snapshot.pkl",
+      "base_checkpoint": "{BASE_CHECKPOINT}",
+      "step": 7000,
+      "actor_version": 3500,
+      "prompt": "Insert the held plug into the socket.",
+      "home_pose": "plug2",
+      "control_hz": 20,
+      "validation": "21 offline ablations completed; robot acceptance pending",
+      "deterministic": false,
+      "checkpoint_type": "resumable_checkpoint_with_actor_export",
+      "resumable_training": true,
+      "task": "plug_insertion",
+      "integration_level": "preserved_runtime",
+      "capabilities": {
+        "load": true,
+        "ready": true,
+        "start": true,
+        "pause": true,
+        "resume": true,
+        "stop": true,
+        "unload": true,
+        "logs": true,
+        "pid": true,
+        "capture": true,
+        "hil": true,
+        "evaluate": true,
+        "train": true
+      },
+      "io_contract": "rlt-right-arm-v3",
+      "stage1_step": 4999,
+      "learner_step": 7000,
+      "code_version_source": "Git revision + configs/assets manifests",
+      "adapter_id": "plug_v3-online-latest",
+      "custom": true,
+      "runtime_profile": "credit_mc30",
+      "evaluation_allowed": false
     }
   ]
 }

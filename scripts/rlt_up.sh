@@ -36,6 +36,18 @@ DATA_PHASE="$MODE"
 [[ "$MODE" == frozen ]] && DATA_PHASE=online
 RLT_CONFIG="$ROOT/configs/rlt/plug_v3_yyshadow/online_rl.yaml"
 [[ "$MODE" == frozen ]] && RLT_CONFIG="$ROOT/configs/rlt/plug_v3_yyshadow/online_rl_frozen.yaml"
+# Optional project-owned experiment; original model registrations stay unchanged.
+EXPERIMENT_RUN=""
+unset COBOT_RLT_EXPERIMENT_PROFILE
+profile_values=$(PYTHONPATH="$ROOT" /usr/bin/python3 -m integrations.cobot_runtime.experiment_profiles "${COBOT_DEPLOYMENT_MODEL_ID:-}")
+if [[ -n "$profile_values" ]]; then
+  [[ "$MODE" == online ]] || { echo "Experimental profile requires online mode" >&2; exit 2; }
+  mapfile -t profile_fields <<< "$profile_values"
+  export COBOT_RLT_EXPERIMENT_PROFILE="${profile_fields[0]}"
+  RLT_CONFIG="${profile_fields[1]}"
+  EXPERIMENT_RUN="${profile_fields[2]}"
+  mkdir -p "$EXPERIMENT_RUN/online/metrics"
+fi
 DATA_ROOT=$(PYTHONPATH="$ROOT" /usr/bin/python3 - "$DATA_PHASE" <<'PYDATA'
 import sys
 from integrations.cobot_runtime.profile_storage import default_root
@@ -160,8 +172,8 @@ if [[ "$MODE" == reference || "$MODE" == warmup ]]; then
 else
   unset RLT_ALLOW_UNINITIALIZED_ACTOR
 fi
-export RLT_OUTPUT_DIR="$RUN/online"
-export COBOT_RLT_LEARNER_STATUS_PATH="$RUN/online/metrics/learner_status.json"
+export RLT_OUTPUT_DIR="${EXPERIMENT_RUN:-$RUN}/online"
+export COBOT_RLT_LEARNER_STATUS_PATH="$RLT_OUTPUT_DIR/metrics/learner_status.json"
 export COBOT_RLT_REPLAY_URL=http://127.0.0.1:9132
 export COBOT_RLT_ACTOR_URL=http://127.0.0.1:9131
 export COBOT_RLT_CONTROL_HZ=20

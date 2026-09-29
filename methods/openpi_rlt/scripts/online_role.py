@@ -49,7 +49,12 @@ def main() -> None:
         install_batch_audit(upstream_args[upstream_args.index("--config") + 1])
     sys.argv = [str(runner), *upstream_args]
     try:
-        runpy.run_path(str(runner), run_name="__main__")
+        profile = os.environ.get("COBOT_RLT_EXPERIMENT_PROFILE")
+        if profile:
+            from methods.openpi_rlt.experiments.runtime import run_registered
+            run_registered(upstream_root, upstream_args, profile)
+        else:
+            runpy.run_path(str(runner), run_name="__main__")
     except RuntimeError as error:
         if not _is_expected_operator_shutdown(error):
             raise
