@@ -78,3 +78,11 @@ def test_instrumentation_does_not_resample_or_change_training(tmp_path,monkeypat
     service.train_once()
     assert source.calls==2
     assert (tmp_path/"run/analysis/replay_composition.json").stat().st_mtime_ns==first_time
+
+def test_version_audit_keeps_held_episodes_when_journal_grows():
+    rows=annotate([metadata(row(ep,0,True,ep%2)) for ep in range(20)])
+    _,original_val,held=episode_split(rows)
+    expanded=annotate([metadata(row(ep,0,True,ep%2)) for ep in range(40)])
+    _,new_val,new_held=episode_split(expanded,held_episodes=held)
+    assert held==new_held
+    assert [rows[i]["episode_id"] for i in original_val]==[expanded[i]["episode_id"] for i in new_val]

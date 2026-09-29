@@ -25,7 +25,7 @@ def auc(scores, labels):
     d = a[:, None] - b[None, :]
     return float(np.mean((d > 0) + .5 * (d == 0)))
 
-def episode_split(meta, seed=42):
+def episode_split(meta, seed=42, held_episodes=None):
     """Split ONLINE episodes only. Warmup init has never trained on these online rows."""
     groups = {}
     for row in meta:
@@ -39,6 +39,10 @@ def episode_split(meta, seed=42):
         values = sorted(values)
         rng.shuffle(values)
         held.update(values[:max(1, round(len(values) * .25))] if len(values) > 1 else [])
+    if held_episodes is not None:
+        held = {tuple(x) for x in held_episodes}
+        if not held or not held.issubset(groups):
+            raise ValueError("Saved audit episodes are missing or no longer have known outcomes")
     train = np.array([i for i,r in enumerate(meta) if (r["phase"],r["episode_id"]) not in held])
     val = np.array([i for i,r in enumerate(meta) if (r["phase"],r["episode_id"]) in held])
     return train, val, sorted(held)
@@ -76,7 +80,10 @@ def main():
         while f.tell() < size: rows.append(pickle.load(f))
     if f.closed and sum(not isinstance(x,dict) for x in rows): raise ValueError("Invalid journal")
     meta = annotate([metadata(r) for r in rows])
-    train, val, held = episode_split(meta)
+    previous = json.loads(args.output.read_text()) if args.versions_only else None
+    train, val, held = episode_split(meta, held_episodes=previous["holdout_online_episodes"] if previous else None)
+    if previous and len(val) != previous["holdout_transitions"]:
+        raise ValueError("Saved audit episode contents changed; do not mix evaluation cohorts")
     if not len(val): raise ValueError("No online episode holdout")
     numeric = [k for k in rows[0] if k != "collection_phase"]
     raw = {k: np.stack([r[k] for r in rows]) for k in numeric}
@@ -158,7 +165,7 @@ def main():
         row["critic_judgment"] = "matching checkpoint, training-seen" if cp is not None else "not retained at this publication step"
         row.update(evaluate(trainer._tree_to_jax(d["actor_params"]),cp,val));report["versions"].append(row)
     if args.versions_only:
-        previous = json.loads(args.output.read_text())
+        previous["version_audit_journal_sha256"] = report["journal_sha256"]
         previous["versions"] = report["versions"]
         previous["version_audit_at"] = time.time()
         atomic_json(args.output, previous)
