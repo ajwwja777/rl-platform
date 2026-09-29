@@ -162,3 +162,9 @@ A6000已有同版4999权重验证：全部3,757,772,560个保留参数逐值一�
 发布与现场保护核验：源码8c3cc48已push并核对origin/main，Cobot同步528文件SHA一致。π0.5 supervisor2019008、GPU服务2019058、客户端2025877，机械臂1318293、相机1317979及start_ticks均保持，网页无错误。未加载RLT、未创建机器人发布器，未改数据/模型资产。再次缓存命中的完整固定输入输出亦与原版逐值一致。
 
 发布回执：A6000 /data/LFT-W02_data/jiaan/jiaan/projects/rl-platform/outputs/startup-optimization-20260929/release.json；Cobot /home/agilex/jiaan/project/rl-platform/runtime/verification/startup-optimization-20260929/release.json。后续文档提交仅补记录，最终文档版本见Git main和.release.json。下一次用户正常切换RLT后核对实际GPU冷读、预热、峰值显存，不因A6000验证通过而自动释放π0.5或启动新模型。
+
+## 2026-09-29：首次优化版 Cobot 冷加载实测
+
+用户16:46:18点击加载在线RLT，16:51:08开始RL角色，约290秒。Stage1 imports3.501秒、配置0.349秒、抽象结构1.664秒、恢复259.279秒、绑定0.107秒；首次固定输入编译/推理21.016秒，后两次76.79/72.18ms。约4分50秒而非A6000 CPU的20秒，主要瓶颈仍是Getea1权重恢复。Stage1 PID2139241，supervisor2139119，日志outputs/rlt/plug_v3_yyshadow/logs/model-20260929T084619Z.log。模型自检通过不代表真机成功率。
+
+随后 Session 开始失败来自历史未标注示范目录，而非模型加载；修正归cobot-dagger/web，保留RLT模型和算法进程。未修改训练/Replay/动作配置。现场用户后来切换online目录，已自行完成轮次；agent不为验证自动开始推理。
