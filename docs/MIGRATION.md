@@ -168,3 +168,4 @@ A6000已有同版4999权重验证：全部3,757,772,560个保留参数逐值一�
 用户16:46:18点击加载在线RLT，16:51:08开始RL角色，约290秒。Stage1 imports3.501秒、配置0.349秒、抽象结构1.664秒、恢复259.279秒、绑定0.107秒；首次固定输入编译/推理21.016秒，后两次76.79/72.18ms。约4分50秒而非A6000 CPU的20秒，主要瓶颈仍是Getea1权重恢复。Stage1 PID2139241，supervisor2139119，日志outputs/rlt/plug_v3_yyshadow/logs/model-20260929T084619Z.log。模型自检通过不代表真机成功率。
 
 随后 Session 开始失败来自历史未标注示范目录，而非模型加载；修正归cobot-dagger/web，保留RLT模型和算法进程。未修改训练/Replay/动作配置。现场用户后来切换online目录，已自行完成轮次；agent不为验证自动开始推理。
+\n## 2026-09-29: read-only training diagnostics\n\nAdded lightweight telemetry aggregation and offline Replay posture/action projection; four regression tests passed. No training/driver changes. See docs/ANALYSIS.md. This batch deploys only the new analysis files; concurrent Cobot NVMe/probe edits remain untouched and are not included in this commit.\n
