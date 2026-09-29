@@ -197,3 +197,18 @@ robot rollout, physical success/safety A/B, integrated RLT asynchronous RTC and
 candidate check. Use new evaluation episodes with fixed initial conditions and
 report autonomous success, assisted success, HIL time, action discontinuities and
 timeouts separately.
+
+## Modified documentation paths
+
+- /data/LFT-W02_data/jiaan/jiaan/projects/rl-platform/README.md
+- /data/LFT-W02_data/jiaan/jiaan/projects/rl-platform/docs/MIGRATION.md
+- /data/LFT-W02_data/jiaan/jiaan/projects/vla-platform/docs/JIAAN.md
+- /data/LFT-W02_data/jiaan/jiaan/projects/vla-platform/docs/MIGRATION.md
+- /data/LFT-W02_data/jiaan/jiaan/projects/cobot-web/docs/COMMAND_LINE.md
+- /data/LFT-W02_data/jiaan/jiaan/projects/cobot-web/docs/MIGRATION.md
+- /data/LFT-W02_data/jiaan/jiaan/agent-guide/projects/rl-platform/README.md
+- /data/LFT-W02_data/jiaan/jiaan/agent-guide/projects/vla-platform/README.md
+- /data/LFT-W02_data/jiaan/jiaan/agent-guide/projects/cobot-web/README.md
+- /data/LFT-W02_data/jiaan/jiaan/projects/rl-platform/docs/EXPERIMENTS_20260930.md
+
+Final acceptance: formal 8015 serves 21 credit experiments and seven action plots; English rendering and responsive read-only checks passed. MC30 catalog reports available, training enabled, published Learner7000 / Actor3500. UI-only reload preserved all six observed hardware process identities. Group-wide Ctrl-C also passed ordered candidate shutdown with no traceback or listening test ports. Guide records updated without committing its Git.
