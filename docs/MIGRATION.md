@@ -158,3 +158,7 @@ A6000已有同版4999权重验证：全部3,757,772,560个保留参数逐值一�
 独立CPU进程、4个CPU核完整加载比较：原版32.60秒，新版19.80秒；首次完整推理28.02秒→25.68秒。再次启动新版加载20.10秒，明确命中jit_fun持久编译缓存，CPU首次执行23.50秒。这些是A6000 CPU实测，不能宣称Cobot原约9分钟加载已降到20秒；Cobot机械盘冷读和GPU峰值/编译时间留待下一次实际切换RLT测量。新版仍需读取必要VLA/encoder权重，尚未制作紧凑BF16部署文件或改用NVMe。
 
 验证环境：/data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/runtime-restore-verification/envs/stage1，沿用已恢复的固定包。证据 /data/LFT-W02_data/jiaan/jiaan/projects/rl-platform/outputs/startup-optimization-20260929/，包含parameter-equivalence.json、{before,after,warm}-full-inference.json/.log及固定输入输出。Cobot同步代码/文档，不复制CPU编译缓存，不重启任何服务。发布版本与现场PID保护核验在发布后追加；guide Git不由本会话提交。
+
+发布与现场保护核验：源码8c3cc48已push并核对origin/main，Cobot同步528文件SHA一致。π0.5 supervisor2019008、GPU服务2019058、客户端2025877，机械臂1318293、相机1317979及start_ticks均保持，网页无错误。未加载RLT、未创建机器人发布器，未改数据/模型资产。再次缓存命中的完整固定输入输出亦与原版逐值一致。
+
+发布回执：A6000 /data/LFT-W02_data/jiaan/jiaan/projects/rl-platform/outputs/startup-optimization-20260929/release.json；Cobot /home/agilex/jiaan/project/rl-platform/runtime/verification/startup-optimization-20260929/release.json。后续文档提交仅补记录，最终文档版本见Git main和.release.json。下一次用户正常切换RLT后核对实际GPU冷读、预热、峰值显存，不因A6000验证通过而自动释放π0.5或启动新模型。
