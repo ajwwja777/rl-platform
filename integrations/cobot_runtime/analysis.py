@@ -132,6 +132,7 @@ def snapshot(run_root, config_path, run=-1):
     replay_composition = read_json(root / "analysis/replay_composition.json")
     diagnosis = read_json(root / "analysis/learning_diagnosis.json")
     sensitivity = read_json(root / "analysis/rl_sensitivity.json")
+    visual_sensitivity = read_json(root / "analysis/visual_sensitivity.json")
     return clean({"schema": 1, "generated_at": time.time(), "status": status,
         "status_age_sec": age, "stale": age is None or age > 30,
         "selected_run": index, "runs": [{"id": i, "start": s[0]["global_step"],
@@ -142,4 +143,4 @@ def snapshot(run_root, config_path, run=-1):
         "recent_means": averages, "recent_count": len(recent),
         "episode_groups": groups, "episodes": episodes[-500:], "episode_count": len(episodes),
         "excluded_uncommitted": excluded, "config": config, "config_path": str(config_path),
-        "config_error": config_error, "sources": [ls, rs, batch_source], "projection": projection, "replay_composition": replay_composition, "batches": batch_views, "learning_diagnosis": diagnosis, "sensitivity": sensitivity})
+        "config_error": config_error, "sources": [ls, rs, batch_source], "projection": projection, "replay_composition": replay_composition, "batches": batch_views, "learning_diagnosis": diagnosis, "sensitivity": sensitivity, "visual_sensitivity": visual_sensitivity})

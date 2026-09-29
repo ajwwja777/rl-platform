@@ -58,6 +58,7 @@ def main():
     p.add_argument("--output", type=Path, required=True)
     p.add_argument("--updates", type=int, default=500)
     p.add_argument("--seeds", default="41,42,43")
+    p.add_argument("--versions-only", action="store_true")
     args = p.parse_args()
     import yaml, jax, jax.numpy as jnp, optax
     from rlt_online_rl.config import RLTOnlineRLConfig
@@ -150,7 +151,18 @@ def main():
         seen.add(version)
         row=dict(actor_version=version,learner_step=int(d.get("global_step",-1)),
             path=str(path),sha256=hashlib.sha256(path.read_bytes()).hexdigest(),evaluation="training-seen retrospective audit")
-        row.update(evaluate(trainer._tree_to_jax(d["actor_params"]),None,val));report["versions"].append(row)
+        critic_path = model/"online/checkpoints"/("step_%s.pkl" % row["learner_step"])
+        if row["learner_step"] == 5000: critic_path = initpath
+        cp = load_state(critic_path).critic_params if critic_path.is_file() else None
+        row["critic_checkpoint"] = str(critic_path) if cp is not None else None
+        row["critic_judgment"] = "matching checkpoint, training-seen" if cp is not None else "not retained at this publication step"
+        row.update(evaluate(trainer._tree_to_jax(d["actor_params"]),cp,val));report["versions"].append(row)
+    if args.versions_only:
+        previous = json.loads(args.output.read_text())
+        previous["versions"] = report["versions"]
+        previous["version_audit_at"] = time.time()
+        atomic_json(args.output, previous)
+        return
     atomic_json(args.output, report)
     for seed in report["seeds"]:
         for name,ratio in [("uniform",None),("success_50",.5),("success_70",.7),("success_90",.9)]:
