@@ -41,3 +41,32 @@ def test_sampling_counts_are_explicit_and_reproducible():
     a=choose(np.random.default_rng(42),ids,success,.7)
     assert len(a)==128 and success[a].sum()==90
     assert np.array_equal(a,choose(np.random.default_rng(42),ids,success,.7))
+
+def test_instrumentation_does_not_resample_or_change_training(tmp_path,monkeypatch):
+    import sys,types,json
+    from integrations.cobot_runtime.replay_audit import install_batch_audit
+    journal=tmp_path/"replay.pkl"
+    with journal.open("wb") as f:pickle.dump(row(1,0,True,1),f)
+    batch=dict(episode_id=np.array([1]),step_id=np.array([0]),collection_phase_id=np.array([2]),source=np.array([1]))
+    class Source:
+        calls=0
+        def sample_batch(self,n):
+            self.calls+=1
+            return batch
+    class Service:
+        def __init__(self):
+            self._replay_source=Source();self._metrics_path=str(tmp_path/"learner_metrics.jsonl")
+        def train_once(self):
+            self.seen=self._replay_source.sample_batch(1)
+            return dict(global_step=1,actor_version=0)
+    fake=types.ModuleType("rlt_online_rl");fake.trainer=types.SimpleNamespace(LearnerService=Service)
+    monkeypatch.setitem(sys.modules,"rlt_online_rl",fake)
+    config=tmp_path/"config.yaml"
+    config.write_text("runtime:\n  replay:\n    journal_path: "+str(journal)+"\n")
+    service=Service();source=service._replay_source
+    install_batch_audit(config)
+    result=service.train_once()
+    assert service._replay_source is source and source.calls==1 and service.seen is batch
+    report=json.loads((tmp_path/"batch_composition.jsonl").read_text())
+    assert report["global_step"]==result["global_step"]
+    assert report["dimensions"]["outcome"][0]["label"]=="success"

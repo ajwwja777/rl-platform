@@ -127,6 +127,11 @@ def snapshot(run_root, config_path, run=-1):
     status = read_json(metrics / "learner_status.json")
     age = max(0, time.time()-status["timestamp"]) if finite(status.get("timestamp")) else None
     projection = read_json(root / "analysis/replay_projection.json")
+    batches, batch_source = read_rows(metrics / "batch_composition.jsonl")
+    batch_views = [{k: v for k,v in row.items() if k not in ("identities", "cross")} for row in batches[-128:]]
+    replay_composition = read_json(root / "analysis/replay_composition.json")
+    diagnosis = read_json(root / "analysis/learning_diagnosis.json")
+    sensitivity = read_json(root / "analysis/rl_sensitivity.json")
     return clean({"schema": 1, "generated_at": time.time(), "status": status,
         "status_age_sec": age, "stale": age is None or age > 30,
         "selected_run": index, "runs": [{"id": i, "start": s[0]["global_step"],
@@ -137,4 +142,4 @@ def snapshot(run_root, config_path, run=-1):
         "recent_means": averages, "recent_count": len(recent),
         "episode_groups": groups, "episodes": episodes[-500:], "episode_count": len(episodes),
         "excluded_uncommitted": excluded, "config": config, "config_path": str(config_path),
-        "config_error": config_error, "sources": [ls, rs], "projection": projection})
+        "config_error": config_error, "sources": [ls, rs, batch_source], "projection": projection, "replay_composition": replay_composition, "batches": batch_views, "learning_diagnosis": diagnosis, "sensitivity": sensitivity})

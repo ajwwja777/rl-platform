@@ -153,7 +153,7 @@ def main():
         row.update(evaluate(trainer._tree_to_jax(d["actor_params"]),None,val));report["versions"].append(row)
     atomic_json(args.output, report)
     for seed in report["seeds"]:
-        for name,ratio in [("uniform",None),("success_50",.5),("success_70",.7)]:
+        for name,ratio in [("uniform",None),("success_50",.5),("success_70",.7),("success_90",.9)]:
             state=initial.replace(rng=jax.random.PRNGKey(seed))
             rng=np.random.default_rng(seed)
             sampled=[]
