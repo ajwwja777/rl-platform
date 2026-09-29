@@ -107,4 +107,5 @@ Cobot 数据与模型统一在 /media/agilex/Getea1/jiaan/data/ 和 /media/agile
 本批复制/切换结果见 docs/MIGRATION.md 最新节。奖励、归一化、动作合同与 5,000 步 warmup 不变。
 
 当前存储迁移已验收清理，USB 掉线后的资产复核通过；完整限制与回执见同级 cobot-web/docs/STORAGE.md。
-\nDiagnostic UI and offline Replay projection: [ANALYSIS](docs/ANALYSIS.md).\n
+
+Diagnostic UI and offline Replay projection: [ANALYSIS](docs/ANALYSIS.md).
