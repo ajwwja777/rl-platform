@@ -39,3 +39,35 @@ python3 scripts/restore_runtime.py --destination envs --verify-only
 2026-09-29 在A6000 /data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/runtime-restore-verification/envs 完成独立恢复：在线Python3.10.20、JAX0.5.3/Flax0.10.2/Optax0.2.8；Stage1 Python3.11.14、Torch2.7.1+cu126、OpenPI模型/训练配置可导入，35项Stage1配置/动作/冻结契约测试通过。另有78项在线Session/录制/收尾契约通过。没有读取原Cobot文件、加载生产权重或启动机器人。
 
 configs/assets/runtime_environment.json区分完整冻结运行材料与包清单。尚需在目标GPU验证权重加载和推理；只监听8030不等于模型就绪，rlt_status分别报告listening、Session phase及model_ready。
+
+## Stage1 加载优化（2026-09-29）
+
+入口和模型目录不变。网页下一次加载RLT自动使用新实现；已有Stage1进程继续复用，不自动重启。in_the_pot π0.5 的代码、环境、权重和进程不在本批范围。
+
+serve_stage1.py只建立VLA和RL-token encoder的抽象结构，不再先生成encoder/decoder随机参数再覆盖。stage1_loading.py通过固定Orbax 0.11.13的选择性恢复，只读取实际执行的VLA/encoder；训练decoder不参与当前Stage1推理，不初始化、不读取。原始checkpoint、归一化、BF16推理精度、seed42、10步去噪、动作映射和在线Learner/Replay均保持。
+
+新日志MODEL_LOAD_TIMING分别记录imports、config_and_transforms、abstract_structure、checkpoint_restore、bind_inference；原MODEL_VALIDATE/READY保留。outputs/rlt/plug_v3_yyshadow/model-server/validation.json增加load_seconds，原inference_ms仍区分首次编译/验证和后续执行，不能把端口监听当作模型就绪。
+
+编译缓存默认 /home/agilex/jiaan/project/rl-platform/runtime/cache/jax/stage1/，可通过COBOT_RLT_STAGE1_CACHE覆盖。保留可复用编译结果；JAX按版本、设备与计算图区分缓存，首次GPU加载仍需编译。缓存不含权重，不移到Getea1数据/模型目录。
+
+Stage1默认XLA_PYTHON_CLIENT_PREALLOCATE=false，取消启动即预占72%显存。实际峰值仍需目标GPU验收，不能承诺显存降至某个数值。如要从终端恢复原分配策略：
+
+~~~bash
+cd /home/agilex/jiaan/project/rl-platform
+COBOT_RLT_STAGE1_PREALLOCATE=true ./scripts/rlt_up.sh online
+~~~
+
+只在没有其他模型/Session、现场允许加载时运行；不同时在网页和终端启动。COBOT_RLT_STAGE1_MEMORY_FRACTION默认.72；它是分配配置，不是模型参数量。
+
+离线复现优先在A6000有足够空闲内存时进行，比较完整checkpoint与推理子集需要约20GB以上额外主机内存。脚本强制CPU，不连接ROS、不更新权重/Replay：
+
+~~~bash
+cd /data/LFT-W02_data/jiaan/jiaan/projects/rl-platform
+stage1_env=/data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/runtime-restore-verification/envs
+PYTHONPATH="$stage1_env/machine-a-py311-overlay" \
+  "$stage1_env/stage1/bin/python" scripts/validate_stage1_loading.py \
+  --checkpoint models/rlt/plug_v3_yyshadow/stage1/4999 \
+  --report outputs/startup-optimization-20260929/parameter-equivalence.json
+~~~
+
+该env是本批按冻结材料恢复的验证环境，换机依照上文restore_runtime建立自己的环境，不把scratch路径当作生产依赖。验证检查保留参数和真实encoder输出逐值一致；完整固定输入动作对比、缓存命中及时间记录见MIGRATION.md。A6000 CPU结果不能替代Cobot GPU冷启动实测。

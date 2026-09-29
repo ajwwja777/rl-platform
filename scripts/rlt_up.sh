@@ -72,7 +72,10 @@ if ! model_alive; then
   port_open "$MODEL_PORT" && { echo "端口 $MODEL_PORT 被未登记进程占用" >&2; exit 2; }
   log="$RUN/logs/model-$(date -u +%Y%m%dT%H%M%SZ).log"
   export PYTHONPATH="$ROOT/envs/machine-a-py311-overlay:$ROOT:$ROOT/third_party/openpi-rlt/src:$ROOT/third_party/openpi-rlt/scripts${PYTHONPATH:+:$PYTHONPATH}"
-  setsid env CUDA_VISIBLE_DEVICES=0 XLA_PYTHON_CLIENT_MEM_FRACTION=.72 \
+  setsid env CUDA_VISIBLE_DEVICES=0 \
+    XLA_PYTHON_CLIENT_PREALLOCATE="${COBOT_RLT_STAGE1_PREALLOCATE:-false}" \
+    XLA_PYTHON_CLIENT_MEM_FRACTION="${COBOT_RLT_STAGE1_MEMORY_FRACTION:-.72}" \
+    JAX_COMPILATION_CACHE_DIR="${COBOT_RLT_STAGE1_CACHE:-$ROOT/runtime/cache/jax/stage1}" \
     PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=4 \
     "$MACHINE_PY" -u -m methods.openpi_rlt.plug_v3_yyshadow.serve_stage1 \
       --project-root "$ROOT" --checkpoint "$checkpoint" --port "$MODEL_PORT" \

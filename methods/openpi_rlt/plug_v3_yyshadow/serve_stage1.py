@@ -15,6 +15,9 @@ import time
 import numpy as np
 
 
+from methods.openpi_rlt.plug_v3_yyshadow.stage1_loading import LoadTiming, restore_inference_params
+
+
 PROMPT = "Insert the plug held by the right gripper into the socket."
 
 
@@ -27,6 +30,11 @@ def initialize(project: Path):
     import pyarrow  # noqa: F401
     import torch  # noqa: F401
     import jax
+    cache = Path(os.environ.get("JAX_COMPILATION_CACHE_DIR",
+                                str(project / "runtime/cache/jax/stage1")))
+    cache.mkdir(parents=True, exist_ok=True)
+    jax.config.update("jax_compilation_cache_dir", str(cache))
+    print("MODEL_LOAD compilation_cache=" + str(cache), flush=True)
     import jax.numpy as jnp
     import flax.nnx as nnx
     import flax.nnx.bridge as nnx_bridge
@@ -59,6 +67,7 @@ def load(project: Path, checkpoint: Path, *, num_steps: int = 10):
     if not (checkpoint / "params").is_dir() or not norm_file.is_file():
         raise ValueError(f"incomplete Stage-1 release: {checkpoint}")
 
+    timing = LoadTiming()
     print("MODEL_LOAD initialize", flush=True)
     (
         jax,
@@ -73,6 +82,7 @@ def load(project: Path, checkpoint: Path, *, num_steps: int = 10):
         nnx_utils,
         training_config,
     ) = initialize(project)
+    timing.mark("imports")
     print("MODEL_LOAD config", flush=True)
     config = builder(
         dataset_repo_id=asset_id,
@@ -97,6 +107,7 @@ def load(project: Path, checkpoint: Path, *, num_steps: int = 10):
     if norm is None:
         raise ValueError("normalization assets are required")
 
+    timing.mark("config_and_transforms")
     rlt_kwargs = {}
     if config.rlt_num_tokens is not None:
         rlt_kwargs["num_rl_tokens"] = config.rlt_num_tokens
@@ -124,7 +135,8 @@ def load(project: Path, checkpoint: Path, *, num_steps: int = 10):
             self.rlt_module = nnx_bridge.ToNNX(linen_rlt)
             dummy_prefix = jnp.zeros((1, prefix_seq_len, rlt_config.input_dim))
             dummy_mask = jnp.ones((1, prefix_seq_len), dtype=jnp.bool_)
-            self.rlt_module.lazy_init(dummy_prefix, dummy_mask, rngs=rngs)
+            self.rlt_module.lazy_init(
+                dummy_prefix, dummy_mask, rngs=rngs, method="encode", train=False)
 
         def infer_fixed(self, rng, observation):
             cache = self.vla.prepare_prefix_for_inference(observation)
@@ -133,15 +145,24 @@ def load(project: Path, checkpoint: Path, *, num_steps: int = 10):
             return actions, z
 
     print("MODEL_LOAD structure", flush=True)
-    vla = nnx.eval_shape(config.model.create, jax.random.key(0))
-    model = InferenceModel(
-        vla,
-        rngs=nnx.Rngs(jax.random.key(1)),
-        prefix_seq_len=infer_prefix_len(config.model),
-    )
+    prefix_len = infer_prefix_len(config.model)
+
+    def create_structure():
+        # Evaluate the WHOLE structure abstractly. The previous loader created
+        # real random encoder/decoder arrays before replacing them with weights.
+        return InferenceModel(
+            config.model.create(jax.random.key(0)),
+            rngs=nnx.Rngs(jax.random.key(1)),
+            prefix_seq_len=prefix_len,
+        )
+
+    model = nnx.eval_shape(create_structure)
     graph, state = nnx.split(model)
+    timing.mark("abstract_structure")
     print("MODEL_LOAD restore", flush=True)
-    loaded = model_api.restore_params(checkpoint / "params", dtype=jnp.bfloat16)
+    loaded = restore_inference_params(checkpoint / "params")
+    jax.block_until_ready(loaded)
+    timing.mark("checkpoint_restore")
     expected = jax.tree_util.tree_structure(state.to_pure_dict())
     actual = jax.tree_util.tree_structure(loaded)
     if expected != actual:
@@ -166,10 +187,12 @@ def load(project: Path, checkpoint: Path, *, num_steps: int = 10):
         ]
     )
     infer = nnx_utils.module_jit(model.infer_fixed)
+    timing.mark("bind_inference")
     print("MODEL_LOAD ready_for_compile", flush=True)
 
     class Policy:
         def __init__(self):
+            self.load_seconds = dict(timing.seconds)
             self.metadata = {
                 "cohort": "plug_v3_yyshadow",
                 "stage": "stage1",
@@ -251,6 +274,7 @@ def main() -> None:
         "pid": os.getpid(),
         "metadata": policy.metadata,
         "inference_ms": timings,
+        "load_seconds": policy.load_seconds,
         "robot_publishers": 0,
     }
     output = project / "outputs" / "rlt" / "plug_v3_yyshadow" / "model-server" / "validation.json"

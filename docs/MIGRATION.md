@@ -142,3 +142,19 @@ USB 掉线重连后已完成已迁移资产的全量收据复核；尚不能据�
 RLT与EXPO-FT保持独立实现和环境；EXPO-FT登记为待适配，不伪造可运行状态。listen、Session-ready与inference_verified分别显示。环境恢复说明见DEPLOYMENT.md。
 
 主代码位于 /data/LFT-W02_data/jiaan/jiaan/projects/rl-platform；现场副本 /home/agilex/jiaan/project/rl-platform。后续收尾版本以Git main和现场.release.json为准。guide仅更新事实摘要，不提交其Git。
+
+## 2026-09-29：只优化RLT启动，保持正在使用的π0.5
+
+用户要求先优化RLT，不影响正在使用的in_the_pot π0.5。改动在A6000主仓库，未改固定上游子模块、训练循环、控制参数、Pi05项目或Cobot模型进程；本批不搬迁、导出或删除数据/权重。
+
+已确认当前Stage1参数：VLA 3,353,433,872，RL-token encoder 404,338,688，训练decoder 404,338,688，原checkpoint为float32，原推理恢复为BF16。部署只调用encode，但旧加载器真实初始化整套RL-token网络、再完整恢复权重。新实现整体nnx.eval_shape，只构造推理分支，Orbax选择性恢复VLA+encoder，跳过约4.04亿decoder参数（未压缩float32约1.62GB）。不是完整读取后再删decoder。原checkpoint保留供训练/回退，推理参数精度与值不变。
+
+Stage1启动默认按需分配显存，保留原.72上限及显式恢复预分配的选项；增加项目内JAX持久编译缓存和分阶段计时，不跳过真实推理预热。新源码文件stage1_loading.py、验证入口scripts/validate_stage1_loading.py；原serve_stage1.py、scripts/rlt_up.sh与CLI/网页入口兼容。
+
+17项相关冻结环境回归通过，bash语法与git diff检查通过。测试直接记录Orbax实际反序列化参数名，证明decoder没有被读取；验证保留原始文件哈希、抽象结构和encoder数值。固定Flax环境的ShapeDtypeStruct弃用提示与Orbax旧转换API提示不代表测试失败，本次没有升级环境。
+
+A6000已有同版4999权重验证：全部3,757,772,560个保留参数逐值一致；实际2048D encoder输出逐值一致；修改前后的完整固定输入ref_chunk与z_rl均逐值一致，未连接ROS或机器人。CPU参数恢复单独比较为8.67秒→5.41秒（原版本先执行，页缓存未控制，不作为冷启动加速倍率）。
+
+独立CPU进程、4个CPU核完整加载比较：原版32.60秒，新版19.80秒；首次完整推理28.02秒→25.68秒。再次启动新版加载20.10秒，明确命中jit_fun持久编译缓存，CPU首次执行23.50秒。这些是A6000 CPU实测，不能宣称Cobot原约9分钟加载已降到20秒；Cobot机械盘冷读和GPU峰值/编译时间留待下一次实际切换RLT测量。新版仍需读取必要VLA/encoder权重，尚未制作紧凑BF16部署文件或改用NVMe。
+
+验证环境：/data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/runtime-restore-verification/envs/stage1，沿用已恢复的固定包。证据 /data/LFT-W02_data/jiaan/jiaan/projects/rl-platform/outputs/startup-optimization-20260929/，包含parameter-equivalence.json、{before,after,warm}-full-inference.json/.log及固定输入输出。Cobot同步代码/文档，不复制CPU编译缓存，不重启任何服务。发布版本与现场PID保护核验在发布后追加；guide Git不由本会话提交。
