@@ -44,6 +44,9 @@ def main() -> None:
     )
 
     install_bimanual_runtime_patch()
+    if "--config" in upstream_args:
+        from integrations.cobot_runtime.replay_audit import install_batch_audit
+        install_batch_audit(upstream_args[upstream_args.index("--config") + 1])
     sys.argv = [str(runner), *upstream_args]
     try:
         runpy.run_path(str(runner), run_name="__main__")

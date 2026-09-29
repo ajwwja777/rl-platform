@@ -5,10 +5,14 @@ import json
 import os
 import pickle
 import time
+import sys
 from pathlib import Path
 import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
+
+sys.path.insert(0, str(ROOT))
+from integrations.cobot_runtime.replay_audit import build_report, atomic_json
 
 def build(journal, output, clusters=6):
     # Pickle is a trusted local training artifact, never accepted from an HTTP request.
@@ -84,6 +88,7 @@ def main():
     cfg=yaml.safe_load(args.config.read_text())
     journal=Path(cfg["runtime"]["replay"]["journal_path"])
     result=build(journal,args.output)
+    atomic_json(args.output.with_name("replay_composition.json"), build_report(journal))
     print(json.dumps({k:result[k] for k in ("transitions","skipped","explained_variance","generated_at")}))
     print(args.output)
 if __name__=="__main__": main()
