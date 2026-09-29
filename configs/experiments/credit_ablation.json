@@ -1,0 +1,30 @@
+{
+  "schema": 1,
+  "description": "Offline only; explicit experiments, original runtime is unchanged",
+  "profiles": {
+    "baseline": {
+      "sampling": "uniform"
+    },
+    "terminal_only": {
+      "sampling": "terminal"
+    },
+    "tail_mix": {
+      "sampling": "tail_mix",
+      "tail_fraction": 0.5
+    },
+    "episode_balanced": {
+      "sampling": "episode_balanced"
+    },
+    "mc_10": {
+      "mc_weight": 0.1
+    },
+    "mc_30": {
+      "mc_weight": 0.3
+    },
+    "tail_mc_10": {
+      "sampling": "tail_mix",
+      "tail_fraction": 0.25,
+      "mc_weight": 0.1
+    }
+  }
+}
