@@ -157,7 +157,8 @@
       "adapter_id": "plug_v3-online-latest",
       "custom": true,
       "runtime_profile": "credit_mc30",
-      "evaluation_allowed": false
+      "evaluation_allowed": false,
+      "experiment_label": "MC30 candidate"
     }
   ]
 }

@@ -85,6 +85,13 @@ def run_registered(upstream_root,argv,profile_name):
             target=functools.partial(run_learner,profile=profile,config_path=config_path)
         return original(name,target,*args,**kwargs)
     native._spawn_process=spawn
+    def stop_in_dependency_order(processes, *, logger, grace_sec=5.0):
+        # Stop commands first, then flush Learner while Replay is reachable.
+        rank={"env_driver":0,"learner_service":1,"actor_service":2,"replay_manager":3}
+        for process in sorted(processes,key=lambda p:rank.get(p.name,0)):
+            native._terminate_process(process,logger=logger,
+                grace_sec=15.0 if process.name=="learner_service" else grace_sec)
+    native._terminate_processes=stop_in_dependency_order
     sys.argv=[str(Path(upstream_root)/"rlt_online_rl/scripts/run_online_rl.py"),*argv]
     mp.set_start_method("spawn",force=True)
     args=native._parse_args()
