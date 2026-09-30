@@ -261,6 +261,7 @@ def load(project: Path, checkpoint: Path, *, num_steps: int = 10, rtc_overlay: P
                 raise ValueError("model output contains non-finite values")
             return {
                 "ref_chunk": physical[:10],
+                "rtc_used": rtc_request is not None,
                 "z_rl": token,
                 "proprio": state.copy(),
                 "policy_timing": {"infer_ms": 1000.0 * (time.perf_counter() - started)},
@@ -276,12 +277,14 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--num-steps", type=int, default=10)
     parser.add_argument("--validate-only", action="store_true")
+    parser.add_argument("--rtc-overlay", type=Path)
+    parser.add_argument("--warmup-rtc", action="store_true")
     args = parser.parse_args()
     if not 1 <= args.num_steps <= 20:
         raise ValueError("num-steps must be within 1..20")
 
     project = args.project_root.resolve()
-    policy = load(project, args.checkpoint, num_steps=args.num_steps)
+    policy = load(project, args.checkpoint, num_steps=args.num_steps, rtc_overlay=args.rtc_overlay)
     dummy = {
         "images": {
             key: np.zeros((224, 224, 3), dtype=np.uint8)
@@ -294,11 +297,23 @@ def main() -> None:
     for index in range(3):
         print(f"MODEL_VALIDATE inference_{index + 1}/3", flush=True)
         timings.append(policy.infer(dummy)["policy_timing"]["infer_ms"])
+    rtc_timings = []
+    if args.warmup_rtc:
+        if args.rtc_overlay is None:
+            raise ValueError("--warmup-rtc needs --rtc-overlay")
+        request = dict(dummy, rtc=dict(previous_actions=np.zeros((5,7),np.float32),
+                                      delay_steps=4, execution_horizon=5))
+        for index in range(3):
+            result = policy.infer(request)
+            if result.get("rtc_used") is not True:
+                raise RuntimeError("RTC warmup was not accepted")
+            rtc_timings.append(result["policy_timing"]["infer_ms"])
     receipt = {
         "status": "passed",
         "pid": os.getpid(),
         "metadata": policy.metadata,
         "inference_ms": timings,
+        "rtc_inference_ms": rtc_timings,
         "load_seconds": policy.load_seconds,
         "robot_publishers": 0,
     }

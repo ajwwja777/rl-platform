@@ -137,3 +137,93 @@ preflight 只读权重和配置，不发布机器人指令。通过不代表真�
 网页和终端共享模型运行管理，CLI见同级 cobot-web/scripts/models.py；RLT采集/评测用途实现已归本项目 integrations/cobot_runtime。目录选择在 runtime/storage-selection.json，录制HTTP地址在 configs/local.json 的 recorder_url；默认由8015提供，领域录制实现归cobot-dagger。不同时从CLI和网页启动两套Session。
 
 新机器材料、环境恢复、配置替换按 [DEPLOYMENT.md](DEPLOYMENT.md)。本批未改变5000步warmup、reward、loss、数据比例、HIL/mask、20Hz或动作限幅；真实成功率仍需现场评测。
+
+## Optional asynchronous RLT execution (2026-09-30)
+
+Structure (main code on A6000; Cobot deploys the same relative paths):
+
+~~~text
+rl-platform/
+  configs/execution_profiles.json            # opt-in frequency/RTC/smoothing
+  configs/deployment_models.json             # four MC30 execution candidates
+  methods/openpi_rlt/cobot_adapter/
+    async_execution.py                      # publisher, HIL epochs, raw ticks
+    execution_runtime.py                    # fixed upstream EnvDriver seam
+    execution_profiles.py                   # selection and shared components
+  scripts/validate_async_execution.py        # frozen GPU audit, synthetic I/O
+vla-platform/integrations/cobot/pi05/dagger/common/
+  rtc_overlay/rtc_openpi/sampler.py           # shared RTC flow sampler
+  runtime_lib/execution_methods/
+    execution_timing.py                     # physical-time EMA/publication
+    rtc/action_queue.py                     # thread-safe ownership
+~~~
+
+The original entries remain synchronous logical20/chunk10. New model IDs are
+plug-v3-credit-mc30-rtc20, -rtc30, -rtc40, -rtc50. Select an entry manually in
+collection, then Load/Start Session as before. All four share ONE MC30 candidate
+weight/optimizer branch and candidate Replay; they are execution choices, not
+four independently trained models. The original online model is unchanged.
+The current experimental model is collection-only; evaluation_allowed remains
+false until candidate field acceptance. Do not present this as a validated model.
+
+Terminal alternative (do not also start it from the web):
+
+~~~bash
+cd /home/agilex/jiaan/project/rl-platform
+COBOT_DEPLOYMENT_MODEL_ID=plug-v3-credit-mc30-rtc40 ./scripts/rlt_up.sh online
+~~~
+
+Session starts paused; the operator still explicitly begins the episode. A
+resident old Stage1 server without rtc_prefix_supported is retained and
+rejected with an explanation. Select the faithful entry to reuse it, or explicitly
+stop the Session and release/reload the model once for RTC. No implicit model
+release occurs. New RTC loads prewarm both baseline and guided samplers.
+
+Publication rates are 20/30/40/50 Hz while logical Actor/Replay remains 20 Hz;
+10 logical actions still span 0.5 seconds. They do NOT multiply robot speed or
+camera frame rate. Logical5 triggers the next plan, logical4 reserves a 200 ms
+inference budget. Stage1 RTC conditions on pending scheduled Actor targets;
+the committed prefix is retained after Actor refinement, with its original Actor
+version. The publisher interpolates targets, applies causal joint EMA tau=80 ms
+and physical velocity caps (0.6 rad/s joints, 0.08 m/s gripper). Gripper is not EMA
+filtered. These are experimental execution settings, not original RLT defaults.
+
+Control reads age-checked latest feedback without waiting for a new image.
+Images are converted once per received frame set; all three views remain.
+Joint/image timestamps must be finite, no older than 200 ms and within the existing
+configured synchronization skew. Pauses/HIL/terminal outcomes invalidate queued
+results; resume requires a fresh plan. No catch-up burst is sent after a missed
+deadline; publication rejection, stale feedback, queue exhaustion or excessive
+inference delay pauses the path and reports failure. Restart the Session after
+checking its cause; Stage1 can remain resident. Never use Recover to mask this
+kind of inference/sampling timing error.
+
+Replay retains 20 Hz logical rows, actual last emitted action per interval,
+request-time feature anchors and RTC metadata for later feature reconstruction.
+Raw trace additionally retains every physical publication and model version.
+A logical row is a macro summary; it does not encode all subtick trajectories in
+the fixed 7D Replay action. Existing reward/discount/loss/HIL schema is unchanged.
+Mixed legacy and RTC episodes remain in the candidate pool; raw model ID/profile
+distinguish lineage. Switching back does not remove already collected episodes.
+
+Online Actor/Critic training consumes these RTC-conditioned features and actual
+actions. Stage1 stays frozen. This is NOT training-time RTC backbone fine-tuning.
+Original inference-time RTC needs no retraining
+(https://arxiv.org/abs/2506.07339); training-time action conditioning is a distinct
+recipe (https://arxiv.org/abs/2512.05964). No new backbone training result is claimed.
+
+Rollback: stop only this Session (Ctrl-C or End Session), choose an original
+registered model; or explicitly set COBOT_RLT_EXECUTION_PROFILE=faithful20 when
+starting. An RTC-capable Stage1 still produces the unchanged plain inference path
+when no rtc envelope is sent. No weights or environments are migrated/upgraded.
+
+Offline verification: 76 relevant executor/shared utility/ROS adapter/HIL/native
+Replay tests pass on A6000, plus 3 loading tests in the frozen Stage1 environment.
+The lightweight .venv intentionally cannot substitute for pinned Stage1 Orbax.
+GPU timing and robot jitter/insertion acceptance are recorded separately below.
+For reproducibility, run tests from A6000 rl-platform with .venv/bin/python -m
+pytest tests/test_async_execution.py tests/test_rtc_experiment_bridge.py
+methods/openpi_rlt/tests/test_cobot_online_env.py
+methods/openpi_rlt/tests/test_cobot_ros1_io.py
+methods/openpi_rlt/tests/test_online_bimanual_patch.py; source-relative paths are
+identical on a freshly deployed machine. Full deployment material: DEPLOYMENT.md.

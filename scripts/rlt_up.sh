@@ -48,6 +48,18 @@ if [[ -n "$profile_values" ]]; then
   EXPERIMENT_RUN="${profile_fields[2]}"
   mkdir -p "$EXPERIMENT_RUN/online/metrics"
 fi
+# Separate physical publication from the fixed logical Actor/Replay clock.
+execution_values=$(PYTHONPATH="$ROOT" /usr/bin/python3 -m methods.openpi_rlt.cobot_adapter.execution_profiles)
+stage1_rtc_args=()
+if [[ -n "$execution_values" ]]; then
+  mapfile -t execution_fields <<< "$execution_values"
+  export COBOT_RLT_EXECUTION_PROFILE="${execution_fields[0]}"
+  if [[ "${execution_fields[1]}" == 1 ]]; then
+    rtc_overlay="$ROOT/../vla-platform/integrations/cobot/pi05/dagger/common/rtc_overlay"
+    [[ -f "$rtc_overlay/rtc_openpi/sampler.py" ]] || { echo "Registered VLA RTC overlay is missing: $rtc_overlay" >&2; exit 2; }
+    stage1_rtc_args=(--rtc-overlay "$rtc_overlay" --warmup-rtc)
+  fi
+fi
 DATA_ROOT=$(PYTHONPATH="$ROOT" /usr/bin/python3 - "$DATA_PHASE" <<'PYDATA'
 import sys
 from integrations.cobot_runtime.profile_storage import default_root
@@ -90,7 +102,7 @@ if ! model_alive; then
     JAX_COMPILATION_CACHE_DIR="${COBOT_RLT_STAGE1_CACHE:-$ROOT/runtime/cache/jax/stage1}" \
     PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=4 \
     "$MACHINE_PY" -u -m methods.openpi_rlt.plug_v3_yyshadow.serve_stage1 \
-      --project-root "$ROOT" --checkpoint "$checkpoint" --port "$MODEL_PORT" \
+      --project-root "$ROOT" --checkpoint "$checkpoint" --port "$MODEL_PORT" "${stage1_rtc_args[@]}" \
       </dev/null >>"$log" 2>&1 &
   pid=$!
   start_ticks=$(/usr/bin/python3 - "$pid" <<'PY'
@@ -109,7 +121,19 @@ fi
 
 deadline=$((SECONDS+1800))
 while ! port_open "$MODEL_PORT"; do
-  model_alive || { echo "Stage-1 服务退出，请查看登记日志" >&2; exit 1; }
+  model_alive || { if [[ ${#stage1_rtc_args[@]} -gt 0 ]]; then
+  PYTHONPATH="$ROOT:$ROOT/third_party/openpi-rlt/packages/openpi-client/src" "$MACHINE_PY" - "$MODEL_PORT" <<'PYRTC'
+import sys
+from openpi_client.websocket_client_policy import WebsocketClientPolicy
+policy=WebsocketClientPolicy(host="127.0.0.1",port=int(sys.argv[1]))
+try:
+ if not policy.get_server_metadata().get("rtc_prefix_supported"):
+  raise SystemExit("Loaded Stage1 lacks RTC support. Model retained; select faithful20 or explicitly reload an RTC-capable server.")
+finally:
+ policy._ws.close()
+PYRTC
+fi
+echo "Stage-1 服务退出，请查看登记日志" >&2; exit 1; }
   (( SECONDS < deadline )) || { echo "Stage-1 加载超时" >&2; exit 1; }
   sleep 2
 done

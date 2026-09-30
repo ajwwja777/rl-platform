@@ -334,3 +334,17 @@ Only audit output files are written. Final Replay SHA256 still matches
 c0ac2d7a755c8055b567942d154d98102456cff3aafc54ce179fadc82fcd0092.
 GPU returned idle; no production weights/config or hardware tasks were changed.
 Sources: actual fixed source code, recorded reports and this dialogue, 2026-09-30.
+
+## Asynchronous execution acceptance scope
+
+The clarification was less jitter, not reduced camera inputs. Shared physical-time
+components belong to VLA integrations; RLT 7D scheduling, Replay and runtime hooks
+belong to rl-platform. See RUNBOOK.md for the source tree, opt-in IDs, exact launch
+and rollback. Logical20 is preserved at all four physical publication rates.
+Fixed upstream source, production model weights and original model registrations
+remain unchanged. RTC Stage1 capability is checked; old resident servers are not
+silently restarted. Tests cover rational20-to30/50 timing, actual native Replay,
+HIL, one-shot outcomes, stale/late result rejection and prefix Actor-version lineage.
+GPU synthetic tracking audit is pending; real robot dynamics and success remain
+unverified. Training-time backbone RTC is separate from online learning on
+RTC-conditioned Replay and has not been run.

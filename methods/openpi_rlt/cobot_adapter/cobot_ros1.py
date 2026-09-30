@@ -430,6 +430,41 @@ class RosTask2IO:
         except (TypeError, ValueError):
             return time.time()
 
+    def sample_control(self, *, right_arm_only=False, max_age_sec=.2) -> CobotIOSample:
+        """Latest age-checked feedback; no wait for a new camera frame.
+
+        Opt-in physical publisher only. The original synchronized sample()
+        remains unchanged. Images are converted once per received frame set.
+        """
+        with self._condition:
+            if len(self._images) != 3 or len(self._joints) != 2:
+                raise RuntimeError("Control feedback requires all registered cameras/joints")
+            if hasattr(self.ros, "is_shutdown") and self.ros.is_shutdown():
+                raise RuntimeError("ROS shut down during control publication")
+            messages = [*self._images.values(), *self._joints.values()]
+            stamps = np.asarray([self._stamp(message) for message in messages])
+            now = self.ros.Time.now().to_sec() if hasattr(self.ros, "Time") else time.time()
+            if not np.isfinite(stamps).all() or max(now-stamps) > max_age_sec or min(now-stamps) < -.1:
+                raise RuntimeError("Control observation is stale or has invalid ROS timestamps; publication paused")
+            if max(stamps)-min(stamps) > self._max_sync_skew_sec:
+                raise RuntimeError("Control camera/joint skew exceeds the registered limit")
+            image_key = tuple((id(message), self._stamp(message)) for message in self._images.values())
+            left = np.asarray(self._joints["left"].position[:7],np.float32)
+            right = np.asarray(self._joints["right"].position[:7],np.float32)
+            if image_key != getattr(self, "_control_image_key", None):
+                images = {key:self.bridge.imgmsg_to_cv2(message,"passthrough")
+                          for key,message in self._images.items()}
+                self._control_images = build_machine_a_observation(
+                    left_state=left,right_state=right,images=images,prompt=self._prompt)["images"]
+                self._control_image_key = image_key
+            state = right.copy() if right_arm_only else np.concatenate([left,right])
+            if not np.isfinite(state).all() or state.shape != ((7,) if right_arm_only else (14,)):
+                raise RuntimeError("Invalid control joint feedback")
+            observation = dict(images=self._control_images,state=state,prompt=self._prompt)
+            outcome,self._outcome = self._outcome,None
+            return CobotIOSample(observation=observation,mode=self._mode,outcome=outcome,
+                                 paused=self._paused,timestamp=float(max(stamps)))
+
     def sample(self) -> CobotIOSample:
         while True:
             with self._condition:

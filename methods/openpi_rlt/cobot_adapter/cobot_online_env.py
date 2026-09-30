@@ -62,6 +62,15 @@ class CobotOnlineEnv:
         self._episode_steps = 0
         self._last_outcome: EpisodeOutcome | None = None
         self._shadow_mode = bool(getattr(io, "shadow_mode", False))
+        self._execution = None
+        from .execution_profiles import selected_profile
+        selected = selected_profile()
+        if selected is not None:
+            if float(control_frequency_hz) != 20. or int(chunk_exec_horizon) != 10:
+                raise ValueError("Optional RTC executor requires the existing logical20/chunk10 contract")
+            from .async_execution import AsyncExecution
+            self._execution = AsyncExecution(self, *selected)
+
 
     def current_phase_name(self) -> str:
         return self._collection_phase
@@ -115,6 +124,8 @@ class CobotOnlineEnv:
         *,
         control_hz: float | None = None,
     ):
+        if self._execution is not None:
+            return self._execution.execute_chunk(observation, policy_planner, control_hz)
         """Execute one chunk using the current upstream EnvDriver contract.
 
         Newer upstream drivers pass ``control_hz`` and ``policy_planner`` as

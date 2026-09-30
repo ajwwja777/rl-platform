@@ -1,0 +1,121 @@
+#!/usr/bin/env python3
+"""Actual frozen Stage1 + Actor, synthetic feedback, zero robot publishers.
+
+Timing and command continuity audit only; this does not measure real insertion.
+Does not import rospy, use hardware factories, bind servers or write Replay.
+"""
+import argparse,copy,hashlib,json,os,pickle,sys,time
+from pathlib import Path
+from types import SimpleNamespace
+ROOT=Path(__file__).resolve().parents[1]
+sys.path[:0]=[str(ROOT),str(ROOT/'scripts'),str(ROOT/'envs/machine-a-py311-overlay'),
+              str(ROOT/'third_party/openpi-rlt/rlt_online_rl/src'),
+              str(ROOT/'third_party/openpi-rlt/packages/openpi-client/src')]
+os.environ.setdefault('XLA_PYTHON_CLIENT_PREALLOCATE','false')
+import numpy as np
+
+def main():
+    p=argparse.ArgumentParser(description=__doc__)
+    p.add_argument('--checkpoint',type=Path,required=True)
+    p.add_argument('--recording',type=Path,required=True)
+    p.add_argument('--actor',type=Path,required=True)
+    p.add_argument('--config',type=Path,required=True)
+    p.add_argument('--output',type=Path,required=True)
+    p.add_argument('--guard-web-url',default='http://127.0.0.1:8015')
+    args=p.parse_args()
+    from audit_critic_guidance import check_idle
+    check_idle(args.guard_web_url)
+    from methods.openpi_rlt.plug_v3_yyshadow.serve_stage1 import load
+    overlay=ROOT.parent/'vla-platform/integrations/cobot/pi05/dagger/common/rtc_overlay'
+    policy=load(ROOT,args.checkpoint,rtc_overlay=overlay)
+    import cv2,h5py,yaml,jax,jax.numpy as jnp
+    from rlt_online_rl.config import RLTOnlineRLConfig
+    from rlt_online_rl.action_representation import ActionRepresentationAdapter
+    from rlt_online_rl.inference import RLTPolicyInferenceWrapper,ActorResponse
+    from methods.openpi_rlt.cobot_adapter.execution_runtime import PlannerBackend
+    from methods.openpi_rlt.cobot_adapter.execution_profiles import ExecutionProfile
+    from methods.openpi_rlt.cobot_adapter.async_execution import AsyncExecution
+    from methods.openpi_rlt.plug_v3_yyshadow.right_arm_env import RightArmCobotOnlineEnv
+    cfg=RLTOnlineRLConfig(**yaml.safe_load(args.config.read_text())['experiment']['rl'])
+    adapter=ActionRepresentationAdapter.from_config(cfg)
+    snapshot=args.actor.read_bytes();payload=pickle.loads(snapshot)
+    params=jax.tree_util.tree_map(jnp.asarray,payload['actor_params'])
+    wrapper=RLTPolicyInferenceWrapper(cfg)
+    with h5py.File(args.recording) as f:
+        state=np.asarray(f['observations/qpos'][0],np.float32)[-7:]
+        images={}
+        for dst,src in [('base_0_rgb','cam_high'),('left_wrist_0_rgb','cam_left_wrist'),('right_wrist_0_rgb','cam_right_wrist')]:
+            img=np.asarray(f['observations/images'][src][0])
+            if img.ndim==1:img=cv2.cvtColor(cv2.imdecode(img,cv2.IMREAD_COLOR),cv2.COLOR_BGR2RGB)
+            images[dst]=img
+    observation=dict(state=state,images=images)
+    class Features:
+        def get_features(self,obs):return policy.infer(obs)
+    class Actor:
+        def infer(self,request):
+            ref=adapter.normalize_ref_chunk(request.ref_chunk,request.proprio)
+            result=wrapper.infer(params,request.z_rl,request.proprio,ref,deterministic=True)
+            result=adapter.denormalize_to_abs_chunk(result,request.proprio)
+            return ActorResponse(result,int(payload['version']),request.request_id)
+    actor=Actor()
+    prewarm=[]
+    for _ in range(3):
+        before=policy.infer(observation)
+        prewarm.append(before['policy_timing']['infer_ms'])
+        request=dict(observation,rtc=dict(previous_actions=before['ref_chunk'][:5].copy(),delay_steps=4,execution_horizon=5))
+        guided=policy.infer(request)
+        assert guided['rtc_used']
+        from rlt_online_rl.inference import ActorRequest
+        actor.infer(ActorRequest(guided['z_rl'],guided['proprio'],guided['ref_chunk'],'warmup',-1,0,True))
+    report=dict(schema=1,checkpoint=str(args.checkpoint),actor=str(args.actor),
+        actor_sha256=hashlib.sha256(snapshot).hexdigest(),actor_version=int(payload['version']),
+        recording=str(args.recording),robot_publishers=0,learner_updates=0,
+        baseline_prewarm_ms=prewarm,profiles={},limitations=[
+        'Perfect synthetic joint tracking and one recorded camera frame; no real dynamics or insertion success.',
+        'In-process Stage1/Actor calls exclude production RPC overhead and online Learner contention.',
+        'RTC-conditioned online Replay training does not mean Stage1 training-time RTC fine-tuning.'])
+    class IO:
+        shadow_mode=False
+        def __init__(self):self.state=state.copy();self.published=[];self.records=[];self.latencies=[]
+        def sample(self):
+            return SimpleNamespace(observation=dict(state=self.state.copy(),images=images),
+                mode='policy',paused=False,outcome=None,timestamp=time.monotonic())
+        def publish_policy_action(self,action):
+            self.state=np.asarray(action).copy();self.published.append((time.monotonic(),self.state.copy()));return True
+        def set_chunk_ready(self,ready):pass
+        def set_policy_paused(self,paused):pass
+        def record_raw_step(self,record):self.records.append(record)
+        def report_chunk(self,latency_sec,actor_version):self.latencies.append(latency_sec)
+    os.environ['COBOT_RLT_EXECUTION_PROFILE']='faithful20'
+    for hz in (20,30,40,50):
+        io=IO()
+        env=RightArmCobotOnlineEnv(io,chunk_exec_horizon=10,control_frequency_hz=20,max_episode_steps=None,
+            joint_step_limit=.03,gripper_step_limit=.004,sleep=time.sleep)
+        env._runtime.arm()
+        engine=AsyncExecution(env,'async_rtc'+str(hz),ExecutionProfile(publish_hz=hz));env._execution=engine
+        engine.backend=PlannerBackend(SimpleNamespace(_feature_provider=Features(),_actor_client=actor,
+            _rl_config=cfg,_env_config=SimpleNamespace(actor_deterministic=True,safe_fallback_to_ref=False),
+            _safe_action_filter=None,_env=env))
+        engine.backend.episode_id=1
+        try:
+            obs=io.sample().observation
+            for _ in range(3):obs,_,_,_=env.execute_chunk(obs)
+            commands=np.stack([a for _,a in io.published]);times=np.array([t for t,_ in io.published])
+            velocities=np.diff(commands[:,:6],axis=0)/np.diff(times)[:,None]
+            row=dict(status='passed',logical_steps=len(io.records),commands=len(io.published),
+                measured_hz=float(1/np.diff(times).mean()),interval_p95_ms=float(np.quantile(np.diff(times),.95)*1000),
+                inference_ms=io.latencies,velocity_rms=float(np.sqrt(np.mean(velocities**2))),
+                command_step_max=float(np.max(np.abs(np.diff(commands[:,:6],axis=0)))),
+                execution=dict(engine.stats))
+        except Exception as exc:
+            row=dict(status='failed',error=str(exc),logical_steps=len(io.records),commands=len(io.published),
+                     inference_ms=io.latencies,execution=dict(engine.stats))
+        finally:engine.close()
+        report['profiles'][str(hz)]=row
+        args.output.parent.mkdir(parents=True,exist_ok=True);args.output.write_text(json.dumps(report,indent=2)+'\n')
+        print(json.dumps(row),flush=True)
+    if hashlib.sha256(args.actor.read_bytes()).hexdigest()!=report['actor_sha256']:
+        raise RuntimeError('Actor source changed during audit')
+    report['finished_at']=time.time();args.output.write_text(json.dumps(report,indent=2)+'\n')
+    if any(x['status']!='passed' for x in report['profiles'].values()):raise SystemExit(1)
+if __name__=='__main__':main()

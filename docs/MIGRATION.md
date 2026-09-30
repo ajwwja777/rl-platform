@@ -214,3 +214,12 @@ Whole-episode AUC uncertainty includes zero. Evidence, reproduction and remainin
 work appended to docs/EXPERIMENTS_20260930.md. No robot publishers, production
 weight writes or Replay changes; only small reports/figure copied to A6000.
 Source: actual offline audit and cobot_rlt dialogue; guide Git not submitted.
+
+## 2026-09-30: optional asynchronous RTC execution
+Added project-owned EnvDriver/environment seams and execution registry; reuse VLA
+RTC queue/sampler/physical-time utilities. New MC30 frequency entries share one
+candidate branch. Original production algorithm/config/weights unchanged.
+A6000 76 related tests and frozen Stage1 loading 3 passed; GPU audit and robot
+acceptance pending. Latest feedback control peek avoids camera-frame gating only
+for the opted-in path. No hardware restart or robot commands. See RUNBOOK.md and
+EXPERIMENTS_20260930.md. Publish/sync receipts follow after release.

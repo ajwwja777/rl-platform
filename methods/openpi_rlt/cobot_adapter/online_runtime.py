@@ -348,3 +348,6 @@ def install_bimanual_runtime_patch() -> None:
             module.ActionRepresentationAdapter = CobotBimanualActionRepresentationAdapter
         if hasattr(module, "jax_denormalize_to_abs_chunk"):
             module.jax_denormalize_to_abs_chunk = cobot_jax_denormalize_to_abs_chunk
+
+    from .execution_runtime import install as install_optional_execution
+    install_optional_execution()

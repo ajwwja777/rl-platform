@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "default": "faithful20",
+  "logical_hz": 20,
+  "profiles": {
+    "async_rtc20": {
+      "publish_hz": 20
+    },
+    "async_rtc30": {
+      "publish_hz": 30
+    },
+    "async_rtc40": {
+      "publish_hz": 40
+    },
+    "async_rtc50": {
+      "publish_hz": 50
+    },
+    "async40_no_rtc": {
+      "publish_hz": 40,
+      "rtc": false
+    },
+    "async40_no_smoothing": {
+      "publish_hz": 40,
+      "smoothing_tau_sec": 0.0
+    }
+  }
+}
