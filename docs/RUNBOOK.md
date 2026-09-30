@@ -288,3 +288,69 @@ All four publication profiles retain the same200 ms logical delay budget.
 This UI recovery does not fix timing contention or establish field acceptance.
 RLT classification belongs to integrations/cobot_runtime/runtime_diagnostics.py;
 the web owns task orchestration and operator recovery.
+
+
+## 2026-09-30: pause-clock repair and explicit restart with retained Stage1
+
+The 50 Hz candidate remains an experiment, not a validated default. Two actual
+faults were separated: pause/HIL was incorrectly checked against an invalidated
+publication deadline; later the inference worker spent approximately 137 ms in
+model inference plus 64 ms in synchronous recorder HTTP, exceeding the unchanged
+200 ms RTC budget.
+
+The optional executor now checks control authority before waiting/checking a
+deadline and never waits on an invalidated interval after pause/HIL. A genuine
+active overrun still pauses and fails without catch-up commands; output includes
+late_ms, publish_hz and logical_step. Recorder HTTP runs in one independent,
+bounded worker, not the Stage1/Actor critical path. A pending health check older
+than one second stops execution. The Session lock is no longer held while
+waiting for recorder status; generation guards reject stale check results.
+Reward, Replay logical 20 Hz, RTC delay budget, action limits and training
+parameters are unchanged. Original faithful20 does not activate the async hooks.
+
+Collection and deployment show two explicit recovery actions:
+- Finish recording and recover runtime: a failed runtime is already gone.
+- Restart runtime components (keep model): also handles a live/unresponsive
+  Session or runtime; first pauses best-effort and stops only the registered,
+  identity-verified RLT process group (SIGINT then bounded SIGTERM).
+
+Both actions retain the matching, independently running Stage1; finish the
+owned writer and preserve its recording WITHOUT assigning success/failure,
+deleting files or inserting it into Replay. Failed/incomplete files remain on
+disk. A writer still alive, publication still in progress, different owner,
+unrelated evaluation or missing Stage1 is reported explicitly instead of
+starting a duplicate runtime. Recovery is not a disk, CAN or hardware reset.
+Do not force-delete a lock or run a broad pkill.
+
+The rebuilt runtime waits for manual Session/episode start. No auto-inference,
+homing or model release is performed. Runtime restart resumes training from the
+last saved checkpoint; in-memory updates not checkpointed can be lost.
+If active execution still overruns, use the original synchronous 20 Hz entry
+(same MC30 weights: plug-v3-credit-mc30); changing frequency alone does not
+establish successful insertion or hard real-time scheduling.
+
+Terminal equivalent of the general UI restart:
+
+~~~bash
+cd /home/agilex/jiaan/project/cobot-web
+python3 scripts/console.py api GET /api/deployment/status
+python3 scripts/console.py --timeout 90 api POST /api/rlt/recover-runtime --json '{"finalize_pending":true,"restart_running":true}'
+python3 scripts/console.py api GET /api/deployment/status
+~~~
+
+For an exited runtime use only {"finalize_pending":true}. A POST without options
+preserves the older strict contract: no live runtime or pending recording.
+The response includes recording_retained (path/UUID/completion) when applicable,
+model_retained and manual_start_required. Do not repeat a timed-out operation
+until GET confirms its result. Recovering needs the HTTP service; ui_down/up
+alone cannot repair an active writer or a dead RLT runtime.
+
+Implementation on Cobot:
+- /home/agilex/jiaan/project/rl-platform/methods/openpi_rlt/cobot_adapter/{async_execution,execution_runtime,session_http}.py
+- /home/agilex/jiaan/project/cobot-web/app/backend/cobot_console/{api,deployment}.py
+- /home/agilex/jiaan/project/cobot-web/app/backend/capture_core/api.py
+- /home/agilex/jiaan/project/cobot-web/app/backend/segmented_frontend/recorder_recovery.js
+
+A6000 source/documentation mirrors the same relative files beneath
+/data/LFT-W02_data/jiaan/jiaan/projects/. Keep-model recovery cannot recover a
+Stage1 process that has actually died: fix its root cause and reload explicitly.

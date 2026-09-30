@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError
 import copy
 from types import SimpleNamespace
 import time
+import threading
 import numpy as np
 from methods.openpi_rlt.cobot_adapter.episode_control import EpisodePhase
 from methods.openpi_rlt.cobot_adapter.trace import ControlSource, EpisodeOutcome
@@ -21,6 +22,10 @@ class AsyncExecution:
         self.queue = Queue()
         self.filter = Filter(profile.smoothing_tau_sec, profile.joint_velocity_limit)
         self.pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix='rlt-rtc-plan')
+        self.health_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix='rlt-recorder-check')
+        self.health_future = None
+        self.health_lock = threading.RLock()
+        self.health_started = None
         self.backend = None
         self.terminal_outcome = None
         self.last_policy_source = ControlSource.BASE
@@ -50,6 +55,7 @@ class AsyncExecution:
     def close(self):
         self.invalidate()
         self.pool.shutdown(wait=True, cancel_futures=True)
+        self.health_pool.shutdown(wait=True, cancel_futures=True)
 
     def set_episode(self, episode_id):
         self.invalidate()
@@ -59,6 +65,32 @@ class AsyncExecution:
         self.last_policy_source = ControlSource.BASE
         self.backend.episode_id = episode_id
         self.terminal_outcome = None
+
+    def check_report(self):
+        with self.health_lock:
+            if self.health_future is None:
+                return
+            if self.health_future.done():
+                self.health_future.result()  # Recorder/network failure must surface.
+                self.health_future = None
+            elif time.monotonic() - self.health_started > 1.0:
+                raise RuntimeError('Recorder health check timed out; policy paused; keep Stage1 and recover runtime')
+
+    def report_chunk(self, latency_sec, actor_version):
+        # Recorder HTTP is not part of the Stage1/Actor inference budget.
+        # One independent worker; do not enqueue unbounded stale checks.
+        with self.health_lock:
+            self.check_report()
+            if self.health_future is not None:
+                return
+            self.health_started = time.monotonic()
+            def report():
+                started = time.monotonic()
+                try:
+                    self.env._io.report_chunk(latency_sec=latency_sec, actor_version=actor_version)
+                finally:
+                    self.stats["last_recorder_check_ms"] = (time.monotonic()-started)*1000
+            self.health_future = self.health_pool.submit(report)
 
     def sample(self):
         io = self.env._io
@@ -179,7 +211,31 @@ class AsyncExecution:
         if remaining > 0:
             self.env._sleep(remaining)
         elif remaining < -.5/self.config.publish_hz:
-            raise RuntimeError('Execution clock missed its deadline; no catch-up command burst')
+            self.stats['last_deadline_lateness_ms'] = -remaining * 1000
+            raise RuntimeError(
+                f'Execution clock missed its deadline; no catch-up command burst; '
+                f'late_ms={-remaining*1000:.1f}, publish_hz={self.config.publish_hz}, '
+                f'logical_step={self.env._episode_steps}')
+
+    def wait_active(self, timestamp, epoch):
+        # Pause/HIL invalidates the old timeline. Check authority BEFORE its
+        # deadline: an operator interruption is not a publisher overrun.
+        def active():
+            check = self.sample()
+            state = self.env._runtime.observe_mode(check.mode)
+            if state.phase is EpisodePhase.FAULT:
+                raise RuntimeError(state.fault_reason or 'Control coordinator fault')
+            if (epoch != self.epoch or check.paused or check.outcome is not None
+                    or state.phase is not EpisodePhase.ROLLOUT):
+                self.env._io.set_chunk_ready(False)
+                if epoch == self.epoch:
+                    self.invalidate()
+                return False
+            return True
+        if not active():
+            return False
+        self.wait_until(timestamp)
+        return active()
 
     def execute_chunk(self, observation=None, policy_planner=None, control_hz=None):
         env, io, runtime = self.env, self.env._io, self.env._runtime
@@ -232,6 +288,7 @@ class AsyncExecution:
                         current = sample.observation
                         if not self.fresh_plan(current):
                             continue
+                    self.check_report()
                     self.accept_result()
                     # Start of one logical20 segment. Queue consumption, model
                     # delay and Replay step IDs all use this clock, never pub Hz.
@@ -246,7 +303,8 @@ class AsyncExecution:
                     interval_origin = self.timeline_origin
                     interval_index = self.publication_index
                     for timestamp, alpha in self.events(self.publication_index, 20, self.config.publish_hz):
-                        self.wait_until(interval_origin+timestamp)
+                        if not self.wait_active(interval_origin+timestamp, epoch):
+                            break
                         check = self.sample()
                         checked = runtime.observe_mode(check.mode)
                         if check.outcome is not None or check.paused or checked.phase is not EpisodePhase.ROLLOUT:
@@ -278,7 +336,10 @@ class AsyncExecution:
                                                  monotonic_timestamp=float(self.clock()), action=command.copy(),
                                                  ref_action=self.last_ref.copy(), actor_param_version=int(version)))
                         self.stats['emitted_commands'] += 1
-                    self.wait_until(interval_origin+(interval_index+1)/20)
+                    # A partial segment can end on pause/HIL. Never wait on
+                    # the invalidated interval's deadline after breaking out.
+                    if epoch == self.epoch:
+                        self.wait_active(interval_origin+(interval_index+1)/20, epoch)
                     after = self.sample()
                     after_state = runtime.observe_mode(after.mode)
                     if after_state.phase is EpisodePhase.FAULT:
@@ -301,9 +362,10 @@ class AsyncExecution:
                     else:
                         executed = self.last_command.copy() if publications else env._state(after.observation)
                     ref_action = self.last_ref.copy() if self.last_ref is not None else executed.copy()
-                    self.segment_start = target.copy()
-                    self.segment_ref_start = ref_target.copy()
-                    self.publication_index += 1
+                    if epoch == self.epoch:
+                        self.segment_start = target.copy()
+                        self.segment_ref_start = ref_target.copy()
+                        self.publication_index += 1
                     next_observation = self.observation(after.observation)
                 env._episode_steps += 1
                 outcome = EpisodeOutcome(after.outcome) if after.outcome is not None else None

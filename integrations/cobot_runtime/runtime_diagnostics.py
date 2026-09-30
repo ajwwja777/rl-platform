@@ -6,6 +6,7 @@ def classify_failure(output):
     causes = [
         ("rtc_delay_exceeded", ("actual delay exceeded predicted delay", "RTC delay exceeded budget")),
         ("execution_clock_late", ("Execution clock missed its deadline",)),
+        ("recorder_health_timeout", ("Recorder health check timed out",)),
         ("observation_stale", ("Control observations stale", "stale control", "Stale control")),
         ("gpu_out_of_memory", ("RESOURCE_EXHAUSTED", "CUDA out of memory",)),
         ("execution_failed", ("execution_timing_failed:",)),

@@ -361,3 +361,33 @@ def test_routine_status_poll_does_not_flood_operator_console(capsys) -> None:
     finally:
         server.shutdown()
     assert "GET /api/session" not in capsys.readouterr().out
+
+@pytest.mark.parametrize("network_error", [False, True])
+def test_recorder_network_wait_does_not_block_pause_or_fault_new_generation(network_error):
+    import threading
+    app, task5, hooks = _app()
+    initial = app.snapshot()
+    rollout = app.start(episode_id=initial.episode_id, generation=initial.generation)
+    entered, release = threading.Event(), threading.Event()
+    results = []
+    def slow_status():
+        if threading.current_thread() is threading.main_thread():
+            return {"state": "recording", "capture_enabled": task5.capture_enabled}
+        entered.set()
+        assert release.wait(2)
+        if network_error:
+            raise RuntimeError("old check HTTP timed out")
+        return {"state": "stopped"}
+    task5.status = slow_status
+    thread = threading.Thread(target=lambda: results.append(app.ensure_recorder_active()))
+    thread.start()
+    assert entered.wait(1)
+    try:
+        paused = app.pause(episode_id=rollout.episode_id, generation=rollout.generation)
+        assert paused.policy_paused and hooks.pauses[-1]
+    finally:
+        release.set()
+        thread.join(2)
+    assert not thread.is_alive()
+    assert results == [True]
+    assert app.snapshot().phase.value == "paused"

@@ -283,3 +283,65 @@ def test_unrelated_left_teach_does_not_label_right_actions_as_human(monkeypatch)
         assert all(not r['human_controlled'] for r in left_rows)
         assert not any(.10<=t<.25 for t,_ in io.published)
     finally:engine.close()
+
+@pytest.mark.parametrize("mode", ["policy", "manual:right"])
+def test_pause_or_hil_after_blocked_publication_cancels_old_deadline(monkeypatch, mode):
+    # Reproduce an operator pause arriving during a blocked ROS publication.
+    # The old 50Hz deadline is now late, but authority has already been revoked.
+    def state(t):
+        if .20 <= t < .30:
+            return mode, True, None
+        return 'policy', False, 'failure' if t >= .45 else None
+    engine, env, io, clock = setup(monkeypatch, 50, state_at=state)
+    original = io.publish_policy_action
+    blocked = []
+    def publish(action):
+        result = original(action)
+        if not blocked:
+            blocked.append(True)
+            clock.value += .20
+        return result
+    io.publish_policy_action = publish
+    try:
+        _, _, done, info = env.execute_chunk(io.sample().observation)
+        assert done and info["outcome"] == "failure"
+        assert not any(.20 <= t < .30 for t, _ in io.published)
+        assert "last_error" not in engine.stats
+        assert engine.stats["inference_requests"] >= 2
+    finally:
+        engine.close()
+
+def test_active_blocked_publisher_still_fails_without_catchup(monkeypatch):
+    engine, env, io, clock = setup(monkeypatch, 50)
+    original = io.publish_policy_action
+    def publish(action):
+        result = original(action)
+        clock.value += .20
+        return result
+    io.publish_policy_action = publish
+    try:
+        with pytest.raises(RuntimeError, match="late_ms="):
+            env.execute_chunk(io.sample().observation)
+        assert len(io.published) == 1 and io.pauses[-1]
+    finally:
+        engine.close()
+
+def test_recorder_http_does_not_block_inference_or_queue_unbounded_checks(monkeypatch):
+    engine, env, io, clock = setup(monkeypatch, 50)
+    entered, release = threading.Event(), threading.Event()
+    def blocked_report(**kwargs):
+        entered.set()
+        assert release.wait(2)
+    io.report_chunk = blocked_report
+    try:
+        engine.report_chunk(.14, 3500)
+        assert entered.wait(1)
+        first = engine.health_future
+        engine.report_chunk(.14, 3500)
+        assert engine.health_future is first
+        engine.health_started = time.monotonic() - 1.1
+        with pytest.raises(RuntimeError, match="health check timed out"):
+            engine.check_report()
+    finally:
+        release.set()
+        engine.close()

@@ -29,8 +29,7 @@ class PlannerBackend:
             actions = d._safe_action_filter(actions)
         inferred = time.monotonic()
         d._env._execution.stats["last_model_inference_ms"] = (inferred-started)*1000
-        d._env._io.report_chunk(latency_sec=inferred-started, actor_version=int(result.actor_param_version))
-        d._env._execution.stats["last_recorder_check_ms"] = (time.monotonic()-inferred)*1000
+        d._env._execution.report_chunk(latency_sec=inferred-started, actor_version=int(result.actor_param_version))
         return PolicyPlan(action_chunk=actions, ref_chunk=features.ref_chunk, source=int(result.source),
                           start_features=features, actor_param_version=int(result.actor_param_version))
 

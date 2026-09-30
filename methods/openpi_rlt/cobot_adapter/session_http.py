@@ -93,11 +93,26 @@ class RltSessionApplication:
 
     def ensure_recorder_active(self) -> bool:
         """Pause before a new chunk if Task5 has reached its recorder ceiling."""
-        with self._lock:
-            snapshot = self.snapshot()
-            if snapshot.phase not in {SessionPhase.ROLLOUT, SessionPhase.HIL}:
-                return True
+        snapshot = self.snapshot()
+        if snapshot.phase not in {SessionPhase.ROLLOUT, SessionPhase.HIL}:
+            return True
+        # Network status may take tens of milliseconds. Never hold the
+        # operator lock across it; a pause must revoke authority immediately.
+        try:
             status = self._task5.status()
+        except Exception:
+            current = self.snapshot()
+            if (current.episode_id != snapshot.episode_id
+                    or current.generation != snapshot.generation
+                    or current.phase not in {SessionPhase.ROLLOUT, SessionPhase.HIL}):
+                return True
+            raise
+        with self._lock:
+            current = self.snapshot()
+            if (current.episode_id != snapshot.episode_id
+                    or current.generation != snapshot.generation
+                    or current.phase not in {SessionPhase.ROLLOUT, SessionPhase.HIL}):
+                return True
             if str(status.get("state")) == "recording":
                 if status.get("capture_enabled") is False:
                     self.mark_terminal_pending("task5_capture_paused_unexpectedly")
