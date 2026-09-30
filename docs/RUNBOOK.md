@@ -233,9 +233,11 @@ identical on a freshly deployed machine. Full deployment material: DEPLOYMENT.md
 All seven real-policy/synthetic-I/O variants passed; reports and reproducible
 command are in EXPERIMENTS_20260930.md. Related tests now77 plus3 frozen loading.
 Online learner schema compatibility was checked by two native in-memory updates.
-No robot command was sent. First compare the original MC30 candidate with
-MC30 RTC20 using the SAME frozen Actor/version and initial conditions, then
-increase to30/40/50. Existing noise/online settings stay unchanged; the audit
+No robot command was sent. First compare the existing frozen Warmup5k entry
+without/with async_rtc20 (terminal override below), keeping the SAME Actor/version
+and initial conditions, then increase to30/40/50. The four MC30 online entries
+retain their original Learner and can update weights after loading: they must
+not be presented as frozen A/B trials. Existing noise/online settings stay unchanged; the audit
 used deterministic Actor and no Learner. Lower commanded variation can also
 mean slower response. Record tracking error, contact behavior and autonomous
 success alongside jitter. Formal field acceptance must include real RPC and
