@@ -6,6 +6,15 @@
 
 当前已开始业务迁移，以 docs/MIGRATION.md 的具体验收／切换记录为准；不得把目录存在或源码 clone 视为运行验证。跨项目问题按项目说明交给对应领域，证据与进展写回所属项目。
 
+## 模型权重存放
+
+- 需要加载推理的权重放本机 NVMe：`/home/agilex/jiaan/data/<模型族>/...`，目录结构与 USB 上一致（如 `data/rlt/plug_insertion/reference_4999`）。USB 盘 `/media/agilex/Getea1`（NTFS/FUSE、机械盘）只作归档，原件不删。原因：15 GB 的 Stage-1 从 USB 恢复约 385–424 s，本机约 7 s（2026-09-29 冷缓存实测）。
+- 保留原始 float32，不转换精度；只复制当前在用的 checkpoint。复制后逐文件 sha256 与原件比对一致再切换配置。
+- RLT session 运行中不切换路径（learner 在写 USB 的 `online/`）。改了 Stage-1 路径后，先 `rlt_v3_down.sh` 再 `rlt_v3_up.sh`，否则模型服务复用检查会因路径不一致拒绝启动。
+- plug_v3：manifest 的 `stage1_root` 指向本机 Stage-1，在线 RL 的 actor/learner/warmup/replay 仍在 USB。
+
+来源：2026-09-30 同步校验发现现场另一对话已有此约定，原文合回 A6000；本批不搬迁资产。
+
 ## 2026-09-30 按项目接管与并行对话
 
 这是长期项目入口，不再处于“仅初始化”阶段。先读最新记录并核对代码/运行状态；历史旧路径、PID 和未完成描述不能当作当前事实。
