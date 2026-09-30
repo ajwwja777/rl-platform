@@ -195,6 +195,11 @@ def main():
             "human_joint_mae_rad": float(np.mean(per_joint)), "per_joint_mae_rad": per_joint,
             "human_gripper_mae_m": float(errors[..., 6][human].mean()),
             "recorded_outcome_auc": part_auc, "q_paths": paths, "episodes": episode_rows}
+        autonomous = [e for e in episode_rows if not e["episode_hil"]]
+        report["variants"][name]["autonomous_episode_early_auc"] = {
+            "episodes": len(autonomous), "success_episodes": sum(e["outcome"] == "success" for e in autonomous),
+            "auc": auc([e["q_recorded"]["early"] for e in autonomous],
+                       [int(e["outcome"] == "success") for e in autonomous])}
         print(json.dumps({"variant": name, "hil_mae": np.mean(per_joint), "early_auc": part_auc["early"]}), flush=True)
     base, candidate = (report["variants"][n]["episodes"] for n in ["baseline", "mc_30"])
     if [(x["phase"], x["episode_id"]) for x in base] != [(x["phase"], x["episode_id"]) for x in candidate]:
@@ -214,6 +219,18 @@ def main():
                                         for k, v in sorted(counts.items())]
     report["valid_mc_rows_in_assisted_success_episodes"] = int(sum(
         bool(valid[i]) and r["outcome"] == "success" and r["episode_hil"] for i, r in enumerate(meta)))
+    first_human = {}
+    for r in meta:
+        if r["hil"]:
+            key = (r["phase"], r["episode_id"])
+            first_human[key] = min(first_human.get(key, r["step_id"]), r["step_id"])
+    # Windows strictly ending before the first HIL-containing window. This
+    # identifies pre-intervention credit, not proof those earlier actions failed.
+    prefix_ids = [i for i, r in enumerate(meta) if r["outcome"] == "success" and r["episode_hil"]
+                  and r["step_id"] + len(rows[i]["rewards"]) <= first_human[(r["phase"], r["episode_id"])]]
+    report["pre_hil_prefix_credit"] = {
+        "windows": len(prefix_ids), "positive_mc_windows": int(np.count_nonzero(returns[prefix_ids] > 0)),
+        "semantics": "Complete windows before first recorded intervention inherit the eventual assisted outcome; this does not prove their actions were bad."}
     if hashlib.sha256(journal.read_bytes()).hexdigest() != digest:
         raise RuntimeError("Replay changed during audit; refuse report")
     atomic_json(args.output, report)

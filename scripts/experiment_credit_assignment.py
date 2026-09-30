@@ -119,7 +119,9 @@ def main():
         "holdout_online_episodes":[list(k) for k in held],"holdout_transitions":len(val),
         "train_transitions":len(train),"mc_valid_transitions":int(valid.sum()),
         "validation_semantics":"Fixed 19-episode development cohort, repeatedly examined. Not an untouched test set or robot success rate.",
-        "registry":registry,"baseline":evaluate(initial,True),"experiments":[]}
+        "registry":registry,"algorithm_config":config["experiment"]["rl"],
+        "config_sha256":hashlib.sha256(args.config.read_bytes()).hexdigest(),
+        "baseline":evaluate(initial,True),"experiments":[]}
     atomic_json(args.output,report)
     for name,profile in profiles.items():
         update=make_train_step(profile.mc_weight)
