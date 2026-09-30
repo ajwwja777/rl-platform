@@ -234,7 +234,14 @@ class AsyncExecution:
             return True
         if not active():
             return False
-        self.wait_until(timestamp)
+        try:
+            self.wait_until(timestamp)
+        except RuntimeError:
+            # Pause can arrive after the precheck while this thread is
+            # descheduled. Recheck authority before propagating a late clock.
+            if not active():
+                return False
+            raise
         return active()
 
     def execute_chunk(self, observation=None, policy_planner=None, control_hz=None):

@@ -345,3 +345,23 @@ def test_recorder_http_does_not_block_inference_or_queue_unbounded_checks(monkey
     finally:
         release.set()
         engine.close()
+
+def test_pause_racing_between_precheck_and_clock_does_not_fault(monkeypatch):
+    def state(t):
+        return "policy", .20 <= t < .30, "failure" if t >= .45 else None
+    engine, env, io, clock = setup(monkeypatch, 50, state_at=state)
+    wait = engine.wait_until
+    stalled = []
+    def race(timestamp):
+        if io.published and not stalled:
+            stalled.append(True)
+            clock.value += .20
+        return wait(timestamp)
+    engine.wait_until = race
+    try:
+        _, _, done, info = env.execute_chunk(io.sample().observation)
+        assert done and info["outcome"] == "failure"
+        assert "last_error" not in engine.stats
+        assert not any(.20 <= t < .30 for t, _ in io.published)
+    finally:
+        engine.close()
