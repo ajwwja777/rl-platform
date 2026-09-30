@@ -248,3 +248,16 @@ runtime/pending writer, retains same-checkpoint Stage1, rejects implicit weight
 reload and starts no episode. Recording recovery stays a separate action.
 A6000 source/tests/push precede selective Cobot sync. Release and live verification
 are recorded in the following deployment receipt; guide Git is not submitted.
+
+Live release verified: rl-platform d4c798f and cobot-web4f5db63 pushed;18 selected
+source/docs files match Cobot SHA256. Full web backend709 passed/6 skipped,56 DOM
+checks passed,40 selected RL checks passed; additional orphan-shutdown/CLI32 passed.
+Only the idle/completed orphan web service was restarted: Stage1 PID233064 and
+14 hardware process identities/start_ticks unchanged. Formal8015 reports
+rtc_delay_exceeded, retained Stage1 and recovery allowed, but whole runtime is
+not ready. No recovery POST, Session start, inference or motion was performed.
+The recovery mechanism is covered offline; end-to-end runtime restart and RTC
+timing contention still need operator validation. Receipt on A6000:
+projects/cobot-web/outputs/rtc-runtime-recovery-20260930/{release,live-verification}.json
+under /data/LFT-W02_data/jiaan/jiaan; Cobot:
+ /home/agilex/jiaan/project/cobot-web/runtime/verification/rtc-runtime-recovery-20260930/.
