@@ -4,7 +4,7 @@
   "status": "offline_validated",
   "validated_at": "2026-09-24T03:04:36+08:00",
   "checkpoint_step": 4999,
-  "checkpoint": "/media/agilex/Getea1/jiaan/model/rl-platform/rlt/plug_insertion/reference_4999",
+  "checkpoint": "/home/agilex/jiaan/data/rlt/plug_insertion/reference_4999",
   "training": {
     "hpc_job_id": 646566,
     "state": "COMPLETED",
@@ -87,5 +87,6 @@
     "algorithm_changes": false
   },
   "model_root": "/media/agilex/Getea1/jiaan/model/rl-platform/rlt/plug_insertion",
-  "tokenizer_home": "/media/agilex/Getea1/jiaan/model/rl-platform/rlt/base/openpi"
+  "tokenizer_home": "/media/agilex/Getea1/jiaan/model/rl-platform/rlt/base/openpi",
+  "stage1_root": "/home/agilex/jiaan/data/rlt/plug_insertion/reference_4999"
 }

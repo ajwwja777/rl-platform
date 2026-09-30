@@ -333,3 +333,11 @@ Session skip验证episode/generation及故障归属，先暂停并确认自己�
 RLT execution_profiles 的 enabled/publish_hz/rtc/smoothing 校验改为调用 VLA 的 integrations/cobot/execution_options.py，支持通用 COBOT_EXECUTION_OPTIONS，兼容 COBOT_RLT_EXECUTION_OPTIONS。原 RLT profile、逻辑/Replay 20 Hz、默认模型、Stage1/Actor/学习及录制恢复均未改。
 
 A6000 CPU 离线 test_async_execution 21 passed（固定第三方源码 PYTHONPATH、JAX_PLATFORMS=cpu）；无新 GPU 模型/真实 Episode/Replay 改写/运动。web 配套精简步数列表与通用运行选项；现场 SHA 发布见 web outputs/execution-compact-20261001/ 回执。
+
+## 2026-10-01：固定 5000 的独立在线分支与 NVMe Stage1 修复
+
+来源：用户要求保留原 5000、在线采集产生新步数，同时区分原版与 MC30。部署注册增加训练方法字段；固定 5000 登记有完整状态的在线种子能力。integrations/cobot_runtime/online_seed.py 校验已登记种子 Actor／Learner 步数、版本、优化器／critic／RNG 和 warmup 状态，在明确采集加载时创建独立分支；种子文件不作为写入目标，原 Replay 仅引用。新分支的 Actor／checkpoint、配置与运行输出独立；恢复复用同分支，模型目录只呈现最近新建分支的已发布实际步数，旧分支资产保留。未修改固定第三方训练循环、奖励／采样／优化算法。
+
+Stage1 清单 checkpoint 曾回退到 USB，本批恢复 /home/agilex/jiaan/data/rlt/plug_insertion/reference_4999，并新增独立 stage1_root；在线 model_root 仍按既有现场配置引用。preflight 分别校验 Stage1 与在线资产，拒绝清单不一致，不静默回退 USB。没有重新复制／移动原资产。
+
+离线 CPU：在线分支完整状态／种子保留／不匹配拒绝／NVMe 登记与执行配置共 24 passed；配套 web 目录／发布步数和训练指标回归通过。未启动现场训练分支、未新加载 GPU、未真机动作；真正在线更新与连续 50 Hz 表现未由此验证。同步 SHA 与现场只读预检回执见 web outputs/catalog-results-20261001/。

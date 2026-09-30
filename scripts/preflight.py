@@ -16,7 +16,7 @@ def check(root=ROOT):
     config = yaml.safe_load((config_dir / "online_rl.yaml").read_text())
     manifest = json.loads((config_dir / "manifest.json").read_text())
     model_root = Path(manifest.get("model_root", root / "models/rlt" / COHORT))
-    checkpoint = model_root / ("reference_4999" if manifest.get("model_root") else "stage1/4999")
+    checkpoint = Path(manifest.get("stage1_root", model_root / ("reference_4999" if manifest.get("model_root") else "stage1/4999"))).resolve()
     warmup = model_root / ("warmup_5000" if manifest.get("model_root") else "warmup-5000")
     # The manifest is a site deployment registry. Refuse accidental cross-release use.
     if Path(manifest["checkpoint"]).resolve() != checkpoint:
@@ -62,7 +62,7 @@ def check(root=ROOT):
     return {"ok": True, "project": str(root), "checkpoint_step": step,
             "actor_version": actor_version, "warmup_ready_adds_total": int(warmup_anchor),
             "paths": {key: str(value) for key, value in resolved.items()},
-            "robot_publishers": 0}
+            "stage1_checkpoint": str(checkpoint), "robot_publishers": 0}
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)

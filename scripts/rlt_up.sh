@@ -39,7 +39,10 @@ RLT_CONFIG="$ROOT/configs/rlt/plug_v3_yyshadow/online_rl.yaml"
 # Optional project-owned experiment; original model registrations stay unchanged.
 EXPERIMENT_RUN=""
 unset COBOT_RLT_EXPERIMENT_PROFILE
-profile_values=$(PYTHONPATH="$ROOT" /usr/bin/python3 -m integrations.cobot_runtime.experiment_profiles "${COBOT_DEPLOYMENT_MODEL_ID:-}")
+profile_values=""
+if [[ "$MODE" == online ]]; then
+  profile_values=$(PYTHONPATH="$ROOT" /usr/bin/python3 -m integrations.cobot_runtime.experiment_profiles "${COBOT_DEPLOYMENT_MODEL_ID:-}")
+fi
 if [[ -n "$profile_values" ]]; then
   [[ "$MODE" == online ]] || { echo "Experimental profile requires online mode" >&2; exit 2; }
   mapfile -t profile_fields <<< "$profile_values"
@@ -47,6 +50,16 @@ if [[ -n "$profile_values" ]]; then
   RLT_CONFIG="${profile_fields[1]}"
   EXPERIMENT_RUN="${profile_fields[2]}"
   mkdir -p "$EXPERIMENT_RUN/online/metrics"
+fi
+# An explicit fixed-step collection load forks complete learner state. Rebuilds
+# reuse the same branch; the original 5k checkpoint is never a write target.
+if [[ "$MODE" == online && -n "${COBOT_RLT_BRANCH_CONFIG:-}" ]]; then
+  if [[ -n "${COBOT_RLT_ONLINE_SEED:-}" && ! -f "$COBOT_RLT_SEED_DESTINATION/seed.json" ]]; then
+    "$ONLINE_PY" -m integrations.cobot_runtime.online_seed "$COBOT_RLT_ONLINE_SEED" "$COBOT_RLT_SEED_DESTINATION" "$RLT_CONFIG" "$COBOT_RLT_BRANCH_CONFIG" "$COBOT_RLT_BRANCH_RUN"
+  fi
+  [[ -f "$COBOT_RLT_BRANCH_CONFIG" ]] || { echo "Selected online branch configuration missing" >&2; exit 2; }
+  RLT_CONFIG="$COBOT_RLT_BRANCH_CONFIG"
+  EXPERIMENT_RUN="$COBOT_RLT_BRANCH_RUN"
 fi
 # Separate physical publication from the fixed logical Actor/Replay clock.
 execution_values=$(PYTHONPATH="$ROOT" /usr/bin/python3 -m methods.openpi_rlt.cobot_adapter.execution_profiles)
