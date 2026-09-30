@@ -2,7 +2,7 @@
 """Actual frozen Stage1 + Actor, synthetic feedback, zero robot publishers.
 
 Timing and command continuity audit only; this does not measure real insertion.
-Does not import rospy, use hardware factories, bind servers or write Replay.
+Does not initialize ROS, use hardware factories, bind servers or write Replay.
 """
 import argparse,copy,hashlib,json,os,pickle,sys,time
 from pathlib import Path
@@ -87,31 +87,37 @@ def main():
         def record_raw_step(self,record):self.records.append(record)
         def report_chunk(self,latency_sec,actor_version):self.latencies.append(latency_sec)
     os.environ['COBOT_RLT_EXECUTION_PROFILE']='faithful20'
-    for hz in (20,30,40,50):
+    variants=[("faithful20",20,None)]+[(f"async_rtc{hz}",hz,ExecutionProfile(publish_hz=hz)) for hz in (20,30,40,50)]
+    variants += [("async40_no_rtc",40,ExecutionProfile(publish_hz=40,rtc=False)),
+                 ("async40_no_smoothing",40,ExecutionProfile(publish_hz=40,smoothing_tau_sec=0.))]
+    for name,hz,profile in variants:
         io=IO()
         env=RightArmCobotOnlineEnv(io,chunk_exec_horizon=10,control_frequency_hz=20,max_episode_steps=None,
             joint_step_limit=.03,gripper_step_limit=.004,sleep=time.sleep)
         env._runtime.arm()
-        engine=AsyncExecution(env,'async_rtc'+str(hz),ExecutionProfile(publish_hz=hz));env._execution=engine
-        engine.backend=PlannerBackend(SimpleNamespace(_feature_provider=Features(),_actor_client=actor,
+        engine=AsyncExecution(env,name,profile) if profile else None
+        env._execution=engine
+        backend=PlannerBackend(SimpleNamespace(_feature_provider=Features(),_actor_client=actor,
             _rl_config=cfg,_env_config=SimpleNamespace(actor_deterministic=True,safe_fallback_to_ref=False),
             _safe_action_filter=None,_env=env))
-        engine.backend.episode_id=1
+        backend.episode_id=1
+        if engine:engine.backend=backend
         try:
             obs=io.sample().observation
-            for _ in range(3):obs,_,_,_=env.execute_chunk(obs)
+            for _ in range(3):obs,_,_,_=env.execute_chunk(obs,lambda ob,step:backend.plan(ob,env._episode_steps+step))
             commands=np.stack([a for _,a in io.published]);times=np.array([t for t,_ in io.published])
             velocities=np.diff(commands[:,:6],axis=0)/np.diff(times)[:,None]
             row=dict(status='passed',logical_steps=len(io.records),commands=len(io.published),
                 measured_hz=float(1/np.diff(times).mean()),interval_p95_ms=float(np.quantile(np.diff(times),.95)*1000),
-                inference_ms=io.latencies,velocity_rms=float(np.sqrt(np.mean(velocities**2))),
+                inference_ms=[1000*x for x in io.latencies],velocity_rms=float(np.sqrt(np.mean(velocities**2))),
                 command_step_max=float(np.max(np.abs(np.diff(commands[:,:6],axis=0)))),
-                execution=dict(engine.stats))
+                execution=dict(engine.stats) if engine else {"profile":"faithful20"})
         except Exception as exc:
             row=dict(status='failed',error=str(exc),logical_steps=len(io.records),commands=len(io.published),
-                     inference_ms=io.latencies,execution=dict(engine.stats))
-        finally:engine.close()
-        report['profiles'][str(hz)]=row
+                     inference_ms=[1000*x for x in io.latencies],execution=dict(engine.stats) if engine else {"profile":"faithful20"})
+        finally:
+            if engine:engine.close()
+        report['profiles'][name]=row
         args.output.parent.mkdir(parents=True,exist_ok=True);args.output.write_text(json.dumps(report,indent=2)+'\n')
         print(json.dumps(row),flush=True)
     if hashlib.sha256(args.actor.read_bytes()).hexdigest()!=report['actor_sha256']:
