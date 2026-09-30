@@ -341,3 +341,5 @@ A6000 CPU 离线 test_async_execution 21 passed（固定第三方源码 PYTHONPA
 Stage1 清单 checkpoint 曾回退到 USB，本批恢复 /home/agilex/jiaan/data/rlt/plug_insertion/reference_4999，并新增独立 stage1_root；在线 model_root 仍按既有现场配置引用。preflight 分别校验 Stage1 与在线资产，拒绝清单不一致，不静默回退 USB。没有重新复制／移动原资产。
 
 离线 CPU：在线分支完整状态／种子保留／不匹配拒绝／NVMe 登记与执行配置共 24 passed；配套 web 目录／发布步数和训练指标回归通过。未启动现场训练分支、未新加载 GPU、未真机动作；真正在线更新与连续 50 Hz 表现未由此验证。同步 SHA 与现场只读预检回执见 web outputs/catalog-results-20261001/。
+
+现场发布事实：2026-10-01 代码已 push 并逐文件 SHA 同步；web 209 个运行文件、RL 6／dagger 2 个本批运行文件一致。仅重载 8015，网页 PID 970937；模型 offline、recorder idle、无 active writer／lease，9 个采样硬件／模型 PID 和 start_ticks 不变。实际 CPU preflight 使用 NVMe Stage1 路径且归一化 SHA 与发布清单一致；两个旧目录入口的 8 条历史标签 GET 通过，现场目录和标签响应的 DOM 结果通过。固定 5000 文件与原历史标签 SHA 不变。未运行现场在线分支、真实动作或连续 50 Hz；真实浏览器视觉验收未完成。回执：cobot-web/outputs/catalog-results-20261001/。
