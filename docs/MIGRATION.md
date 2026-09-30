@@ -327,3 +327,9 @@ Session skip验证episode/generation及故障归属，先暂停并确认自己�
 启动响应丢失通过本次prepared index及latched identity匹配owned recorder，避免操作其他轮次。
 隔离RL相关回归79 passed，覆盖16种配置组合、失联/超时、stale generation与非录制fault拒绝。
 现场源码同步与网页运行证据归web迁移记录；本批未进行真机频率/插接成功率试验。
+
+## 2026-10-01：复用跨模型执行选项合同
+
+RLT execution_profiles 的 enabled/publish_hz/rtc/smoothing 校验改为调用 VLA 的 integrations/cobot/execution_options.py，支持通用 COBOT_EXECUTION_OPTIONS，兼容 COBOT_RLT_EXECUTION_OPTIONS。原 RLT profile、逻辑/Replay 20 Hz、默认模型、Stage1/Actor/学习及录制恢复均未改。
+
+A6000 CPU 离线 test_async_execution 21 passed（固定第三方源码 PYTHONPATH、JAX_PLATFORMS=cpu）；无新 GPU 模型/真实 Episode/Replay 改写/运动。web 配套精简步数列表与通用运行选项；现场 SHA 发布见 web outputs/execution-compact-20261001/ 回执。
