@@ -86,3 +86,15 @@ def test_version_audit_keeps_held_episodes_when_journal_grows():
     _,new_val,new_held=episode_split(expanded,held_episodes=held)
     assert held==new_held
     assert [rows[i]["episode_id"] for i in original_val]==[expanded[i]["episode_id"] for i in new_val]
+
+def test_episode_report_does_not_describe_only_first_window(tmp_path):
+    from integrations.cobot_runtime.replay_audit import report_from_index
+    path=tmp_path/'journal.pkl'
+    with path.open('wb') as f:
+        for r in [row(1,0),row(1,10,True,1,source=2),row(2,0,True,0)]:pickle.dump(r,f)
+    index=JournalIndex(path);index.refresh();report=report_from_index(index)
+    dims=report['episodes']['dimensions']
+    assert not {'portion','source','hil'} & set(dims)
+    assert dims['episode_hil']==[dict(label='False',count=1,ratio=.5),dict(label='True',count=1,ratio=.5)]
+    assert report['episodes']['human_control_step_ratio']==1/3
+    assert {v['label'] for v in report['transitions']['dimensions']['portion']}=={'early','middle'}

@@ -117,15 +117,25 @@ def report_from_index(index):
     for row in index.rows:
         key = (row["phase"], row["episode_id"])
         episodes.setdefault(key, dict(row, transitions=0))["transitions"] += 1
-    return {"schema": 1, "generated_at": time.time(), "journal": str(index.path),
+    episode_composition = composition(list(episodes.values()))
+    # A first stored window is not an Episode's source, HIL fraction or portion.
+    # Keep complete-Episode outcome/HIL marginals, and derive control-step ratio
+    # from all windows rather than each Episode's first window.
+    for key in ("portion", "source", "hil"):
+        episode_composition["dimensions"].pop(key, None)
+    episode_composition["human_control_step_ratio"] = composition(index.rows)["human_control_step_ratio"]
+    episode_composition["cross"] = []
+    return {"schema": 2, "generated_at": time.time(), "journal": str(index.path),
         "bytes_read": index.offset, "duplicate_identities": index.duplicates,
-        "transitions": composition(index.rows), "episodes": composition(list(episodes.values())),
+        "transitions": composition(index.rows), "episodes": episode_composition,
         "episode_rows": list(episodes.values()),
         "definitions": {
             "outcome": "Complete episode terminal label; not transition.success.",
             "hil": "Contains HUMAN/MIXED or an intervention flag, including old human demonstrations; this does not always mean online intervention.",
             "age": "warmup / recent online episode ID window of 20 / older online; not wall-clock age.",
-            "portion": "Rank thirds of stored windows within each episode; not wall-clock thirds or insertion stages.",
+            "portion": "Transition rank thirds only, not semantic stages. No first-window portion/source/HIL marginals are reported as Episode distributions.",
+            "human_control_step_ratio": "Fraction of stored window slots; overlapping windows repeat steps. Not elapsed HIL time.",
+            "episode_rows": "First-window metadata retained for provenance; only outcome, episode_hil and transitions describe the complete Episode.",
             "sampling": "Current upstream uniform sampling is with replacement; composition does not prove data influence.",
             "identity": "phase + episode_id + step_id. Duplicate identities are reported, never silently disambiguated."
         }}
