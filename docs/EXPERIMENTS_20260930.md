@@ -348,3 +348,62 @@ HIL, one-shot outcomes, stale/late result rejection and prefix Actor-version lin
 GPU synthetic tracking audit is pending; real robot dynamics and success remain
 unverified. Training-time backbone RTC is separate from online learning on
 RTC-conditioned Replay and has not been run.
+
+## Real-policy execution audit, 2026-09-30
+
+Cobot loaded the actual frozen Stage1 and MC30 Actor version3500. Same recorded
+episode_000001 frame0, deterministic Actor, ideal synthetic joint feedback;
+zero robot publishers, no servers/ROS initialization, no Learner or Replay writes.
+Seven variants passed (30 logical steps each):
+
+| Execution | Measured publisher Hz | Interval p95 ms | Max joint command step rad |
+|---|---:|---:|---:|
+| original synchronous20 | 17.93 | 98.19 | 0.00694 |
+| async RTC20 + EMA | 20.00 | 50.03 | 0.00515 |
+| async RTC30 + EMA | 30.00 | 33.39 | 0.00349 |
+| async RTC40 + EMA | 40.00 | 25.05 | 0.00267 |
+| async RTC50 + EMA | 50.00 | 20.04 | 0.00212 |
+| async40, no RTC + EMA | 40.00 | 25.05 | 0.00267 |
+| async RTC40, no EMA | 40.00 | 25.08 | 0.00508 |
+
+Plain Stage1+Actor ~79-84ms, RTC ~121-129ms; logical acceptance delay3 (150ms)
+within configured delay4/200ms. The async queue removes synchronous inference
+gaps in THIS synthetic loop. Smaller per-publication steps at higher Hz are
+partly mechanical subdivision, not evidence of better insertion. At the same
+40Hz, EMA reduced joint velocity RMS from0.04320 to0.03030 rad/s; ideal tracking,
+fixed images and differing closed-loop trajectories prevent an accuracy claim.
+No-RTC was not worse on these aggregate synthetic smoothness metrics, so this
+audit does not establish RTC's success benefit. Production RPC and concurrent
+Learner GPU contention, actual ROS stamps/control topics, jitter, contact and
+task success remain field acceptance items.
+
+The native Replay contract test additionally performs two unchanged native
+learner steps in memory (small test networks), finite metrics and one Actor
+update. That proves schema/train-step compatibility, not trained RTC efficacy.
+Right-only HIL source semantics remain authoritative: unrelated left teach does
+not label right-arm actions as human. Pending prefix retains original version.
+Raw publications have ROS/observation timestamps plus monotonic timestamps;
+Session status exposes execution profile/counters/last error.
+
+Reports:
+A6000 /data/LFT-W02_data/jiaan/jiaan/projects/rl-platform/outputs/rlt-diagnosis-20260930/execution-gpu-comparison.json
+Cobot /home/agilex/jiaan/project/rl-platform/outputs/rlt-diagnosis-20260930/execution-gpu-comparison.json
+Source journal SHA remains c0ac2d7a755c8055b567942d154d98102456cff3aafc54ce179fadc82fcd0092;
+Actor SHA matches the audit. GPU returned empty, web offline, Session inactive.
+No production weights, Replay, hardware task or model default was changed.
+
+Reproduce only while GPU/web model are idle:
+~~~bash
+cd /home/agilex/jiaan/project/rl-platform
+export OPENPI_DATA_HOME="$(python3 -c 'import json; print(json.load(open("configs/rlt/plug_v3_yyshadow/manifest.json"))["tokenizer_home"])')"
+export HF_HUB_OFFLINE=1 XLA_PYTHON_CLIENT_PREALLOCATE=false OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=4
+checkpoint=$(python3 -c 'import json; print(json.load(open("configs/rlt/plug_v3_yyshadow/manifest.json"))["checkpoint"])')
+./envs/stage1/bin/python scripts/validate_async_execution.py \
+  --checkpoint "$checkpoint" \
+  --recording /media/agilex/Getea1/jiaan/data/datasets/plug_insertion/recordings/rl-platform/rlt/online/episode_000001.hdf5 \
+  --actor /media/agilex/Getea1/jiaan/model/rl-platform/rlt/plug_insertion/history/candidates/credit_20260930/mc_30/online_candidate/actor_snapshot/actor_snapshot.pkl \
+  --config runtime/experiments/credit_mc30/online.yaml \
+  --output outputs/rlt-diagnosis-20260930/execution-gpu-comparison.json
+~~~
+The audit checks idle before loading and retains
+source Actor hash. It initializes no robot I/O; no saved learning checkpoint.

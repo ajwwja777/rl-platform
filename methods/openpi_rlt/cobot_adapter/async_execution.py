@@ -23,6 +23,7 @@ class AsyncExecution:
         self.pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix='rlt-rtc-plan')
         self.backend = None
         self.terminal_outcome = None
+        self.last_policy_source = ControlSource.BASE
         self.epoch, self.request_id = 0, 0
         self.future, self.pending, self.plan = None, None, None
         self.anchors = {}
@@ -55,6 +56,7 @@ class AsyncExecution:
         self.anchors.clear()
         for key in ("inference_requests","stale_results","emitted_commands"):
             self.stats[key] = 0
+        self.last_policy_source = ControlSource.BASE
         self.backend.episode_id = episode_id
         self.terminal_outcome = None
 
@@ -209,7 +211,7 @@ class AsyncExecution:
                     after = self.sample()
                     executed = env._state(after.observation)
                     ref_action = executed.copy()
-                    source, version, publications = ControlSource.HUMAN, -1, []
+                    source, version, publications = runtime.control_source(self.last_policy_source), -1, []
                     next_observation = dict(after.observation)
                     next_observation.pop('rtc', None)
                 else:
@@ -225,6 +227,7 @@ class AsyncExecution:
                     target_bundle = self.queue.pop()
                     target, ref_target = target_bundle[:7], target_bundle[7:14]
                     version, source = int(target_bundle[14]), ControlSource(int(target_bundle[15]))
+                    self.last_policy_source = source
                     # This request starts at the NEXT logical boundary, below.
                     publications = []
                     epoch = self.epoch
@@ -259,7 +262,8 @@ class AsyncExecution:
                         self.last_command = command.copy()
                         self.filter.previous = command.copy()
                         self.last_ref = self.segment_ref_start + alpha*(ref_target-self.segment_ref_start) if hasattr(self,'segment_ref_start') else ref_target.copy()
-                        publications.append(dict(timestamp=float(self.clock()), action=command.copy(),
+                        publications.append(dict(timestamp=float(io.ros.Time.now().to_sec()) if hasattr(getattr(io,'ros',None),'Time') else float(check.timestamp),
+                                                 monotonic_timestamp=float(self.clock()), action=command.copy(),
                                                  ref_action=self.last_ref.copy(), actor_param_version=int(version)))
                         self.stats['emitted_commands'] += 1
                     self.wait_until(interval_origin+(interval_index+1)/20)
@@ -280,7 +284,7 @@ class AsyncExecution:
                         current = after.observation
                         continue
                     if after_state.phase is EpisodePhase.HIL:
-                        source = ControlSource.MIXED if publications else ControlSource.HUMAN
+                        source = runtime.control_source(source)
                         executed = env._state(after.observation)
                     else:
                         executed = self.last_command.copy() if publications else env._state(after.observation)
@@ -334,8 +338,12 @@ class AsyncExecution:
                 outcome=None if outcome is None else outcome.value, replay_eligible=env.replay_commit_allowed(),
                 drop_transition=env._shadow_mode or outcome is EpisodeOutcome.ABORTED,
                 execution=dict(self.stats))
-        except Exception:
+        except Exception as exc:
+            self.stats["last_error"] = str(exc)
             io.set_chunk_ready(False)
             io.set_policy_paused(True)
+            application = getattr(io, "_session_application", None)
+            if application is not None:
+                application._controller.fail("execution_timing_failed: " + str(exc))
             self.invalidate()
             raise

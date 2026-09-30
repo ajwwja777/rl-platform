@@ -51,6 +51,11 @@ def install():
         if driver._env_config.enable_human_override:
             raise ValueError('Use authoritative Task2 HIL; optional upstream human override is unsupported here')
         engine.backend = PlannerBackend(driver)
+        application = getattr(driver._env._io, "_session_application", None)
+        if application is not None:
+            status = application.status
+            application.status = lambda: {**status(), "execution": dict(engine.stats)}
+
 
     def episode(driver, episode_id):
         engine = driver._env._execution

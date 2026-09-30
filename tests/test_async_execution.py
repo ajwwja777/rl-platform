@@ -192,6 +192,19 @@ def test_actual_envdriver_replay_keeps_emitted_actions_and_rtc_anchors(monkeypat
         # The planner requested step5 while step6+ was executing. That anchor
         # must retain the request's observation, never completion-time state.
         assert 5 not in engine.anchors  # consumed by raw chunk append
+        # Verify that the unchanged native learner can train on the resulting
+        # RTC-conditioned Replay schema, entirely in memory.
+        import jax
+        from rlt_online_rl import trainer
+        cfg=RLTOnlineRLConfig(actor_hidden_dim=32,critic_hidden_dim=32)
+        state,actor,critic=trainer.init_train_state(cfg,rng=jax.random.PRNGKey(42))
+        rows=[transition.to_numpy() for transition in replay.rows[:2]]
+        batch={key:np.stack([row[key] for row in rows]) for key in rows[0]}
+        for _ in range(2):
+            state,metrics=trainer.train_step(state,batch,actor=actor,critic=critic,rl_config=cfg)
+        assert int(state.global_step)==2 and int(state.actor_version)==1
+        assert all(np.isfinite(np.asarray(value)).all() for value in metrics.values())
+
     finally:driver.close()
 
 def test_stage1_without_rtc_confirmation_cannot_run_candidate(monkeypatch):
@@ -256,4 +269,17 @@ def test_one_shot_terminal_seen_inside_publication_probe_is_not_lost(monkeypatch
         assert done and info['outcome']=='failure'
         assert io.records[-1]['done']
         assert not any(t>=.075 for t,_ in io.published)
+    finally:engine.close()
+
+def test_unrelated_left_teach_does_not_label_right_actions_as_human(monkeypatch):
+    def state(t):
+        if .10<=t<.25:return 'manual:left',True,None
+        return 'policy',False,'failure' if t>=.40 else None
+    engine,env,io,clock=setup(monkeypatch,state_at=state)
+    try:
+        env.execute_chunk(io.sample().observation)
+        left_rows=[r for r in io.records if r['expert_mask']==[True,False]]
+        assert left_rows
+        assert all(not r['human_controlled'] for r in left_rows)
+        assert not any(.10<=t<.25 for t,_ in io.published)
     finally:engine.close()

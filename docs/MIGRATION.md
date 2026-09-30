@@ -223,3 +223,13 @@ A6000 76 related tests and frozen Stage1 loading 3 passed; GPU audit and robot
 acceptance pending. Latest feedback control peek avoids camera-frame gating only
 for the opted-in path. No hardware restart or robot commands. See RUNBOOK.md and
 EXPERIMENTS_20260930.md. Publish/sync receipts follow after release.
+
+### Execution release acceptance
+VLA bda74ad and RL77671fc published before selective21-file SHA sync; benchmark
+613ae31 published/synced next. Real-policy synthetic GPU comparison7/7 passed,
+related tests77 and pinned Stage1 loading3 passed. Four new entries were read
+from the live8015 API as files-present/available, not process-ready/robot-verified.
+Final HIL/version/timestamp/status refinements preserve right-arm semantics.
+Detailed metrics/limits are in EXPERIMENTS_20260930.md; final release/sync receipt
+in outputs/rlt-diagnosis-20260930/execution-final-release.json. Original defaults,
+source assets and other-dialogue local/probe changes preserved.
