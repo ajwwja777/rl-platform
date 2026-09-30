@@ -50,6 +50,7 @@ class RltSessionApplication:
         self._terminal_home_requested = False
         self._lock = threading.RLock()
         self._task5_ref: Any | None = None
+        self._deferred_recording = None
         self._metrics: dict[str, Any] = {
             "step": 0,
             "chunk_count": 0,
@@ -73,6 +74,7 @@ class RltSessionApplication:
             self._metrics["shadow_mode"]
         )
         result.update(self._metrics)
+        result["deferred_recording"] = self._deferred_recording
         if result["shadow_mode"]:
             result["replay_eligible"] = False
         if self._task5_ref is not None:
@@ -100,13 +102,15 @@ class RltSessionApplication:
         # operator lock across it; a pause must revoke authority immediately.
         try:
             status = self._task5.status()
-        except Exception:
-            current = self.snapshot()
-            if (current.episode_id != snapshot.episode_id
-                    or current.generation != snapshot.generation
-                    or current.phase not in {SessionPhase.ROLLOUT, SessionPhase.HIL}):
-                return True
-            raise
+        except Exception as error:
+            with self._lock:
+                current = self.snapshot()
+                if (current.episode_id != snapshot.episode_id
+                        or current.generation != snapshot.generation
+                        or current.phase not in {SessionPhase.ROLLOUT, SessionPhase.HIL}):
+                    return True
+                self.mark_terminal_pending('task5_recorder_unavailable: ' + str(error), pause_capture=False)
+                return False
         with self._lock:
             current = self.snapshot()
             if (current.episode_id != snapshot.episode_id
@@ -142,6 +146,8 @@ class RltSessionApplication:
         return snapshot
 
     def _start_recorded_episode(self, starting: SessionSnapshot) -> SessionSnapshot:
+        self._task5_ref = None
+        self._deferred_recording = None
         try:
             self._task5_ref = self._task5.start_episode(self._identity_factory(starting.episode_id))
             rollout = self._controller.recording_ready(expected_generation=starting.generation)
@@ -232,6 +238,27 @@ class RltSessionApplication:
                 self._controller.fail("task5_finalize_failed")
                 raise
 
+    def skip(self, *, episode_id: int, generation: int) -> SessionSnapshot:
+        with self._lock:
+            snapshot = self._verify_request(episode_id, generation)
+            allowed = {SessionPhase.ROLLOUT, SessionPhase.HIL, SessionPhase.PAUSED,
+                       SessionPhase.TERMINAL_PENDING, SessionPhase.FAULT}
+            if snapshot.phase not in allowed or (snapshot.phase is SessionPhase.FAULT
+                    and not str(snapshot.fault_reason or '').startswith('task5_')):
+                raise SessionConflict('skip_not_allowed', 'finish replay or inspect runtime/control fault first')
+            self._hooks.set_policy_paused(True)
+            self._terminal_home_requested = False
+            # Must positively confirm that the owned writer is closed/released.
+            # A timeout leaves the episode pending; never start a second writer.
+            pending = self._controller.begin_defer(expected_episode_id=episode_id,
+                                                   expected_generation=generation)
+            identity = self._identity_factory(episode_id)
+            retained = self._task5.defer_episode(self._task5_ref, identity=identity)
+            self._hooks.submit_outcome(EpisodeOutcome.ABORTED)
+            self._deferred_recording = retained
+            return self._controller.skip_episode(expected_episode_id=episode_id,
+                                                  expected_generation=pending.generation)
+
     def next_episode(self, *, episode_id: int, generation: int) -> SessionSnapshot:
         with self._lock:
             self._verify_request(episode_id, generation)
@@ -305,7 +332,7 @@ class RltSessionApplication:
                     raise
             return updated
 
-    def mark_terminal_pending(self, reason: str) -> SessionSnapshot:
+    def mark_terminal_pending(self, reason: str, *, pause_capture=True) -> SessionSnapshot:
         with self._lock:
             snapshot = self.snapshot()
             pending = self._controller.mark_terminal_pending(
@@ -314,7 +341,13 @@ class RltSessionApplication:
                 expected_generation=snapshot.generation,
             )
             self._hooks.set_policy_paused(True)
-            self._pause_capture_if_recording()
+            try:
+                if pause_capture:
+                    self._pause_capture_if_recording()
+            except Exception as error:
+                # Policy is already paused. A recorder transport fault must not
+                # terminate Actor/Learner/Replay while the operator reviews it.
+                print('[rlt-session] recorder pause unconfirmed: ' + str(error), flush=True)
             print(
                 f"[rlt-session] 策略已暂停，等待操作员选择成功/失败/放弃；reason={reason}",
                 flush=True,
@@ -448,6 +481,7 @@ class _SessionHandler(SimpleHTTPRequestHandler):
             "/api/session/stop": self._application.stop,
             "/api/episode/next": self._application.next_episode,
             "/api/episode/marker": self._application.marker,
+            "/api/episode/skip": self._application.skip,
             "/api/episode/save": partial(self._application.terminal, EpisodeOutcome.SAVED),
             "/api/episode/success": partial(self._application.terminal, EpisodeOutcome.SUCCESS),
             "/api/episode/failure": partial(self._application.terminal, EpisodeOutcome.FAILURE),

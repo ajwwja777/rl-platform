@@ -62,6 +62,11 @@ class SharedEpisodeLifecycle:
         # asynchronously after this call returns.
         return self.client.finish_episode(reference, outcome)
 
+    def defer_episode(self, reference, *, identity=None):
+        if not self.collecting:
+            raise RuntimeError('finish_evaluation_before_recording_deferral')
+        return self.recorder.defer_episode(reference, identity=self.identity or identity)
+
     def status(self):
         return self.client.status()
 

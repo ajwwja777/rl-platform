@@ -340,8 +340,10 @@ def test_recorder_http_does_not_block_inference_or_queue_unbounded_checks(monkey
         engine.report_chunk(.14, 3500)
         assert engine.health_future is first
         engine.health_started = time.monotonic() - 1.1
-        with pytest.raises(RuntimeError, match="health check timed out"):
-            engine.check_report()
+        engine.check_report()
+        assert io.pauses[-1] is True
+        assert engine.stats['recorder_warning'] == 'task5_recorder_health_timeout'
+        assert engine.health_future is first
     finally:
         release.set()
         engine.close()

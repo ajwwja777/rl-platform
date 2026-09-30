@@ -290,6 +290,37 @@ class RltSessionController:
             self._generation += 1
             return self.snapshot()
 
+    def begin_defer(self, *, expected_episode_id: int, expected_generation: int) -> SessionSnapshot:
+        with self._lock:
+            self._require_episode(expected_episode_id)
+            self._require_generation(expected_generation)
+            self._require_phase(SessionPhase.ROLLOUT, SessionPhase.HIL, SessionPhase.PAUSED,
+                                SessionPhase.TERMINAL_PENDING, SessionPhase.FAULT)
+            if self._phase is SessionPhase.FAULT and not str(self._fault_reason or '').startswith('task5_'):
+                raise SessionConflict('non_recorder_fault', 'inspect the control/runtime fault first')
+            self._phase = SessionPhase.TERMINAL_PENDING
+            self._terminal_reason = 'operator_defer_pending'
+            self._expert_mask = (False, False)
+            self._generation += 1
+            return self.snapshot()
+
+    def skip_episode(self, *, expected_episode_id: int, expected_generation: int) -> SessionSnapshot:
+        with self._lock:
+            self._require_episode(expected_episode_id)
+            self._require_generation(expected_generation)
+            self._require_phase(SessionPhase.ROLLOUT, SessionPhase.HIL, SessionPhase.PAUSED,
+                                SessionPhase.TERMINAL_PENDING, SessionPhase.FAULT)
+            if self._phase is SessionPhase.FAULT and not str(self._fault_reason or '').startswith('task5_'):
+                raise SessionConflict('non_recorder_fault', 'inspect the control/runtime fault first')
+            self._phase = SessionPhase.WAITING_SCENE
+            self._outcome = EpisodeOutcome.SAVED
+            self._terminal_reason = 'operator_deferred'
+            self._fault_reason = None
+            self._expert_mask = (False, False)
+            self._fresh_plan_required = False
+            self._generation += 1
+            return self.snapshot()
+
     def fail(self, reason: str) -> SessionSnapshot:
         with self._lock:
             if self._phase is SessionPhase.STOPPED:

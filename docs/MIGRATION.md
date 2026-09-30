@@ -312,3 +312,18 @@ in each project AGENTS.md and the five laptop entry directories.
 
 Final pause race check also covers a pause arriving between the authority precheck
 and deadline evaluation; current selected RL regression51 passed.
+
+
+## 2026-09-30：独立可选发布Hz/RTC/平滑与保留任务的轮次跳过
+
+执行配置新增严格execution_options契约，发布20/30/40/50 Hz、RTC与因果平滑可独立组合；
+逻辑Actor/Replay仍固定20 Hz，关闭平滑保留现有动作/速度限制。模型默认profile未改变。
+网页只传递该领域契约，不复制执行算法；COBOT_RLT_EXECUTION_OPTIONS由运行组件解析。
+录制健康HTTP失败/超时转terminal_pending并撤回策略权限，保留Actor/Learner/Replay任务；
+健康worker保持单个在途请求，旧episode/generation结果不影响新轮次，超时处理不再同步访问录制HTTP。
+Session skip验证episode/generation及故障归属，先暂停并确认自己的writer关闭/保留，
+再清理本轮在线trace并进入waiting_scene；不归位、不自动开始下一轮、不插入Replay。
+跳过结果未确认时留terminal_pending；控制/执行故障与Replay提交中的轮次不能作为小录制问题跳过。
+启动响应丢失通过本次prepared index及latched identity匹配owned recorder，避免操作其他轮次。
+隔离RL相关回归79 passed，覆盖16种配置组合、失联/超时、stale generation与非录制fault拒绝。
+现场源码同步与网页运行证据归web迁移记录；本批未进行真机频率/插接成功率试验。

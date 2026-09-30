@@ -26,6 +26,7 @@ class AsyncExecution:
         self.health_future = None
         self.health_lock = threading.RLock()
         self.health_started = None
+        self.health_identity = None
         self.backend = None
         self.terminal_outcome = None
         self.last_policy_source = ControlSource.BASE
@@ -34,7 +35,7 @@ class AsyncExecution:
         self.anchors = {}
         self.stats = dict(profile=name, logical_hz=20, publish_hz=profile.publish_hz,
                           inference_requests=0, stale_results=0, emitted_commands=0,
-                          rtc_training_data=profile.rtc)
+                          rtc_training_data=profile.rtc, smoothing=profile.smoothing_tau_sec > 0)
         self.timeline_origin = None
         self.publication_index = 0
         self.segment_start = self.last_command = self.last_ref = None
@@ -70,11 +71,28 @@ class AsyncExecution:
         with self.health_lock:
             if self.health_future is None:
                 return
+            reason = None
             if self.health_future.done():
-                self.health_future.result()  # Recorder/network failure must surface.
+                try:
+                    self.health_future.result()
+                except Exception as error:
+                    reason = 'task5_recorder_unavailable: ' + str(error)
                 self.health_future = None
             elif time.monotonic() - self.health_started > 1.0:
-                raise RuntimeError('Recorder health check timed out; policy paused; keep Stage1 and recover runtime')
+                reason = 'task5_recorder_health_timeout'
+            application = getattr(self.env._io, '_session_application', None)
+            if application and self.health_identity is not None:
+                current = application.snapshot()
+                if (current.episode_id, current.generation) != self.health_identity:
+                    return
+            if reason:
+                io = self.env._io
+                io.set_policy_paused(True)
+                io.set_chunk_ready(False)
+                application = getattr(io, '_session_application', None)
+                if application and application.snapshot().phase.value in {'rollout', 'hil'}:
+                    application.mark_terminal_pending(reason, pause_capture=False)
+                self.stats['recorder_warning'] = reason
 
     def report_chunk(self, latency_sec, actor_version):
         # Recorder HTTP is not part of the Stage1/Actor inference budget.
@@ -84,6 +102,9 @@ class AsyncExecution:
             if self.health_future is not None:
                 return
             self.health_started = time.monotonic()
+            application = getattr(self.env._io, '_session_application', None)
+            snapshot = application.snapshot() if application else None
+            self.health_identity = (snapshot.episode_id, snapshot.generation) if snapshot else None
             def report():
                 started = time.monotonic()
                 try:

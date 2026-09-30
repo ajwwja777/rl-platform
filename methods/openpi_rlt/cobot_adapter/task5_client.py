@@ -195,6 +195,7 @@ class Task5Client:
 
     def start_episode(self, identity: Task5EpisodeIdentity) -> Task5EpisodeRef:
         self._operator_nodes = []
+        self._pending_ref = None
         if self._min_free_bytes:
             free = shutil.disk_usage(Path(identity.data_root)).free
             if free < self._min_free_bytes:
@@ -221,6 +222,7 @@ class Task5Client:
             episode_index = int(prepared["next_episode_index"])
         except (KeyError, TypeError, ValueError) as error:
             raise Task5ClientError("Task5 did not return next_episode_index") from error
+        self._pending_ref = Task5EpisodeRef(identity=identity, episode_index=episode_index)
         started = self._request(
             "POST",
             "/api/episodes/start",
@@ -234,9 +236,10 @@ class Task5Client:
                 "max_timesteps": identity.max_timesteps,
             },
         )
-        self._wait_status({"recording"})
         episode_uuid = started.get("episode_uuid") if isinstance(started, dict) else None
-        return Task5EpisodeRef(identity=identity, episode_index=episode_index, episode_uuid=episode_uuid)
+        self._pending_ref = Task5EpisodeRef(identity=identity, episode_index=episode_index, episode_uuid=episode_uuid)
+        self._wait_status({"recording"})
+        return self._pending_ref
 
     def _resolve_uuid(self, ref: Task5EpisodeRef) -> str:
         query = urlencode({"data_root": ref.identity.data_root})
@@ -268,6 +271,22 @@ class Task5Client:
             raise Task5ClientError("episode marker limit reached")
         nodes.append({"frame_index": frame, "node_kind": kind})
         self._operator_nodes = nodes
+
+    def defer_episode(self, ref, *, identity=None):
+        ref = ref or getattr(self, '_pending_ref', None)
+        if ref is not None and identity is not None and ref.identity != identity:
+            raise Task5ClientError('Task5 pending episode identity mismatch')
+        identity = ref.identity if ref is not None else identity
+        payload = self._request('POST', '/api/episodes/defer', {
+            'episode_uuid': ref.episode_uuid if ref is not None else None,
+            'episode_index': ref.episode_index if ref is not None else None,
+            'data_root': identity.data_root,
+            'task_id': identity.task_id, 'model_id': identity.model_id,
+            'checkpoint_id': identity.checkpoint_id, 'dataset_round': identity.dataset_round,
+        })
+        if not isinstance(payload, dict) or payload.get('deferred') is not True:
+            raise Task5ClientError('Task5 deferral was not confirmed')
+        return payload
 
     def finish_episode(self, ref: Task5EpisodeRef, outcome: EpisodeOutcome) -> Task5EpisodeRef:
         terminal = EpisodeOutcome(outcome)
