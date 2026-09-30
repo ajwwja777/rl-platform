@@ -93,6 +93,7 @@ PY
 }
 
 if ! model_alive; then
+  [[ "${COBOT_RLT_REQUIRE_RESIDENT_STAGE1:-0}" != 1 ]] || { echo "Resident Stage1 is unavailable; recovery will not reload weights" >&2; exit 2; }
   port_open "$MODEL_PORT" && { echo "端口 $MODEL_PORT 被未登记进程占用" >&2; exit 2; }
   log="$RUN/logs/model-$(date -u +%Y%m%dT%H%M%SZ).log"
   export PYTHONPATH="$ROOT/envs/machine-a-py311-overlay:$ROOT:$ROOT/third_party/openpi-rlt/src:$ROOT/third_party/openpi-rlt/scripts${PYTHONPATH:+:$PYTHONPATH}"
@@ -121,7 +122,11 @@ fi
 
 deadline=$((SECONDS+1800))
 while ! port_open "$MODEL_PORT"; do
-  model_alive || { if [[ ${#stage1_rtc_args[@]} -gt 0 ]]; then
+  model_alive || { echo "Stage-1 service exited; inspect registered log" >&2; exit 1; }
+  (( SECONDS < deadline )) || { echo "Stage-1 加载超时" >&2; exit 1; }
+  sleep 2
+done
+if [[ ${#stage1_rtc_args[@]} -gt 0 ]]; then
   PYTHONPATH="$ROOT:$ROOT/third_party/openpi-rlt/packages/openpi-client/src" "$MACHINE_PY" - "$MODEL_PORT" <<'PYRTC'
 import sys
 from openpi_client.websocket_client_policy import WebsocketClientPolicy
@@ -133,10 +138,6 @@ finally:
  policy._ws.close()
 PYRTC
 fi
-echo "Stage-1 服务退出，请查看登记日志" >&2; exit 1; }
-  (( SECONDS < deadline )) || { echo "Stage-1 加载超时" >&2; exit 1; }
-  sleep 2
-done
 echo "Stage-1 端口已监听，模型协议由 Session 就绪检查确认: $(basename "$checkpoint")"
 
 port_open 11311 || { echo "ROS master 未启动；先启动机械臂和相机节点" >&2; exit 2; }

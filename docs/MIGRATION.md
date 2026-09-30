@@ -233,3 +233,18 @@ Final HIL/version/timestamp/status refinements preserve right-arm semantics.
 Detailed metrics/limits are in EXPERIMENTS_20260930.md; final release/sync receipt
 in outputs/rlt-diagnosis-20260930/execution-final-release.json. Original defaults,
 source assets and other-dialogue local/probe changes preserved.
+
+## 2026-09-30: RTC runtime failure and retained-model recovery
+
+Investigated the actual19:50:31 log: MC30 async_rtc50 EnvDriver rejected a late
+RTC result; final supervisor traceback was a consequence. Stage1 remained
+PID233064; recorder reported stopped/complete/committed. No recovery, inference,
+robot action, asset deletion or re-labeling was performed during diagnosis.
+
+RLT owns stdlib root-cause classification and detailed actual/allowed timing.
+Web collection/deployment share runtime-failure display and guarded explicit
+/api/rlt/recover-runtime. It uses the original launcher, verifies no live owned
+runtime/pending writer, retains same-checkpoint Stage1, rejects implicit weight
+reload and starts no episode. Recording recovery stays a separate action.
+A6000 source/tests/push precede selective Cobot sync. Release and live verification
+are recorded in the following deployment receipt; guide Git is not submitted.

@@ -156,6 +156,18 @@ class AsyncExecution:
             np.full((len(actions),1),plan.actor_param_version,np.float32),
             np.full((len(actions),1),plan.source,np.float32)], -1)
         bundle[:n,14:] = snapshot.previous_actions[:n,14:]
+        actual_delay = self.queue.cursor - snapshot.execution_horizon
+        self.stats['last_actual_delay_steps'] = actual_delay
+        self.stats['allowed_delay_steps'] = self.config.max_delay_steps
+        if actual_delay > self.config.max_delay_steps:
+            raise RuntimeError(
+                f"RTC delay exceeded budget: actual={actual_delay} logical steps "
+                f"({actual_delay/self.config.logical_hz:.3f}s), "
+                f"allowed={self.config.max_delay_steps} "
+                f"({self.config.max_delay_steps/self.config.logical_hz:.3f}s); "
+                f"model_ms={self.stats.get('last_model_inference_ms', 'unknown')}, "
+                f"recorder_check_ms={self.stats.get('last_recorder_check_ms', 'unknown')}; "
+                "policy paused; keep Stage1 and recover runtime")
         delay = self.queue.complete_inference(snapshot.session_id, snapshot.request_id,
                                                self.config.max_delay_steps, bundle)
         self.plan = plan

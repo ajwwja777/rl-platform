@@ -27,7 +27,10 @@ class PlannerBackend:
         actions = np.asarray(result.refined_chunk, np.float32)
         if d._safe_action_filter is not None:
             actions = d._safe_action_filter(actions)
-        d._env._io.report_chunk(latency_sec=time.monotonic()-started, actor_version=int(result.actor_param_version))
+        inferred = time.monotonic()
+        d._env._execution.stats["last_model_inference_ms"] = (inferred-started)*1000
+        d._env._io.report_chunk(latency_sec=inferred-started, actor_version=int(result.actor_param_version))
+        d._env._execution.stats["last_recorder_check_ms"] = (time.monotonic()-inferred)*1000
         return PolicyPlan(action_chunk=actions, ref_chunk=features.ref_chunk, source=int(result.source),
                           start_features=features, actor_param_version=int(result.actor_param_version))
 

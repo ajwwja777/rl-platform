@@ -254,3 +254,37 @@ This is an opt-in field experiment, starts paused and still requires an
 RTC-capable loaded Stage1. Use faithful20 to return to the exact original executor.
 Stage1 backbone training-time RTC is NOT implemented/run by this batch;
 the original frozen VLA and online Actor/Critic training contract are preserved.
+
+### RTC delay exceeded budget: keep Stage1, recover the runtime
+
+Field failure on 2026-09-30 19:50:31: MC30 async_rtc50 EnvDriver rejected a new
+chunk because actual queue delay exceeded its predicted 4 logical steps (200 ms).
+Supervisor then stopped Learner/Actor/Replay; Learner saved step7000. Stage1
+PID233064 remained resident. The old log's approximately135 ms inference metric
+excluded the recorder status check; it cannot identify the full stall source.
+The added metrics distinguish last_model_inference_ms and last_recorder_check_ms,
+and the fault states actual/allowed logical steps. Original bounds remain intact.
+
+The web exposes the earlier root cause and separate Stage1/whole-runtime readiness.
+Both collection and deployment offer Check status, View output and Recover runtime
+(keep model). The corresponding terminal entry is:
+
+~~~bash
+cd /home/agilex/jiaan/project/cobot-web
+python3 scripts/console.py state model
+python3 scripts/console.py api POST /api/rlt/recover-runtime
+~~~
+
+Recovery requires a fully exited owned runtime, same-checkpoint resident Stage1
+and no unfinished writer/evaluation. It uses the original deployment launcher with
+COBOT_RLT_REQUIRE_RESIDENT_STAGE1=1: if Stage1 disappeared, fail instead of reloading.
+It never starts inference, homes hardware, discards data or labels an episode.
+Wait for readiness, then manually start the session/episode. Ongoing candidate
+training retains its original resume behavior; recovery is not a frozen A/B trial.
+
+If the timing failure repeats, select original plug-v3-credit-mc30 (synchronous20,
+same candidate weights/training branch) rather than repeatedly starting RTC.
+All four publication profiles retain the same200 ms logical delay budget.
+This UI recovery does not fix timing contention or establish field acceptance.
+RLT classification belongs to integrations/cobot_runtime/runtime_diagnostics.py;
+the web owns task orchestration and operator recovery.
