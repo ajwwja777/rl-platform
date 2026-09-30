@@ -212,3 +212,125 @@ timeouts separately.
 - /data/LFT-W02_data/jiaan/jiaan/projects/rl-platform/docs/EXPERIMENTS_20260930.md
 
 Final acceptance: formal 8015 serves 21 credit experiments and seven action plots; English rendering and responsive read-only checks passed. MC30 catalog reports available, training enabled, published Learner7000 / Actor3500. UI-only reload preserved all six observed hardware process identities. Group-wide Ctrl-C also passed ordered candidate shutdown with no traceback or listening test ports. Guide records updated without committing its Git.
+
+## 2026-09-30 follow-up: does MC30 repair useful action guidance?
+
+The first candidate selection compared seven recipes x three seeds x 2,000 updates
+from the same Warmup5000 optimizer state. MC30 is an empirical research choice,
+not an upstream RLT default or an established optimum. Its target is
+`0.7 * native_TD + 0.3 * recorded_discounted_episode_return` on valid rows.
+Middle transitions already receive native TD bootstrap credit; their zero
+`transition.success` is not proof that their success information was discarded.
+MC30 changes how credit is anchored, not the success/failure sampling ratio.
+
+New script: scripts/audit_critic_guidance.py. It loads six frozen saved states,
+excludes the same complete Online episodes, and tests Q along recorded HIL actions.
+The **fixed baseline Actor** path is identical for every Critic, separating action
+changes from Critic changes. Q1 is used by the Actor objective; min(Q1,Q2) by TD.
+It also measures per-joint/gripper errors and bootstraps paired whole episodes,
+never overlapping windows as independent samples. Five uncertainty/identity
+contracts and the real GPU audit passed.
+
+### Actual new evidence
+
+Seed42 matched Native TD vs MC30, Learner7000/Actor3500:
+
+| Diagnostic | Native TD | MC30 |
+|---|---:|---:|
+| HIL joint MAE (rad) | .00213242 | .00212074 |
+| Early recorded-outcome AUC | .5455 | .6818 |
+| Q1 prefers HIL endpoint, fixed Actor path | 22.76% | 35.86% |
+| min-Q prefers HIL endpoint, fixed Actor path | 26.90% | 42.76% |
+| HIL gripper MAE (m) | .00019283 | .00020150 |
+
+There are 145 HIL-containing windows but only **six HIL episodes** in this
+development cohort. They are successful assisted episodes; this is not a diverse
+test of successful and failed interventions. Human counterfactual actions can be
+off-distribution and are not certified optimal. Most windows still do not get
+higher Q1 toward the human endpoint. MC30 mitigates this diagnostic; it does not
+resolve it. J1/J2/J4 errors are slightly worse; gripper error worsens ~4.5%.
+A six-joint scalar must not hide these dimensions or imply smooth hardware tracking.
+
+Paired episode bootstrap for early AUC improvement, seed42:
++.1364, 95% interval [-.0682, +.3182]. It includes zero.
+Episode-equal HIL MAE difference: -.00001225 rad, interval
+[-.00001826, -.00000560], but this is conditional on six already-inspected episodes
+and one saved training seed. These are exploratory intervals, not selection-adjusted
+evidence or a robot success test. Three-seed mean early AUC .5417 -> .6667 remains
+below the initial Warmup5000 .9091; there is no monotonic improvement claim.
+MC return RMSE is measured against the target being introduced, so its decrease
+is not an independent demonstration of better task execution.
+
+Replay contains 73 Online episodes: 44 failed without HIL, 23 successful with HIL,
+six successful without HIL. These are accepted Replay counts, not an unbiased
+operational success-rate estimate. Among the 19 held-out development episodes:
+11 autonomous failures, six assisted successes, **only two autonomous successes**.
+The pure-autonomous early AUC uses 13 episodes / two positives, far too few to
+establish generalization. Of all successful Replay windows, 2,207 belong to assisted
+successful episodes. 316 complete pre-HIL windows inherit positive MC returns.
+This is expected behavior-return credit, not proof those actions were wrong:
+later human rescue makes eventual success an ambiguous target for autonomous
+decision quality. Both native TD and MC can inherit this confound.
+
+### Actor Q-loss ablation: the new competing explanation
+
+Ran three additional seeds 41/42/43 with exactly the same Warmup5000 initialization,
+train/holdout split, sample sequence and 2,000 updates. Only offline
+`online_q_weight` changes .1 -> 0; BC, delta regularization, native Critic TD,
+reward, action normalization and all production configuration remain unchanged.
+It is Q-loss-off, not removal of the Critic or a change to the deployed algorithm.
+
+| Method | Three-seed HIL joint MAE (rad) | Early outcome AUC |
+|---|---:|---:|
+| Native TD / original Actor Q weight | .00215369 | .5417 |
+| MC30 / original Actor Q weight | .00214182 | .6667 |
+| Native TD / Actor Q weight zero | .00213262 | .4470 |
+
+Turning off Actor Q pressure improves this imitation proxy by ~0.98%, versus
+MC30's ~0.55%, yet yields worse Q outcome ranking. This supports checking whether
+the learned Critic is useful for action improvement rather than attributing every
+imitation gain to RL. It does **not** justify disabling Q in production: fitting
+recorded HIL actions and autonomous task success are different objectives.
+No Q-loss-off weights were saved or registered; training happened only in memory.
+
+The next priorities are: verify observation/action/HIL timing and normalization;
+stratify pre-intervention, intervention and autonomous-success data; evaluate
+matched Critic action preferences and dimensions on new untouched episodes.
+Only then compare registered credit/loss variants in controlled field A/B.
+RTC/40 Hz/noise remain separate execution experiments; none is enabled here.
+
+### Paths and reproduction
+
+A6000 reports and the four-panel figure:
+`/data/LFT-W02_data/jiaan/jiaan/projects/rl-platform/outputs/rlt-diagnosis-20260930/`
+contains critic_guidance.json, actor_bc_only.json, actor_bc_only.yaml,
+actor_bc_only_registry.json and critic_guidance.png/.svg.
+Cobot reports use:
+`/home/agilex/jiaan/project/rl-platform/outputs/rlt/plug_v3_yyshadow/analysis/`.
+
+```bash
+cd /home/agilex/jiaan/project/rl-platform
+./envs/online/bin/python scripts/audit_critic_guidance.py \
+  --cohort outputs/rlt/plug_v3_yyshadow/analysis/credit_assignment.json \
+  --states /media/agilex/Getea1/jiaan/model/rl-platform/rlt/plug_insertion/history/candidates/credit_20260930 \
+  --output outputs/rlt/plug_v3_yyshadow/analysis/critic_guidance.json \
+  --guard-web-url http://127.0.0.1:8015
+
+# Inspect the saved experimental YAML: online_q_weight=0; production YAML is unchanged.
+./envs/online/bin/python scripts/experiment_credit_assignment.py \
+  --config outputs/rlt/plug_v3_yyshadow/analysis/actor_bc_only.yaml \
+  --registry outputs/rlt/plug_v3_yyshadow/analysis/actor_bc_only_registry.json \
+  --cohort outputs/rlt/plug_v3_yyshadow/analysis/credit_assignment.json \
+  --output outputs/rlt/plug_v3_yyshadow/analysis/actor_bc_only.json \
+  --updates 2000 --seeds 41,42,43
+```
+
+The Q-off YAML is a copy of the recorded machine online configuration with only
+experiment.rl.online_q_weight set to zero; its registry has one uniform profile:
+`{"schema":1,"profiles":{"actor_bc_only":{"sampling":"uniform"}}}`.
+The experiment report now includes actual algorithm configuration and config hash.
+The audit refuses a changed journal, occupied GPU or active web model/session.
+Only audit output files are written. Final Replay SHA256 still matches
+c0ac2d7a755c8055b567942d154d98102456cff3aafc54ce179fadc82fcd0092.
+GPU returned idle; no production weights/config or hardware tasks were changed.
+Sources: actual fixed source code, recorded reports and this dialogue, 2026-09-30.

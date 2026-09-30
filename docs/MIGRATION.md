@@ -201,3 +201,16 @@ Actual batch history is correctly empty until next Learner launch. Fixed-cohort 
 ## 2026-09-30: registered credit candidate and execution diagnostics
 
 A6000 development -> tests -> project Git push -> selected Cobot files with SHA256 verification. Added method-owned sampling/MC experiments, seven recipes x three seeds x 2,000 updates. Native upstream and journal rewards remain unchanged. MC30 candidate at /media/agilex/Getea1/jiaan/model/rl-platform/rlt/plug_insertion/history/candidates/credit_20260930/mc_30/online_candidate; runtime config /home/agilex/jiaan/project/rl-platform/runtime/experiments/credit_mc30/online.yaml. Actual Learner restore/update/publish/restart passed; isolated spawned Replay/Learner/Actor passed without EnvDriver. Fixed candidate shutdown ordering so Learner flush completes before Replay stops. Recorded 7D Stage1 RTC inference passed, but RTC/high-frequency publication remain disabled pending integrated control/Replay tests and field acceptance. Full results, paths, limitations and CLI: docs/EXPERIMENTS_20260930.md. Source: cobot_rlt conversation; no robot motion, no guide Git submission.
+
+## 2026-09-30: frozen Critic guidance and Q-loss ablation
+
+Added scripts/audit_critic_guidance.py and actual algorithm/config provenance to
+credit experiments. Six frozen states audited on the same whole-episode cohort;
+MC30 raises fixed-action Q1 human preference 23% -> 36%, but most windows still
+disfavor it and gripper MAE worsens ~4.5%. Three matched Q-loss-off runs improve
+HIL MAE ~0.98% without proving autonomous success. Online Replay has only six
+unassisted successful episodes; 23 assisted successes confound terminal credit.
+Whole-episode AUC uncertainty includes zero. Evidence, reproduction and remaining
+work appended to docs/EXPERIMENTS_20260930.md. No robot publishers, production
+weight writes or Replay changes; only small reports/figure copied to A6000.
+Source: actual offline audit and cobot_rlt dialogue; guide Git not submitted.
