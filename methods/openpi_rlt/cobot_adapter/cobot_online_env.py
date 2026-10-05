@@ -174,6 +174,7 @@ class CobotOnlineEnv:
 
         while len(trace) < self._chunk_exec_horizon and outcome is None:
             sample = self._io.sample()
+            io_evidence_before_step = getattr(sample, "io_evidence", None)
             sample_received_monotonic = time.perf_counter()
             interval_start_sample_received_monotonic = sample_received_monotonic
             publish_started_monotonic = None
@@ -323,6 +324,8 @@ class CobotOnlineEnv:
                 "sample_received_monotonic": sample_received_monotonic,
                 "interval_start_sample_received_monotonic": interval_start_sample_received_monotonic,
                 "hil_sampling_mode": self._hil_sampling,
+                "io_evidence_before_step": io_evidence_before_step,
+                "io_evidence_after_step": getattr(sample, "io_evidence", None),
                 "command_publish_started_monotonic": publish_started_monotonic,
                 "command_publish_finished_monotonic": publish_finished_monotonic,
                 "plan_created_monotonic": plan_created_monotonic,

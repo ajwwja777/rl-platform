@@ -54,6 +54,11 @@ POLICY_TOPICS = {
     "left": "/task2/policy/joint_left",
     "right": "/task2/policy/joint_right",
 }
+# Read-only coordinator output; human rear-arm absolute poses are not targets.
+COORDINATOR_TOPICS = {
+    "left": "/master/joint_left",
+    "right": "/master/joint_right",
+}
 JOINT_NAMES = [f"joint{index}" for index in range(7)]
 
 
@@ -64,6 +69,7 @@ class CobotIOSample:
     outcome: EpisodeOutcome | None
     paused: bool
     timestamp: float
+    io_evidence: dict[str, Any] | None = None
 
 
 def build_machine_a_observation(
@@ -227,6 +233,7 @@ class RosTask2IO:
         self._condition = threading.Condition(threading.RLock())
         self._images: dict[str, Any] = {}
         self._joints: dict[str, Any] = {}
+        self._coordinator_commands: dict[str, tuple[Any, float]] = {}
         self._mode = "policy"
         self._paused = True
         self._chunk_ready = False
@@ -245,6 +252,8 @@ class RosTask2IO:
             self.ros.Subscriber(topic, self.image_type, self._image_callback(key), queue_size=2)
         for side, topic in JOINT_TOPICS.items():
             self.ros.Subscriber(topic, self.joint_state_type, self._joint_callback(side), queue_size=10)
+        for side, topic in COORDINATOR_TOPICS.items():
+            self.ros.Subscriber(topic, self.joint_state_type, self._coordinator_callback(side), queue_size=10)
         self.ros.Subscriber(
             "/task2/teach_handover/mode", self.string_type, self._mode_callback, queue_size=10
         )
@@ -408,6 +417,49 @@ class RosTask2IO:
                     right="right" in sides,
                 )
 
+    def _coordinator_callback(self, side: str):
+        def callback(message: Any) -> None:
+            with self._condition:
+                self._coordinator_commands[side] = (message, time.perf_counter())
+        return callback
+
+    def _sample_evidence_locked(self) -> dict[str, Any]:
+        """Capture independent command/feedback clocks; never replace Replay actions.
+
+        A fresh coordinator snapshot is evidence of a command message, not an
+        acknowledgement of execution or a complete command history.
+        """
+        now = self.ros.Time.now().to_sec() if hasattr(self.ros, "Time") else time.time()
+        commands = {}
+        for side, (message, arrival) in getattr(self, "_coordinator_commands", {}).items():
+            value = np.asarray(getattr(message, "position", [])[:7], dtype=np.float32)
+            header_stamp = getattr(getattr(message, "header", None), "stamp", None)
+            try:
+                stamp = float(header_stamp.to_sec() if hasattr(header_stamp, "to_sec") else header_stamp)
+            except (TypeError, ValueError):
+                stamp = float("nan")
+            finite = value.shape == (7,) and bool(np.isfinite(value).all())
+            valid_stamp = bool(np.isfinite(stamp))
+            age = float(now-stamp) if valid_stamp else None
+            commands[side] = {
+                "target": value.tolist() if finite else None,
+                "ros_stamp": stamp if valid_stamp else None,
+                "arrival_monotonic": float(arrival),
+                "age_seconds": age,
+                "valid": finite and age is not None and -.1 <= age <= .25,
+                "topic": COORDINATOR_TOPICS[side],
+            }
+        return {
+            "captured_ros_time": float(now),
+            "captured_monotonic": time.perf_counter(),
+            "mode": self._mode,
+            "coordinator_commands": commands,
+            "feedback_ros_stamps": {side: self._stamp(msg) for side, msg in self._joints.items()},
+            "camera_ros_stamps": {key: self._stamp(msg) for key, msg in self._images.items()},
+            "camera_encodings": {key: str(getattr(msg, "encoding", "unknown")) for key, msg in self._images.items()},
+            "semantics": "Latest received coordinator commands at sample capture; no execution acknowledgement",
+        }
+
     def _pause_service(self, request: Any):
         requested = bool(getattr(request, "data", True))
         if not requested and self._session_application is not None:
@@ -484,8 +536,8 @@ class RosTask2IO:
     def sample_control(self, *, right_arm_only=False, max_age_sec=.2) -> CobotIOSample:
         """Latest age-checked feedback; no wait for a new camera frame.
 
-        Opt-in physical publisher only. The original synchronized sample()
-        remains unchanged. Images are converted once per received frame set.
+        Opt-in physical publisher only. sample() keeps its synchronized frame
+        gate. Images are decoded as RGB once per received frame set.
         """
         with self._condition:
             if len(self._images) != 3 or len(self._joints) != 2:
@@ -503,7 +555,7 @@ class RosTask2IO:
             left = np.asarray(self._joints["left"].position[:7],np.float32)
             right = np.asarray(self._joints["right"].position[:7],np.float32)
             if image_key != getattr(self, "_control_image_key", None):
-                images = {key:self.bridge.imgmsg_to_cv2(message,"passthrough")
+                images = {key:self.bridge.imgmsg_to_cv2(message,"rgb8")
                           for key,message in self._images.items()}
                 self._control_images = build_machine_a_observation(
                     left_state=left,right_state=right,images=images,prompt=self._prompt)["images"]
@@ -514,7 +566,8 @@ class RosTask2IO:
             observation = dict(images=self._control_images,state=state,prompt=self._prompt)
             outcome,self._outcome = self._outcome,None
             return CobotIOSample(observation=observation,mode=self._mode,outcome=outcome,
-                                 paused=self._paused,timestamp=float(max(stamps)))
+                                 paused=self._paused,timestamp=float(max(stamps)),
+                                 io_evidence=self._sample_evidence_locked())
 
     def sample(self) -> CobotIOSample:
         while True:
@@ -525,7 +578,10 @@ class RosTask2IO:
                     newest_common = min(stamps)
                     if newest_common > self._last_sample_stamp and max(stamps) - min(stamps) <= self._max_sync_skew_sec:
                         images = {
-                            key: self.bridge.imgmsg_to_cv2(message, "passthrough")
+                            # The VLA/recording contract is RGB, while ROS cameras
+                            # may publish bgr8. Passthrough preserves the wrong
+                            # channel order for those messages.
+                            key: self.bridge.imgmsg_to_cv2(message, "rgb8")
                             for key, message in self._images.items()
                         }
                         observation = build_machine_a_observation(
@@ -543,6 +599,7 @@ class RosTask2IO:
                             outcome=outcome,
                             paused=self._paused,
                             timestamp=max(stamps),
+                            io_evidence=self._sample_evidence_locked(),
                         )
                 self._condition.wait(timeout=0.05)
             if hasattr(self.ros, "is_shutdown") and self.ros.is_shutdown():

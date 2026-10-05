@@ -410,6 +410,8 @@ class AsyncExecution:
                     outcome=None if outcome is None else outcome.value, expert_mask=list(runtime.snapshot().expert_mask),
                     timestamp=float(after.timestamp), shadow=env._shadow_mode,
                     execution_profile=self.name, logical_hz=20, publish_hz=self.config.publish_hz,
+                    io_evidence_before_step=getattr(sample, 'io_evidence', None),
+                    io_evidence_after_step=getattr(after, 'io_evidence', None),
                     publications=publications)
                 trace.append(record); rewards.append(reward)
                 io.record_raw_step(record)

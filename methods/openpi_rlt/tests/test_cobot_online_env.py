@@ -115,6 +115,29 @@ def _indexed_plan(ref_base: float = 100.0):
     )
 
 
+def test_hil_command_evidence_preserves_before_after_samples_without_relabeling_action(monkeypatch):
+    from methods.openpi_rlt.cobot_adapter.cobot_online_env import CobotOnlineEnv
+    from methods.openpi_rlt.cobot_adapter.trace import EpisodeOutcome
+
+    monkeypatch.setenv("COBOT_RLT_HIL_SAMPLING", "logical20")
+    before = _sample(.01, "manual:right")
+    after = _sample(.02, "manual:right", EpisodeOutcome.SUCCESS)
+    before.io_evidence = {"coordinator_commands": {"right": {"target": [1.]*7, "valid": True}}}
+    after.io_evidence = {"coordinator_commands": {"right": {"target": [2.]*7, "valid": True}}}
+    io = FakeTask2IO([_sample(0.), before, after])
+    env = CobotOnlineEnv(io, chunk_exec_horizon=10, control_frequency_hz=20.,
+                        max_episode_steps=100, joint_step_limit=.03,
+                        gripper_step_limit=.004, sleep=lambda _: None)
+    _, _, done, info = env.execute_chunk(env.reset(), lambda *_: _plan(.5))
+    assert done and len(info["step_trace"]) == 1
+    record = info["step_trace"][0]
+    assert record["io_evidence_before_step"] == before.io_evidence
+    assert record["io_evidence_after_step"] == after.io_evidence
+    np.testing.assert_array_equal(record["action"], np.full(14, .02, np.float32))
+    assert record["action_semantics"] == "measured_joint_feedback"
+    assert io.published == []
+
+
 def test_env_records_hil_from_task2_mode_and_fresh_replans_after_release() -> None:
     from methods.openpi_rlt.cobot_adapter.cobot_online_env import CobotOnlineEnv
     from methods.openpi_rlt.cobot_adapter.trace import EpisodeOutcome

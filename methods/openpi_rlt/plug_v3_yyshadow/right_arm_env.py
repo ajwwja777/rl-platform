@@ -79,6 +79,7 @@ class RightArmRosTask2IO(RosTask2IO):
             outcome=sample.outcome,
             paused=sample.paused,
             timestamp=sample.timestamp,
+            io_evidence=getattr(sample, "io_evidence", None),
         )
 
     def publish_policy_action(self, action: object) -> bool:

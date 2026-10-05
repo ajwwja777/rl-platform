@@ -54,6 +54,74 @@ def _response(success, message):
     return SimpleNamespace(success=success, message=message)
 
 
+@pytest.mark.parametrize("encoding", ["rgb8", "bgr8"])
+@pytest.mark.parametrize("method", ["sample", "sample_control"])
+def test_camera_encodings_produce_rgb_observations(encoding, method, tmp_path):
+    """Distinct red/blue pixels survive both ROS sampling paths and camera mapping."""
+    from methods.openpi_rlt.cobot_adapter.cobot_ros1 import RosTask2IO
+
+    rgb = np.array([[[240, 30, 10], [5, 70, 190]]], dtype=np.uint8)
+
+    def decode(message, desired_encoding):
+        if desired_encoding == "passthrough" or desired_encoding == message.encoding:
+            return message.pixels.copy()
+        if desired_encoding == "rgb8" and message.encoding == "bgr8":
+            return message.pixels[..., ::-1].copy()
+        raise ValueError("Unsupported image conversion")
+
+    ros = FakeRos()
+    ros.Time = SimpleNamespace(now=lambda: SimpleNamespace(to_sec=lambda: 100.01))
+    io = RosTask2IO(
+        shadow_mode=True, trace_dir=tmp_path, ros_api=ros,
+        bridge=SimpleNamespace(imgmsg_to_cv2=decode), image_type=object,
+        joint_state_type=FakeJointState, bool_type=object, string_type=object,
+        set_bool_type=object, trigger_type=object, response_factory=_response,
+    )
+    for key in ("cam_high", "cam_left_wrist", "cam_right_wrist"):
+        io._image_callback(key)(SimpleNamespace(
+            header=SimpleNamespace(stamp=100.), encoding=encoding,
+            pixels=(rgb if encoding == "rgb8" else rgb[..., ::-1]).copy(),
+        ))
+    for side in ("left", "right"):
+        io._joint_callback(side)(SimpleNamespace(header=SimpleNamespace(stamp=100.), position=np.zeros(7)))
+    observed = getattr(io, method)().observation
+    assert set(observed["images"]) == {"base_0_rgb", "left_wrist_0_rgb", "right_wrist_0_rgb"}
+    for pixels in observed["images"].values():
+        np.testing.assert_array_equal(pixels, rgb)
+
+
+def test_coordinator_command_evidence_keeps_right_valid_when_left_stale(tmp_path):
+    from methods.openpi_rlt.cobot_adapter.cobot_ros1 import RosTask2IO
+
+    ros = FakeRos()
+    ros.Time = SimpleNamespace(now=lambda: SimpleNamespace(to_sec=lambda: 100.01))
+    io = RosTask2IO(
+        shadow_mode=True, trace_dir=tmp_path, ros_api=ros,
+        bridge=SimpleNamespace(), image_type=object, joint_state_type=FakeJointState,
+        bool_type=object, string_type=object, set_bool_type=object,
+        trigger_type=object, response_factory=_response,
+    )
+    for side, stamp in (("left", 99.), ("right", 100.)):
+        ros.subscribers[f"/master/joint_{side}"](
+            SimpleNamespace(header=SimpleNamespace(stamp=stamp), position=np.arange(7)))
+    with io._condition:
+        evidence = io._sample_evidence_locked()
+    assert evidence["coordinator_commands"]["left"]["valid"] is False
+    assert evidence["coordinator_commands"]["right"]["valid"] is True
+    np.testing.assert_array_equal(evidence["coordinator_commands"]["right"]["target"], np.arange(7))
+    ros.Time = SimpleNamespace(now=lambda: SimpleNamespace(to_sec=lambda: 100.4))
+    with io._condition:
+        stale = io._sample_evidence_locked()
+    assert stale["coordinator_commands"]["right"]["valid"] is False
+    ros.subscribers["/master/joint_right"](SimpleNamespace(position=np.arange(7)))
+    with io._condition:
+        missing_stamp = io._sample_evidence_locked()
+    assert missing_stamp["coordinator_commands"]["right"]["ros_stamp"] is None
+    assert missing_stamp["coordinator_commands"]["right"]["valid"] is False
+    # Reading evidence creates no publishers and cannot change robot commands.
+    assert ros.publishers == {}
+
+
 def test_ros1_io_routes_only_to_task2_policy_topics_and_shadow_has_no_publishers(tmp_path: Path) -> None:
     from methods.openpi_rlt.cobot_adapter.cobot_ros1 import RosTask2IO
 
