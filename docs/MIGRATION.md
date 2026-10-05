@@ -397,3 +397,13 @@ CPU固定上游复现确认：原始append忽略trace当前observation，本地�
 基于既有4013条Replay及75个Online完整Episode长度的固定池条件计算，单个记录未进入Actor的概率约0.9%–52.8%；各轮5倍更新预算均不足首次500更新定期导出。这不是历史batch/时序恢复，也不代表实际75轮均无导出；跨轮累积、其他预算及flush会改变发布。自主/辅助/失败仅为操作员终端标签，既有数据为训练/反复开发资料，独立测试留空。
 
 报告/图/身份/命令/配置：outputs/input-learning-chain-20261005/{REPORT.md,delivery.json,sampling_exposure.json,sampling_and_publication.png,publication_launch.json,verified_publication/}。工具初始fixture/CLI/核对API错误及中间成功运行均保留；最终带退出及导出时序核对的verified_publication为主证据。未将更多采样或导出当作动作身份/credit缺证的修复，未晋升模型；自主提升与受控冻结真机验收仍证据不足。仅取回小报告，不取私有Replay/权重。正式运行流程MD未改写。
+
+## 2026-10-05：近期经验原生分层采样六组模型对照
+
+独立输出outputs/recent-sampling-model-study-20261005，代码基线32f513a/固定上游8cef77e；真实不可变5k完整状态、固定历史训练/反复开发资料，CPU-only六组配对native uniform/stratified，种子41/42/43、各2000Critic/1000Actor更新。两条件共同排除错误提示词Episode3/7，目标/特征/参考/reward/loss/budget相同；原生分层默认0.4近期/0.3Warmup/0.2human。专家归档正大ID仅在私有采样元数据负数化，不改原始数据、不声称生产UUID映射。直接原生train_step与索引函数，不冒称现场Replay/Learner。
+
+研究池2496训练窗口（2377Warmup/119Online8Episode）、189开发窗口，六旧Online辅助成功Episode仅作反复开发诊断。不得将池比例当生产4013 Replay。实际近期抽样约1.88%→40.03%；类别重叠、human池包含专家。六旧辅助成功Episode的分层减均匀关节MAE=-0.00013317rad，整Episode配对bootstrap95%[-0.00021492,-0.00007675]；夹爪+0.023511mm，[+0.014321,+0.032502]。相对均匀关节改善5.6%、夹爪变差8.8%；相对初始5k夹爪变差32.2%。联合代理门槛失败，未晋升Actor；幅度未验证任务影响，不宣称真机更差/更好。
+
+trace动作身份可追的Online训练仅1个人类动作Episode、对应Online开发0个；六旧诊断全部辅助成功。cached z/ref及FP32反馈的匹配不证明精确历史命令/VLA输入/因果时序，独立测试缺失。可继续诊断夹爪分维度/source/loss梯度，不能直接把更多近期采样当修复。CPU先导20更新×两条件通过，六组完成且源资产SHA不变，PID720279退出；GPU0外部IsaacSim任务占用、本轮不占GPU，GPU1/现场/默认/生产Replay/权重/固定上游未动。
+
+完整数据/代码SHA、配置、命令、逐Episode/关节/夹爪误差与区间、checkpoints路径：delivery.json、main/study.json、summary.json、launch.json；四图及REPORT.md/PROGRESS.md同目录。六份研究权重留A6000，不复制整份资产；回退仍原5k/均匀采样。正式流程MD未改写。
