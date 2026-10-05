@@ -127,12 +127,13 @@ def cobot_jax_denormalize_to_abs_chunk(
 def install_bimanual_runtime_patch() -> None:
     """Install the Cobot adapter before importing any Machine B role."""
     global _PATCH_INSTALLED
-    from methods.openpi_rlt.cobot_adapter import input_audit
+    from methods.openpi_rlt.cobot_adapter import input_audit, input_snapshots
     from methods.openpi_rlt.cobot_adapter import raw_observation_contract
     from methods.openpi_rlt.cobot_adapter import hil_targets
 
     # Reject invalid optional configuration before constructing any ROS I/O.
     input_audit.audit_mode()
+    input_snapshots.settings()
     raw_observation_contract.selected_contract()
     hil_targets.selected_target()
     if not _PATCH_INSTALLED:
@@ -157,11 +158,16 @@ def install_bimanual_runtime_patch() -> None:
             if writer is None:
                 raise RuntimeError("Input audit requires the Cobot trace output root")
             receipt["audit_mode"] = mode
-            input_audit.append_receipt(writer._root, receipt)
             if mode == "strict" and not receipt["checks_passed"]:
+                input_audit.append_receipt(writer._root, receipt)
                 # All transitions are built before the native Replay submit;
                 # no partial Episode is submitted by this failing build.
                 raise ValueError("Replay input audit failed: observation/feature state or finite arrays disagree")
+            snapshot = input_snapshots.capture_for_driver(
+                driver, raw_episode, indices, transition, receipt, writer._root)
+            if snapshot is not None:
+                receipt["lossless_snapshot"] = snapshot
+            input_audit.append_receipt(writer._root, receipt)
             return transition
 
         _build_transition_with_input_receipt._cobot_input_audit = True

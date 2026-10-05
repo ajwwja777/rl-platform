@@ -433,3 +433,13 @@ trace动作身份可追的Online训练仅1个人类动作Episode、对应Online�
 相同缓存状态上当前冻结Actor沿人类记录反馈槽位方向的原生JVP：初始5k六旧辅助成功Episode平均Q1导数全部负，mean=-0.04808、整Episode配对95%[-0.06678,-0.02938]；Q2区间跨0，min-Q平均-0.02873区间负。alpha替换不是执行轨迹/历史Actor/最优命令，不能凭此把HIL Q强行抬高。7既有状态端点逐Episode与上一报告一致；另外6 BC0.5状态保留诊断，不晋升模型。
 
 新本批仅分析，无训练/GPU/现场部署/运动/生产Replay/权重/默认/固定上游修改。工人826360已退出，源/归一化/研究状态SHA核对；多维CI汇总轴序错误修正后重构图（不影响原始Q响应）。实际数据身份、配置、命令、边界、13状态逐Episode与两图见outputs/proposal-execution-diagnosis-20261005/{REPORT.md,delivery.json,final_verification.json}。输入无损身份、有效命令目标、独立自主能力仍缺证，冻结真机/Online未放行。
+
+## 2026-10-05：有界无损Replay输入诊断与原生闭环验证
+
+隔离基线bdf59dd新增input_snapshots.py、verify_input_snapshot.py及专项测试，online_runtime既有可选audit钩子接入。默认COBOT_RLT_INPUT_SNAPSHOT_COUNT=0；启用上限3份/EnvDriver、每份原始数组8MiB，要求显式独立绝对root、trace合同和record/strict收据。在Episode Replay构建阶段保存当前/next raw RGB/state/prompt/RTC、native feature/target和实际serializer数组，不使用pickle；外部receipt含metadata SHA，恢复核数组dtype/shape/SHA及原始指纹。超出数量明确未捕获，不补造数据；不在实时发布循环。CLI把输入合同检查与model_consistency_verified=null分开，不宣称实际GPU处理。
+
+冻结online专项27通过，既有冻结stage1 CPU环境完整468通过。初次测试路径错误未运行及online环境缺h5py/pydantic的收集失败保留，未安装/修改生产环境。真实不可变5k完整状态的CPU私有native链路：600合成初始记录、30步合成HIL、3份快照逐字段恢复并与RPC journal及15实际batch一致；15Critic/7Actor、候选2507/执行2500不变、恢复一致、全部自有服务/端口退出。是软件验证，不是新任务训练或收益证明。
+
+此前A6000已保存的真实尺寸候选RGB与合成feature fixture：6张480×640×3无损往返，原始5530213bytes/压缩1003299bytes，单次写加构建130ms/恢复29ms；不是现场p95/deadline，不能计入发布循环。完整身份/实际配置/命令/回退/容量与错误日志见outputs/input-snapshot-verification-20261005/{REPORT.md,delivery.json,final_verification.json}；快照/私有Replay/权重只留A6000，小报告取回。
+
+算法、Actor/Critic默认、固定上游、生产Replay/权重不改，snapshot默认关闭作回退；无GPU、现场部署/启停/模型加载/运动。实际Stage1输入处理/有效命令/独立自主能力仍缺证，不晋升模型，后续同输入网络复算需单独核资源和边界。正式流程MD未改。
