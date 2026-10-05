@@ -127,12 +127,41 @@ def cobot_jax_denormalize_to_abs_chunk(
 def install_bimanual_runtime_patch() -> None:
     """Install the Cobot adapter before importing any Machine B role."""
     global _PATCH_INSTALLED
+    from methods.openpi_rlt.cobot_adapter import input_audit
+
+    # Reject invalid optional configuration before constructing any ROS I/O.
+    input_audit.audit_mode()
     if not _PATCH_INSTALLED:
         upstream_actions.ActionRepresentationAdapter = CobotBimanualActionRepresentationAdapter
         upstream_actions.jax_denormalize_to_abs_chunk = cobot_jax_denormalize_to_abs_chunk
         _PATCH_INSTALLED = True
 
     from rlt_online_rl import inference
+
+    if not getattr(inference.EnvDriver._build_transition_from_window, "_cobot_input_audit", False):
+        original_build_transition = inference.EnvDriver._build_transition_from_window
+
+        def _build_transition_with_input_receipt(driver, raw_episode, segment, window, feature_cache, stats):
+            transition = original_build_transition(driver, raw_episode, segment, window, feature_cache, stats)
+            mode = input_audit.audit_mode()
+            if mode == "off" or not getattr(driver._env, "cobot_task2_contract", False):
+                return transition
+            indices = segment.raw_indices[window.start_offset:window.start_offset+driver._rl_config.chunk_len]
+            receipt = input_audit.window_receipt(raw_episode, indices, transition)
+            io = getattr(driver._env, "_io", None)
+            writer = getattr(io, "_trace_writer", None)
+            if writer is None:
+                raise RuntimeError("Input audit requires the Cobot trace output root")
+            receipt["audit_mode"] = mode
+            input_audit.append_receipt(writer._root, receipt)
+            if mode == "strict" and not receipt["checks_passed"]:
+                # All transitions are built before the native Replay submit;
+                # no partial Episode is submitted by this failing build.
+                raise ValueError("Replay input audit failed: observation/feature state or finite arrays disagree")
+            return transition
+
+        _build_transition_with_input_receipt._cobot_input_audit = True
+        inference.EnvDriver._build_transition_from_window = _build_transition_with_input_receipt
 
     if not getattr(inference.EnvDriver._append_raw_chunk, "_cobot_terminal_last_action", False):
         original_append_raw_chunk = inference.EnvDriver._append_raw_chunk

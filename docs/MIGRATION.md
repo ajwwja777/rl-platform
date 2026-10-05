@@ -367,3 +367,13 @@ Stage1 已实际前向全部134训练见过 Episode/19022帧；加载器动作�
 418 项整套回归、3 项分析专项测试通过，最后修正后 49 项定向测试通过；初始缺依赖环境失败日志保留。A6000 GPU0 只做五帧已有图像对照后释放，GPU1 未动；未启停现场、加载现场模型、运动或切权重。未新增训练或放行 Actor；模型独立能力与受控冻结验收仍未通过。详细身份、命令、图和边界：`outputs/hil-command-audit-20261005/`，上一批交付仍在 `outputs/offline-model-selection-20261005/`。
 
 HIL 配对 Critic 补证（同日）：CPU 原 5k Critic、229 个窗口/31 个 Episode；全 Episode 终端标签为辅助成功 30、失败 1。仅替换已观察命令候选相同的槽位，并与同槽位 FP32 反馈基准比较以分离量化影响。完整 trace 覆盖的 12 个训练 Episode 平均 ΔQ1=-0.01036，Episode bootstrap 95% [-0.01821,-0.00273]；反复使用的开发集 3 个完整 Episode 为 -0.00827，[-0.01691,-0.00224]。min-Q 也平均下降。缺失命令使其仅是条件性冻结 Critic 响应，不证明命令最优、精确历史动作身份或自主收益。初版私有脚本把选中非终端 success 标记当整轮结果的错误已修正并保存旧报告；Q 数值与区间完全不变。详细身份/配置/CPU命令/图：`outputs/hil-command-audit-20261005/command_critic_report.json`。
+
+## 2026-10-05：Online 历史身份审计与可选训练输入回执
+
+独立 q-guidance 工作区 CPU 审计当前生产 Replay（SHA 0fb87e9ecc3b4e0ede50208caa3ceea93db3330bf976edf682cd6c21f684525a）：4013 条中的75个 Online Episode/1446条，按全轮终端标签为自主成功8、辅助成功23、失败44；不是独立评测。现存46份原始 Online HDF5 标签15成功/31失败，UUID一致，但与75轮 Replay 不是已证实的同一漏斗。录制标签服务自动将失败标为 keep_for_training=false，不据此排除 RL 失败经验。
+
+旧trace仅172条核心动作/source/起止状态唯一匹配、2条歧义、1272条无匹配；11轮有唯一匹配、10轮核心完整。各匹配轮末段 Replay/旧pending trace终端字段有差异，未认定Replay错误。修正分析工具曾误将锚点VLA ref_chunk与逐步执行计划ref_action视为同物的比较假设，旧私有结果保留。当前保存 Learner step11000/Actor5500，而Actor快照step11500/版本5750；release仍是首次5k安装清单，不作为当前验收证明，未构造虚假配套恢复状态。
+
+新增可选 COBOT_RLT_INPUT_AUDIT=off/record/strict（默认off）：原生窗口构建后记录当前/next原始输入及实际transition.to_numpy序列化指纹，兼容可选FP32 action；strict拒绝state不一致或存储非有限字段。单独replay_inputs回执不替代提交ack、GPU处理、真实权重加载/执行证据，不改变生产默认或Replay。整套426通过，补充record/溢出边界后相关17通过；私有三路480x640 RGB哈希p95约1.97ms，不是现场deadline结果。详情与实际命令/身份/两图：outputs/online-provenance-audit-20261005/。
+
+本轮不训练、不占GPU、不部署、不启停现场或运动；生产Replay/权重与固定上游不变。输入工具完成不等于模型放行，独立自主能力与受控冻结验收仍证据不足。
