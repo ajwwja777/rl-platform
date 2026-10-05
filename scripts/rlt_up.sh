@@ -55,9 +55,29 @@ fi
 # reuse the same branch; the original 5k checkpoint is never a write target.
 if [[ "$MODE" == online && -n "${COBOT_RLT_BRANCH_CONFIG:-}" ]]; then
   if [[ -n "${COBOT_RLT_ONLINE_SEED:-}" && ! -f "$COBOT_RLT_SEED_DESTINATION/seed.json" ]]; then
-    "$ONLINE_PY" -m integrations.cobot_runtime.online_seed "$COBOT_RLT_ONLINE_SEED" "$COBOT_RLT_SEED_DESTINATION" "$RLT_CONFIG" "$COBOT_RLT_BRANCH_CONFIG" "$COBOT_RLT_BRANCH_RUN"
+    "$ONLINE_PY" -m integrations.cobot_runtime.online_seed "$COBOT_RLT_ONLINE_SEED" "$COBOT_RLT_SEED_DESTINATION" "$RLT_CONFIG" "$COBOT_RLT_BRANCH_CONFIG" "$COBOT_RLT_BRANCH_RUN" \
+      --replay-budget-policy "${COBOT_RLT_SEED_REPLAY_BUDGET_POLICY:-new_arrivals}" \
+      --publication-policy "${COBOT_RLT_SEED_PUBLICATION_POLICY:-automatic}"
   fi
   [[ -f "$COBOT_RLT_BRANCH_CONFIG" ]] || { echo "Selected online branch configuration missing" >&2; exit 2; }
+  # Explicit choices must also match a reused branch; never silently mutate it.
+  if [[ -n "${COBOT_RLT_SEED_PUBLICATION_POLICY:-}" || -n "${COBOT_RLT_SEED_REPLAY_BUDGET_POLICY:-}" ]]; then
+    "$ONLINE_PY" - "${COBOT_RLT_SEED_DESTINATION:?Explicit seed policies require a branch destination}/seed.json" "$COBOT_RLT_BRANCH_CONFIG" "${COBOT_RLT_SEED_PUBLICATION_POLICY:-}" "${COBOT_RLT_SEED_REPLAY_BUDGET_POLICY:-}" <<'PYSEEDPOLICY'
+import json,sys,yaml
+metadata=json.load(open(sys.argv[1]))
+config=yaml.safe_load(open(sys.argv[2]))
+for field,requested in [('publication_policy',sys.argv[3]),('replay_budget_policy',sys.argv[4])]:
+ if requested and metadata.get(field)!=requested:
+  raise SystemExit('Selected online branch '+field+' does not match explicit request')
+runtime=config['runtime']
+served=runtime['actor_service']['snapshot_path']
+candidate=runtime['learner_service']['actor_snapshot_path']
+if served!=metadata.get('served_actor_snapshot') or candidate!=metadata.get('candidate_actor_snapshot'):
+ raise SystemExit('Selected online branch Actor paths do not match seed metadata')
+if metadata.get('publication_policy')=='staged' and served==candidate:
+ raise SystemExit('Selected staged branch must separate served and candidate Actor')
+PYSEEDPOLICY
+  fi
   RLT_CONFIG="$COBOT_RLT_BRANCH_CONFIG"
   EXPERIMENT_RUN="$COBOT_RLT_BRANCH_RUN"
 fi
