@@ -14,6 +14,24 @@ sys.path[:0]=[str(ROOT),str(ROOT/'scripts'),str(ROOT/'envs/machine-a-py311-overl
 os.environ.setdefault('XLA_PYTHON_CLIENT_PREALLOCATE','false')
 import numpy as np
 
+
+def execute_probe_episode(env, feature_provider, actor, cfg):
+    """Use the native episode planner for faithful execution; never write Replay."""
+    from methods.openpi_rlt.cobot_adapter.online_runtime import install_bimanual_runtime_patch
+    install_bimanual_runtime_patch()
+    from rlt_online_rl.config import EnvDriverConfig
+    from rlt_online_rl.inference import EnvDriver
+    driver=EnvDriver(env,feature_provider,actor,None,cfg,
+        EnvDriverConfig(control_frequency_hz=20,chunk_exec_horizon=10,
+                        actor_deterministic=True,safe_fallback_to_ref=False,
+                        enable_human_override=False),eval_actor_only=True)
+    engine=getattr(env,'_execution',None)
+    if engine is not None:
+        from methods.openpi_rlt.cobot_adapter.execution_runtime import PlannerBackend
+        engine.backend=PlannerBackend(driver)
+        engine.set_episode(1)
+    return driver.run_episode(1)
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument('--checkpoint',type=Path,required=True)
@@ -38,7 +56,6 @@ def main():
     from rlt_online_rl.config import RLTOnlineRLConfig
     from rlt_online_rl.action_representation import ActionRepresentationAdapter
     from rlt_online_rl.inference import RLTPolicyInferenceWrapper,ActorResponse
-    from methods.openpi_rlt.cobot_adapter.execution_runtime import PlannerBackend
     from methods.openpi_rlt.cobot_adapter.execution_profiles import ExecutionProfile
     from methods.openpi_rlt.cobot_adapter.async_execution import AsyncExecution
     from methods.openpi_rlt.plug_v3_yyshadow.right_arm_env import RightArmCobotOnlineEnv
@@ -78,10 +95,13 @@ def main():
         actor_sha256=hashlib.sha256(snapshot).hexdigest(),actor_version=int(payload['version']),
         recording=str(args.recording),robot_publishers=0,learner_updates=0,
         baseline_prewarm_ms=prewarm,profiles={},policy_metadata=policy.metadata,
+        devices=[str(d) for d in jax.devices()],backend=jax.default_backend(),
+        native_driver_contract=dict(control_frequency_hz=20,chunk_exec_horizon=10,eval_actor_only=True,enable_human_override=False,collection_phase="online",adapter_runtime_patch=True),
         config_path=str(args.config),config_sha256=hashlib.sha256(args.config.read_bytes()).hexdigest(),
         algorithm_config=config_mapping['experiment']['rl'],requested_profiles=args.profiles,
         requested_prompt=args.prompt,limitations=[
         'Perfect synthetic joint tracking and one recorded camera frame; no real dynamics or insertion success.',
+        'Native episode success is only a synthetic terminal placeholder; not a task outcome. RTC stats flags do not prove data/training.',
         'In-process Stage1/Actor calls exclude production RPC overhead and online Learner contention.',
         'RTC-conditioned online Replay training does not mean Stage1 training-time RTC fine-tuning.'])
     class IO:
@@ -92,6 +112,10 @@ def main():
                 mode='policy',paused=False,outcome=None,timestamp=time.monotonic())
         def publish_policy_action(self,action):
             self.state=np.asarray(action).copy();self.published.append((time.monotonic(),self.state.copy()));return True
+        def wait_armed(self):pass
+        def mark_replay_finalized(self):pass
+        def mark_terminal_pending(self,reason):pass
+        def wait_terminal_outcome(self):return "failure"  # Synthetic budget stop, not task evidence.
         def set_chunk_ready(self,ready):pass
         def set_policy_paused(self,paused):pass
         def record_raw_step(self,record):self.records.append(record)
@@ -104,22 +128,21 @@ def main():
         variants=[v for v in variants if v[0] in args.profiles]
     for name,hz,profile in variants:
         io=IO()
-        env=RightArmCobotOnlineEnv(io,chunk_exec_horizon=10,control_frequency_hz=20,max_episode_steps=None,
+        env=RightArmCobotOnlineEnv(io,chunk_exec_horizon=10,control_frequency_hz=20,max_episode_steps=30,collection_phase="online",
             joint_step_limit=.03,gripper_step_limit=.004,sleep=time.sleep)
-        env._runtime.arm()
         engine=AsyncExecution(env,name,profile) if profile else None
         env._execution=engine
-        backend=PlannerBackend(SimpleNamespace(_feature_provider=Features(),_actor_client=actor,
-            _rl_config=cfg,_env_config=SimpleNamespace(actor_deterministic=True,safe_fallback_to_ref=False),
-            _safe_action_filter=None,_env=env))
-        backend.episode_id=1
-        if engine:engine.backend=backend
         try:
-            obs=io.sample().observation
-            for _ in range(3):obs,_,_,_=env.execute_chunk(obs,lambda ob,step:backend.plan(ob,env._episode_steps+step))
+            episode=execute_probe_episode(env,Features(),actor,cfg)
+            assert episode['eval_actor_only'] and episode['transitions_written']==0
+            assert episode['actor_version_start']==episode['actor_version_end']==int(payload['version']), 'Probe must exercise the supplied Actor'
+            assert len(io.records)==30, 'Synthetic episode must contain exactly30 logical steps'
             commands=np.stack([a for _,a in io.published]);times=np.array([t for t,_ in io.published])
             velocities=np.diff(commands[:,:6],axis=0)/np.diff(times)[:,None]
             row=dict(status='passed',logical_steps=len(io.records),commands=len(io.published),
+                native_episode_summary=episode,synthetic_outcome=True,task_outcome=None,
+                publication_elapsed_sec=(times-times[0]).tolist(),publication_intervals_ms=(np.diff(times)*1000).tolist(),
+                commanded_right_arm=commands.tolist(),
                 measured_hz=float(1/np.diff(times).mean()),interval_p95_ms=float(np.quantile(np.diff(times),.95)*1000),
                 inference_ms=[1000*x for x in io.latencies],velocity_rms=float(np.sqrt(np.mean(velocities**2))),
                 command_step_max=float(np.max(np.abs(np.diff(commands[:,:6],axis=0)))),
