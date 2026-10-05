@@ -6,6 +6,7 @@ inherited; workers must install them before constructing services or Replay.
 from __future__ import annotations
 
 import functools
+import os
 
 
 def initialize_process(config_path: str | None = None) -> None:
@@ -13,6 +14,10 @@ def initialize_process(config_path: str | None = None) -> None:
     install_action_precision_patch()
     from .online_runtime import install_bimanual_runtime_patch
     install_bimanual_runtime_patch()
+    if os.environ.get("COBOT_RLT_DIAGNOSTIC_METRICS") == "1":
+        from rlt_online_rl import trainer
+        from .diagnostic_metrics import install_diagnostic_metrics_patch
+        install_diagnostic_metrics_patch(trainer)
     if config_path is not None:
         from integrations.cobot_runtime.replay_audit import install_batch_audit
         install_batch_audit(config_path)
