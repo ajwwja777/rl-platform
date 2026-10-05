@@ -387,3 +387,13 @@ CPU固定上游复现确认：原始append忽略trace当前observation，本地�
 新异步测试发现sample包装丢弃io_evidence，修复后默认/可选路径均传递；修正此前“写trace字段即完整传递”的过强推断，真实失败日志保留。完整C10经过原生trace/raw/Replay/实际FP32 serializer/严格输入回执验证，保留VLA锚点reference及周期末next反馈；HIL无新Actor推理时版本-1。454整套、82最终相关测试通过；实际命令/身份/边界见 outputs/hil-target-contract-20261005/。
 
 无训练/GPU/现场启停、模型加载、部署或运动，生产Replay/权重/默认配置和固定上游未修改。该批是数据链候选，不放行新Actor；命令执行时基、算法收益和独立自主能力仍证据不足。正式流程MD未改。
+
+## 2026-10-05：私有原生输入、学习与 Actor 导出链路核验
+
+在 audit/q-guidance-20261005 隔离工作区新增 scripts/validate_input_learning_chain.py；真实不可变 Warmup5k Actor/Critic/优化器/RNG与归一化资产，CPU私有Replay/Actor RPC、原生EnvDriver/Learner，600条起始合成记录和1个30步HIL合成Episode。启用可选logical20、coordinator_command、trace观测、strict输入收据和FP32动作；生产默认、Replay、权重和固定第三方未改。
+
+最终verified_publication运行验证3条新C10记录与输入收据、实际归一化JAX batch逐字段指纹一致；原生预算15次Critic/7次Actor，Learner5015/候选2507，完整恢复且剩余预算0。新记录Critic抽样5/4/2次、Actor2/2/0次：UTD5不保证每条新记录进入Actor更新。实际配置500次更新定期导出，15次更新完成后flush前导出仍2500，flush后2507；独立执行服务读取冻结2500，确定性动作不变。所有自有私有服务/端口已退出，原5k与归一化SHA不变，无GPU/Stage1加载/机器人发布/现场部署。
+
+基于既有4013条Replay及75个Online完整Episode长度的固定池条件计算，单个记录未进入Actor的概率约0.9%–52.8%；各轮5倍更新预算均不足首次500更新定期导出。这不是历史batch/时序恢复，也不代表实际75轮均无导出；跨轮累积、其他预算及flush会改变发布。自主/辅助/失败仅为操作员终端标签，既有数据为训练/反复开发资料，独立测试留空。
+
+报告/图/身份/命令/配置：outputs/input-learning-chain-20261005/{REPORT.md,delivery.json,sampling_exposure.json,sampling_and_publication.png,publication_launch.json,verified_publication/}。工具初始fixture/CLI/核对API错误及中间成功运行均保留；最终带退出及导出时序核对的verified_publication为主证据。未将更多采样或导出当作动作身份/credit缺证的修复，未晋升模型；自主提升与受控冻结真机验收仍证据不足。仅取回小报告，不取私有Replay/权重。正式运行流程MD未改写。
