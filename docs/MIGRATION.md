@@ -417,3 +417,11 @@ trace动作身份可追的Online训练仅1个人类动作Episode、对应Online�
 本批六组CPU单因素非HIL夹爪BC0.5 vs既有原生1.0，各sampler/种子配对采样索引SHA一致，从不可变5k各2000Critic/1000Actor更新至7000/3500。stratified旧六条夹爪MAE相对原生下降0.03490mm，但120专家夹爪上升0.02430mm，相对初始5k仍回退；uniform也有取舍，联合代理条件失败。lambda1完整更新与原生数值完全一致，不晋升研究Actor，不继续无目的扫描。
 
 已验证条件性来源/loss拟合冲突；真机根因、自主改善、冻结验收仍证据不足。实际数据身份/SHA、配置、命令、42案例、6训练日志与三图见outputs/gripper-update-diagnosis-20261005/{REPORT.md,delivery.json,summary.json}。训练2496/开发189，Warmup被5k见过，旧六条反复诊断；没有独立测试，区间以整Episode计算。研究权重只留A6000。无新运行代码修复、GPU/现场启停/部署/运动/生产Replay/权重/默认/固定上游修改，原5k与旧reference保持回退。
+
+## 2026-10-05：原始录制图像存储、同步与采样身份排查
+
+基线60e53aa隔离工作区，仅CPU只读Cobot216份HDF5元信息/时间/validity，648相机实际存储均未压缩uint8，无有损JPEG。Warmup170轮31598帧、Online46轮4674帧，三相机源ROS跨度>100ms为0、源回退为0；按完整Episode的p95跨度中位数27.71/29.53ms，不代表现场实际推理/发布延迟。录制fps均10但59份有65个>0.2s间隔，最大3.860/5.490秒，不补均匀时间，暂停/负载成因未恢复。
+
+确定坏帧：Warmup episode_000009.hdf5、UUID1d7cf69d-c316-485a-96be-966444a82344、第155帧high/left valid=false、像素全零；到达单调时钟比sample晚4.18/3.03ms。只在Cobot读该帧像素并取统计/hash，未复制图像。初始5k归档2567记录的数字Episode9不存在，不用数字ID代替全UUID溯源或宣称所有训练均未受影响。当前collector支持复制后取clock，历史v1版本因果缺证，本批不改采集项目。
+
+已排除本批有损压缩与大范围>100ms相机跨度，历史实际VLA输入身份仍证据不足：录制/RLT独立取样、10Hz录制不能替代实际模型调用输入。图明确原始混合/成员未恢复队列、无独立测试；sample/arrival单调与source ROS分域，不相减混域时钟。完整清单、实际命令、脚本/SHA、坏帧/大间隔、图及边界在outputs/input-image-identity-20261005/{REPORT.md,delivery.json}。初版Cobot部署Git假设失败已保留并改报告实际源码SHA，不猜历史提交。无新运行代码修复、训练/GPU/部署/服务启停/运动/生产资产修改，模型/冻结验收未放行。
