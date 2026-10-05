@@ -486,3 +486,13 @@ Outputs/preonline-delivery-package-20261005 containsREPORT, manifest/delivery, s
 运行后31个Stage1资产、5k checkpoint/Actor/norm、原录制及生产Replay SHA均未变；实际web970937保持、RLT offline/recorder idle、自有进程退出、GPU空闲。第一次launch把历史部署登记PID754128写作web_pid，第二轮改用实际进程证据，旧收据保留并明确更正。源码同步未切换当前网页选择或模型服务，没有新Actor晋升。交付可转入受控冻结真机验收准备，独立自主测试仍0，持续Online学习未放行，模型改善目标未完成。
 
 报告、8图、版本/配置/命令/SHA、原失败、退出码、回退与独立现场prompt：outputs/preonline-gpu-20261006/。Cobot对应runtime/verification/preonline-gpu-20261006/，pre-attempt2-source.tar.gz保留上版诊断脚本/release收据。小报告取回，不复制完整数据或权重。本节只记事实，正式操作流程未改。
+
+## 2026-10-06：eRLT/开源实现核对与可选训练诊断
+
+用户要求自主完成并允许离线训练比较。本轮只读eRLT2610.00913v1方法/实验/消融及附录，外部RL-Token-Pi05-open固定cccf949c源码；论文AUC是自主成功率学习曲线积分而非Critic ROC-AUC，辅助采集单列且计预算。开源Actor仍完整输出，非零residual被拒绝；未据截图或曲线更换算法、TD截断或默认配置。
+
+原固定5k/归档2567训练Replay/204Episode CPU4分路审计确认已有256/64/256投影和LayerNorm，Q1七维动作梯度非零；只排查具体数值淹没假设，不能证明表示语义或HIL命令最优。新增默认关闭COBOT_RLT_DIAGNOSTIC_METRICS可选原生TD日志，以及离线训练曲线/AUC证据工具，缺指标留空、Actor只取更新行，正奖励chunk不称成功Episode。A6000真实完整5k两条私有CPU续训各8Critic/4Actor、相同8x256batch，参数/优化器/RNG/旧指标逐值相同，没有私有5008/2504导出或晋升。首次batch字段错误在训练前失败，保留失败。
+
+代码9b7601e73b829fcf0d695a46ae2c15aeca482523提交push，隔离分支串行快进；A6000两目录495通过/61既有warning，Cobot实际Python3.10 CPU专项15通过，630源文件SHA一致。Cobot同步前623文件无冲突，备份旧bootstrap/MIGRATION/release及新增7文件清单保留。没有现场GPU/model加载、服务启停、运动、生产Replay/权重/默认/固定上游修改。原31Stage1资产、5k资产及生产Replay/录制原件身份复核不变；实际web970937/RLT offline/recorder idle，自有CPU任务已退出。
+
+outputs/erlt-reference-review-20261006/保存REPORT、两份实际训练曲线、分路图、实际命令/配置/SHA、原失败、回退和独立现场验收prompt。固定5k仍为基线，没有新Actor通过联合保持或独立自主改善；可准备受控冻结真机验收，直接持续Online能力仍证据不足。本节是事实记录，正式操作流程未改，guide仅事实摘要、不提交guide Git。
