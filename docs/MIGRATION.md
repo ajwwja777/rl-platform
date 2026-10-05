@@ -425,3 +425,11 @@ trace动作身份可追的Online训练仅1个人类动作Episode、对应Online�
 确定坏帧：Warmup episode_000009.hdf5、UUID1d7cf69d-c316-485a-96be-966444a82344、第155帧high/left valid=false、像素全零；到达单调时钟比sample晚4.18/3.03ms。只在Cobot读该帧像素并取统计/hash，未复制图像。初始5k归档2567记录的数字Episode9不存在，不用数字ID代替全UUID溯源或宣称所有训练均未受影响。当前collector支持复制后取clock，历史v1版本因果缺证，本批不改采集项目。
 
 已排除本批有损压缩与大范围>100ms相机跨度，历史实际VLA输入身份仍证据不足：录制/RLT独立取样、10Hz录制不能替代实际模型调用输入。图明确原始混合/成员未恢复队列、无独立测试；sample/arrival单调与source ROS分域，不相减混域时钟。完整清单、实际命令、脚本/SHA、坏帧/大间隔、图及边界在outputs/input-image-identity-20261005/{REPORT.md,delivery.json}。初版Cobot部署Git假设失败已保留并改报告实际源码SHA，不猜历史提交。无新运行代码修复、训练/GPU/部署/服务启停/运动/生产资产修改，模型/冻结验收未放行。
+
+## 2026-10-05：冻结Actor首步限幅与HIL纠正方向Q核验
+
+隔离基线1c0fe7e，CPU13个完整冻结状态×2891既有窗口：实际RightArmPolicyRuntime当前0.03rad/0.004m条件下首个提议限幅0；最大关节0.02352rad、夹爪0.001052m。只用首个已知起点，不伪造后续反事实反馈；不含探索/RTC/EMA/历史实际限幅配置，不能排除后续/现场问题。当前窗口由2496训练/189反复开发/177旧辅助成功开发/29已排除错误任务记录组成，没有独立测试，没有重新训练错误轨迹。
+
+相同缓存状态上当前冻结Actor沿人类记录反馈槽位方向的原生JVP：初始5k六旧辅助成功Episode平均Q1导数全部负，mean=-0.04808、整Episode配对95%[-0.06678,-0.02938]；Q2区间跨0，min-Q平均-0.02873区间负。alpha替换不是执行轨迹/历史Actor/最优命令，不能凭此把HIL Q强行抬高。7既有状态端点逐Episode与上一报告一致；另外6 BC0.5状态保留诊断，不晋升模型。
+
+新本批仅分析，无训练/GPU/现场部署/运动/生产Replay/权重/默认/固定上游修改。工人826360已退出，源/归一化/研究状态SHA核对；多维CI汇总轴序错误修正后重构图（不影响原始Q响应）。实际数据身份、配置、命令、边界、13状态逐Episode与两图见outputs/proposal-execution-diagnosis-20261005/{REPORT.md,delivery.json,final_verification.json}。输入无损身份、有效命令目标、独立自主能力仍缺证，冻结真机/Online未放行。
