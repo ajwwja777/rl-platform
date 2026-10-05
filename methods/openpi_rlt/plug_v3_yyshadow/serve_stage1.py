@@ -60,7 +60,14 @@ def initialize(project: Path):
     )
 
 
-def load(project: Path, checkpoint: Path, *, num_steps: int = 10, rtc_overlay: Path | None = None):
+def load(project: Path, checkpoint: Path, *, num_steps: int = 10, rtc_overlay: Path | None = None,
+         reference_hz: int = 30, default_prompt: str = PROMPT):
+    if not isinstance(default_prompt, str) or not default_prompt.strip():
+        raise ValueError('default_prompt must be an explicit nonempty task instruction')
+    if reference_hz not in (20, 30):
+        raise ValueError('reference_hz must be the explicit 20 or 30 Hz time base')
+    if reference_hz != 30 and rtc_overlay is not None:
+        raise ValueError('retimed reference requires a separate RTC prefix time-base validation')
     checkpoint = checkpoint.resolve()
     asset_id = "plug_v3_yyshadow_demonstrations"
     norm_file = checkpoint / "assets" / asset_id / "norm_stats.json"
@@ -185,7 +192,7 @@ def load(project: Path, checkpoint: Path, *, num_steps: int = 10, rtc_overlay: P
 
     input_transform = transforms.compose(
         [
-            transforms.InjectDefaultPrompt(PROMPT),
+            transforms.InjectDefaultPrompt(default_prompt),
             *data.data_transforms.inputs,
             transforms.Normalize(norm, use_quantiles=data.use_quantile_norm),
             *data.model_transforms.inputs,
@@ -216,13 +223,20 @@ def load(project: Path, checkpoint: Path, *, num_steps: int = 10, rtc_overlay: P
                 "action_dim": 7,
                 "model_horizon": 50,
                 "actor_chunk_len": 10,
-                "control_hz": 30,
+                "control_hz": reference_hz,
+                "model_action_sampling_hz": 30,
+                "reference_sampling_hz": reference_hz,
+                "default_prompt": default_prompt,
                 "reference_sampling": "fixed_seed_42",
                 "denoising_steps": num_steps,
                 "rtc_prefix_supported": infer_rtc is not None,
                 "checkpoint": str(checkpoint),
                 "norm_stats_sha256": hashlib.sha256(norm_file.read_bytes()).hexdigest(),
             }
+
+        def sample_model_observation(self, observation):
+            """Share the exact compiled fixed sampler with read-only audits."""
+            return infer(jax.random.key(42), observation)
 
         def infer(self, observation: dict) -> dict:
             state = np.asarray(observation.get("state"), dtype=np.float32)
@@ -234,7 +248,7 @@ def load(project: Path, checkpoint: Path, *, num_steps: int = 10, rtc_overlay: P
                 if image.ndim != 3 or image.shape[-1] != 3 or image.dtype != np.uint8:
                     raise ValueError(f"missing/invalid RGB camera {key}")
             transformed = input_transform(
-                {"state": state.copy(), "images": images, "prompt": observation.get("prompt", PROMPT)}
+                {"state": state.copy(), "images": images, "prompt": observation.get("prompt", default_prompt)}
             )
             batched = jax.tree.map(lambda value: jnp.asarray(value)[None, ...], transformed)
             model_observation = model_api.Observation.from_dict(batched)
@@ -245,12 +259,12 @@ def load(project: Path, checkpoint: Path, *, num_steps: int = 10, rtc_overlay: P
                     raise ValueError("RTC is not enabled for this Stage1 server")
                 from methods.openpi_rlt.experiments.rtc import encode_prefix
                 previous, delay, execution = encode_prefix(
-                    {"state": state, "images": images, "prompt": observation.get("prompt", PROMPT)},
+                    {"state": state, "images": images, "prompt": observation.get("prompt", default_prompt)},
                     rtc_request, input_transform, action_dim=config.model.action_dim)
                 actions, token = infer_rtc(jax.random.key(42), model_observation,
                     jnp.asarray(previous)[None], jnp.asarray(delay), jnp.asarray(execution))
             else:
-                actions, token = infer(jax.random.key(42), model_observation)
+                actions, token = self.sample_model_observation(model_observation)
             actions = np.asarray(actions[0])
             token = np.asarray(token[0], dtype=np.float32).reshape(-1)
             physical = output_transform({"state": np.asarray(transformed["state"]), "actions": actions})["actions"]
@@ -260,7 +274,7 @@ def load(project: Path, checkpoint: Path, *, num_steps: int = 10, rtc_overlay: P
             if not np.all(np.isfinite(physical)) or not np.all(np.isfinite(token)):
                 raise ValueError("model output contains non-finite values")
             return {
-                "ref_chunk": physical[:10],
+                "ref_chunk": sample_reference(physical, reference_hz),
                 "rtc_used": rtc_request is not None,
                 "z_rl": token,
                 "proprio": state.copy(),
@@ -268,6 +282,20 @@ def load(project: Path, checkpoint: Path, *, num_steps: int = 10, rtc_overlay: P
             }
 
     return Policy()
+
+
+def sample_reference(physical: np.ndarray, reference_hz: int = 30) -> np.ndarray:
+    """Preserve legacy output exactly or interpolate the 30 Hz model horizon.
+
+    The optional 20 Hz output changes the frozen policy input contract. Existing
+    Actors were trained with legacy references; it needs its own acceptance.
+    """
+    if reference_hz == 30:
+        return physical[:10]
+    if reference_hz != 20:
+        raise ValueError('unsupported reference sampling rate')
+    from methods.openpi_rlt.plug_v3_yyshadow.stage1_action_metrics import interpolate_chunk
+    return interpolate_chunk(physical, 30, 20, 10)
 
 
 def main() -> None:
@@ -279,19 +307,23 @@ def main() -> None:
     parser.add_argument("--validate-only", action="store_true")
     parser.add_argument("--rtc-overlay", type=Path)
     parser.add_argument("--warmup-rtc", action="store_true")
+    parser.add_argument("--reference-hz", type=int, choices=(20, 30), default=30,
+                        help="Optional physical-time reference contract; default preserves the original 30 Hz samples.")
+    parser.add_argument("--prompt", default=PROMPT, help="Explicit default instruction; legacy default preserved.")
     args = parser.parse_args()
     if not 1 <= args.num_steps <= 20:
         raise ValueError("num-steps must be within 1..20")
 
     project = args.project_root.resolve()
-    policy = load(project, args.checkpoint, num_steps=args.num_steps, rtc_overlay=args.rtc_overlay)
+    policy = load(project, args.checkpoint, num_steps=args.num_steps, rtc_overlay=args.rtc_overlay,
+                  reference_hz=args.reference_hz, default_prompt=args.prompt)
     dummy = {
         "images": {
             key: np.zeros((224, 224, 3), dtype=np.uint8)
             for key in ("base_0_rgb", "left_wrist_0_rgb", "right_wrist_0_rgb")
         },
         "state": np.zeros(7, dtype=np.float32),
-        "prompt": PROMPT,
+        "prompt": args.prompt,
     }
     timings = []
     for index in range(3):

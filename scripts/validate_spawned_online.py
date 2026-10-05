@@ -30,6 +30,7 @@ def main():
     parser.add_argument('--norm', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--experiment-profile', choices=['mc_30'])
+    parser.add_argument('--publication-mode', choices=['automatic', 'staged'], default='automatic')
     args = parser.parse_args()
     if args.output.exists(): parser.error('Use a fresh isolated output directory')
     import numpy as np
@@ -66,6 +67,18 @@ def main():
     runtime['monitoring']['enable_wandb']=False
     cfg_path=out/'online.yaml';cfg_path.write_text(yaml.safe_dump(config,sort_keys=False))
     initial=pickle.loads(args.checkpoint.read_bytes())['state']
+    if args.publication_mode == 'staged':
+        # Existing native configuration already supports independent Actor
+        # read and Learner export paths. Keep collection's Actor immutable;
+        # new learned snapshots remain candidate artifacts until acceptance.
+        fixed=run/'frozen_actor.pkl'
+        with fixed.open('wb') as f:
+            pickle.dump({'version':int(initial['actor_version']),
+                         'global_step':int(initial['global_step']),
+                         'actor_params':initial['actor_params']},f)
+        frozen_hash=digest(fixed)
+        runtime['actor_service']['snapshot_path']=str(fixed)
+        cfg_path.write_text(yaml.safe_dump(config,sort_keys=False))
     env=dict(os.environ,JAX_PLATFORMS='cpu',CUDA_VISIBLE_DEVICES='',COBOT_RLT_REPLAY_ACTION_PRECISION='float32',
         RLT_OUTPUT_DIR=str(run),XLA_PYTHON_CLIENT_PREALLOCATE='false',OMP_NUM_THREADS='4',OPENBLAS_NUM_THREADS='4')
     for key in ['COBOT_RLT_EXPERIMENT_PROFILE','COBOT_RLT_EXECUTION_OPTIONS','COBOT_EXECUTION_OPTIONS','RLT_DISABLE_LEARNER']:
@@ -138,6 +151,23 @@ def main():
     assert restored.train_once() is None,'Restore repeated already consumed update budget'
     assert int(restored.state.global_step)==expected
     restored.flush_artifacts()
+    if args.publication_mode == 'staged':
+        from rlt_online_rl.inference import ActorService
+        fixed_service=ActorService(system.rl,system.actor_service)
+        try:
+            deadline=time.time()+30
+            while fixed_service.actor_param_version<0 and time.time()<deadline:time.sleep(.05)
+            assert fixed_service.actor_param_version==int(initial['actor_version'])
+            pending_snapshot=pickle.loads((run/'actor_snapshot.pkl').read_bytes())
+            assert pending_snapshot['version']==int(restored.state.actor_version)>fixed_service.actor_param_version
+            for _ in range(3):fixed_service._try_reload_snapshot()
+            assert fixed_service.actor_param_version==int(initial['actor_version'])
+            assert digest(fixed)==frozen_hash
+            for x,y in zip(jax.tree_util.tree_leaves(fixed_service._actor_params),jax.tree_util.tree_leaves(initial['actor_params'])):
+                np.testing.assert_array_equal(x,y)
+        finally:
+            fixed_service._stop_event.set()
+            fixed_service._poll_thread.join(timeout=5)
     restarted=LearnerService(system.rl,system.learner_service,replay,metrics_path=str(out/'restart_second/metrics.jsonl'))
     assert restarted.train_once() is None
     for x,y in zip(jax.tree_util.tree_leaves(restored.state),jax.tree_util.tree_leaves(restarted.state)):
@@ -153,6 +183,10 @@ def main():
         published_actor=snapshot['version'],full_restart_state_exact=True,source_sha256=hashes,sources_unchanged=True,
         spawned_precision_verified=True,owned_ports_closed=True,
         experiment_profile=args.experiment_profile,spawned_mc_weight_verified=.3 if args.experiment_profile else None,
+        publication_mode=args.publication_mode,
+        served_actor_remained_frozen=True if args.publication_mode=='staged' else None,
+        served_actor_version=int(initial['actor_version']) if args.publication_mode=='staged' else None,
+        pending_candidate_actor=int(restored.state.actor_version) if args.publication_mode=='staged' else None,
         robot_publishers=0,stage1_loads=0,field_operations=0,
         boundary='Actual fixed network/checkpoint and project spawn entry; dummy features/dynamics only. Not timing, HIL, insertion success or autonomous learning acceptance.')
     (out/'report.json').write_text(json.dumps(result,indent=2))

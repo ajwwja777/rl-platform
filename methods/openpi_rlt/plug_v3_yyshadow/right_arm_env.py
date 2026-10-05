@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+from collections.abc import Mapping
 from typing import Any
 
 import numpy as np
@@ -10,6 +12,18 @@ from methods.openpi_rlt.cobot_adapter.cobot_online_env import CobotOnlineEnv
 from methods.openpi_rlt.cobot_adapter.cobot_ros1 import CobotIOSample, RosTask2IO
 from methods.openpi_rlt.cobot_adapter.task2_runtime import Task2PolicyRuntime
 from methods.openpi_rlt.cobot_adapter.trace import ControlSource
+
+
+def validate_plug_task_environment(environment: Mapping[str, str]) -> None:
+    """Reject the generic pot fallback before constructing any ROS I/O."""
+    from methods.openpi_rlt.cobot_adapter.cobot_ros1 import DEFAULT_TASK_PROMPT
+
+    prompt = environment.get("COBOT_RLT_PROMPT", "")
+    if not prompt.strip() or prompt.strip() == DEFAULT_TASK_PROMPT:
+        raise ValueError("plug_v3 requires an explicit plug task COBOT_RLT_PROMPT; the generic pot prompt is invalid")
+    task_id = environment.get("COBOT_RLT_TASK_ID", "")
+    if task_id == "in_the_pot" or (environment.get("COBOT_RLT_SESSION_UI") == "1" and not task_id.strip()):
+        raise ValueError("plug_v3 Session requires an explicit plug COBOT_RLT_TASK_ID; the generic pot task is invalid")
 
 
 class RightArmPolicyRuntime(Task2PolicyRuntime):
@@ -96,6 +110,7 @@ class RightArmCobotOnlineEnv(CobotOnlineEnv):
 
 def create_right_arm_online_env() -> RightArmCobotOnlineEnv:
     """Reuse the audited Task2/Task5 factory with only its dimensional boundary changed."""
+    validate_plug_task_environment(os.environ)
     # ``run_online_rl`` uses multiprocessing with the spawn start method.  A
     # spawned EnvDriver does not inherit the monkey patches installed by the
     # parent ``online_role`` process, so install them again in the child before

@@ -45,6 +45,7 @@ def test_fork_retains_full_resume_state_seed_and_replay_and_registers_new_steps(
     saved=yaml.safe_load(target.read_text());runtime=saved['runtime']
     assert runtime['learner_service']['checkpoint_dir']==str(branch/'checkpoints')
     assert runtime['actor_service']['snapshot_path']==str(branch/'actor_snapshot/actor_snapshot.pkl')
+    assert runtime['learner_service']['actor_snapshot_path']==runtime['actor_service']['snapshot_path']
     assert saved['experiment']['rl']['freeze_after_warmup'] is False
     assert replay.read_bytes()==before and runtime['replay']['journal_path']==str(replay)
     assert latest_branch(tmp_path/'models')['source_step']==5000
@@ -105,3 +106,27 @@ def test_legacy_snapshot_step_requires_exact_full_checkpoint_parameter_match(tmp
     actor['actor_params']['weight'][0]=99;path.write_bytes(pickle.dumps(actor))
     with pytest.raises(ValueError,match='identity_mismatch'):
         prepare(seed,tmp_path/'bad',config,tmp_path/'cfg2',tmp_path/'run2')
+
+
+def test_staged_learning_separates_served_actor_from_candidate_exports(tmp_path):
+    seed,config,replay=fixture(tmp_path)
+    branch=tmp_path/'models/online_from_5000/staged';target=tmp_path/'online.yaml'
+    prepare(seed,branch,config,target,tmp_path/'run',publication_policy='staged')
+    saved=yaml.safe_load(target.read_text());runtime=saved['runtime']
+    served=Path(runtime['actor_service']['snapshot_path'])
+    pending=Path(runtime['learner_service']['actor_snapshot_path'])
+    assert served!=pending and served.is_file() and not pending.exists()
+    before=served.read_bytes();pending.parent.mkdir(parents=True)
+    pending.write_bytes(pickle.dumps({'version':9999}))
+    assert served.read_bytes()==before
+    metadata=json.loads((branch/'seed.json').read_text())
+    assert metadata['publication_policy']=='staged'
+    assert latest_branch(tmp_path/'models')['checkpoint']==str(served)
+    assert runtime['replay']['journal_path']==str(replay)
+
+
+def test_invalid_publication_policy_creates_no_assets(tmp_path):
+    seed,config,_=fixture(tmp_path)
+    with pytest.raises(ValueError,match='publication_policy_invalid'):
+        prepare(seed,tmp_path/'new',config,tmp_path/'cfg',tmp_path/'run',publication_policy='unverified')
+    assert not (tmp_path/'new').exists()

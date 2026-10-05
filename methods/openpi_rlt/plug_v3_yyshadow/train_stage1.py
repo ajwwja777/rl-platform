@@ -14,10 +14,25 @@ import sys
 
 
 EXPECTED_UPSTREAM_COMMIT = "c1e40ac360185778c98cf20da2820e22d2d415e7"
+DEPLOYMENT_UPSTREAM_COMMIT = "8cef77eb7c5211b45382bf9199c9cdf0aaf60a19"
+STAGE1_PATHS = ("src", "scripts", "packages", "pyproject.toml", "uv.lock")
 
 
 def git(root: Path, *args: str) -> str:
     return subprocess.run(["git", "-C", str(root), *args], check=True, text=True, capture_output=True).stdout.strip()
+
+
+def verify_upstream(upstream: Path) -> str:
+    """Accept only pinned, clean revisions with the author's Stage-1 sources."""
+    actual = git(upstream, "rev-parse", "HEAD")
+    if actual not in (EXPECTED_UPSTREAM_COMMIT, DEPLOYMENT_UPSTREAM_COMMIT):
+        raise ValueError(f"unexpected upstream commit: {actual}")
+    if git(upstream, "status", "--porcelain"):
+        raise ValueError("fixed upstream worktree is dirty")
+    changed = git(upstream, "diff", "--name-only", EXPECTED_UPSTREAM_COMMIT, actual, "--", *STAGE1_PATHS)
+    if changed:
+        raise ValueError(f"Stage-1 sources differ from the pinned author revision: {changed}")
+    return actual
 
 
 def add_import_roots(project: Path, upstream: Path) -> None:
@@ -78,10 +93,7 @@ def main() -> None:
     upstream = args.upstream_root.resolve()
     dataset = args.dataset_root.resolve()
     add_import_roots(project, upstream)
-    if git(upstream, "rev-parse", "HEAD") != EXPECTED_UPSTREAM_COMMIT:
-        raise ValueError("unexpected upstream commit")
-    if git(upstream, "status", "--porcelain"):
-        raise ValueError("fixed upstream worktree is dirty")
+    actual_upstream = verify_upstream(upstream)
     from methods.openpi_rlt.stage1_entry import prepare_environment, run_upstream_train
     from methods.openpi_rlt.plug_v3_yyshadow.stage1_right_arm_config import build_config
 
@@ -98,7 +110,8 @@ def main() -> None:
         num_train_steps=args.num_train_steps,
     )
     summary = {
-        "upstream_commit": EXPECTED_UPSTREAM_COMMIT,
+        "upstream_commit": actual_upstream,
+        "stage1_author_commit": EXPECTED_UPSTREAM_COMMIT,
         "dataset": dataset_info,
         "config_name": config.name,
         "exp_name": config.exp_name,

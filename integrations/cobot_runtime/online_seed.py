@@ -53,7 +53,8 @@ def _journal_boundary(path):
     return dict(adds_total=rows, bytes=before.st_size, sha256=digest.hexdigest())
 
 
-def prepare(seed, destination, config_source, config_target, run_root, *, replay_budget_policy='new_arrivals'):
+def prepare(seed, destination, config_source, config_target, run_root, *, replay_budget_policy='new_arrivals',
+            publication_policy='automatic'):
     seed, destination = Path(seed).resolve(), Path(destination).resolve()
     if destination.exists():
         raise ValueError('online_seed_destination_already_exists')
@@ -83,12 +84,15 @@ def prepare(seed, destination, config_source, config_target, run_root, *, replay
     config = yaml.safe_load(Path(config_source).read_text())
     if replay_budget_policy not in ('new_arrivals', 'inherit'):
         raise ValueError('online_seed_replay_budget_policy_invalid')
+    if publication_policy not in ('automatic', 'staged'):
+        raise ValueError('online_seed_publication_policy_invalid')
     runtime = config['runtime']
     config['experiment']['rl']['action_norm_stats_path'] = str(destination/'action_norm_stats.json')
     config['experiment']['rl']['freeze_after_warmup'] = False
     snapshot = str(destination/'actor_snapshot/actor_snapshot.pkl')
     runtime['actor_service']['snapshot_path'] = snapshot
-    runtime['learner_service']['actor_snapshot_path'] = snapshot
+    runtime['learner_service']['actor_snapshot_path'] = (
+        str(destination/'pending_actor/actor_snapshot.pkl') if publication_policy == 'staged' else snapshot)
     runtime['learner_service']['checkpoint_dir'] = str(destination/'checkpoints')
     # The existing Replay is referenced, never rewritten or copied here.
     journal = Path(runtime['replay']['journal_path'])
@@ -123,6 +127,9 @@ def prepare(seed, destination, config_source, config_target, run_root, *, replay
             'run_root': str(Path(run_root).resolve()),
             'config_target': str(Path(config_target).resolve()),
             'replay_budget_policy': replay_budget_policy,
+            'publication_policy': publication_policy,
+            'served_actor_snapshot': snapshot,
+            'candidate_actor_snapshot': runtime['learner_service']['actor_snapshot_path'],
             'seed_warmup_ready_adds_total': source_anchor,
             'branch_warmup_ready_adds_total': branch_anchor,
             'replay_boundary': boundary,
@@ -170,6 +177,7 @@ if __name__ == '__main__':
     for name in ('seed', 'destination', 'config_source', 'config_target', 'run_root'):
         parser.add_argument(name, type=Path)
     parser.add_argument('--replay-budget-policy', choices=('new_arrivals', 'inherit'), default='new_arrivals')
+    parser.add_argument('--publication-policy', choices=('automatic', 'staged'), default='automatic')
     args = parser.parse_args()
     prepare(args.seed, args.destination, args.config_source, args.config_target, args.run_root,
-            replay_budget_policy=args.replay_budget_policy)
+            replay_budget_policy=args.replay_budget_policy, publication_policy=args.publication_policy)
