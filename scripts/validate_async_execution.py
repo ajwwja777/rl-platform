@@ -22,12 +22,18 @@ def main():
     p.add_argument('--config',type=Path,required=True)
     p.add_argument('--output',type=Path,required=True)
     p.add_argument('--guard-web-url',default='http://127.0.0.1:8015')
+    p.add_argument('--prompt', help='Explicit task prompt; omitted preserves the historical Stage1 default.')
+    p.add_argument('--profiles', nargs='+', choices=('faithful20','async_rtc20','async_rtc30','async_rtc40','async_rtc50','async40_no_rtc','async40_no_smoothing'),
+                   help='Select execution comparisons; omitted preserves all seven historical variants.')
     args=p.parse_args()
+    if args.prompt is not None and not args.prompt.strip():
+        p.error('--prompt must be nonempty')
     from audit_critic_guidance import check_idle
     check_idle(args.guard_web_url)
     from methods.openpi_rlt.plug_v3_yyshadow.serve_stage1 import load
     overlay=ROOT.parent/'vla-platform/integrations/cobot/pi05/dagger/common/rtc_overlay'
-    policy=load(ROOT,args.checkpoint,rtc_overlay=overlay)
+    policy_kwargs = {} if args.prompt is None else {'default_prompt': args.prompt}
+    policy=load(ROOT,args.checkpoint,rtc_overlay=overlay,**policy_kwargs)
     import cv2,h5py,yaml,jax,jax.numpy as jnp
     from rlt_online_rl.config import RLTOnlineRLConfig
     from rlt_online_rl.action_representation import ActionRepresentationAdapter
@@ -36,7 +42,8 @@ def main():
     from methods.openpi_rlt.cobot_adapter.execution_profiles import ExecutionProfile
     from methods.openpi_rlt.cobot_adapter.async_execution import AsyncExecution
     from methods.openpi_rlt.plug_v3_yyshadow.right_arm_env import RightArmCobotOnlineEnv
-    cfg=RLTOnlineRLConfig(**yaml.safe_load(args.config.read_text())['experiment']['rl'])
+    config_mapping=yaml.safe_load(args.config.read_text())
+    cfg=RLTOnlineRLConfig(**config_mapping['experiment']['rl'])
     adapter=ActionRepresentationAdapter.from_config(cfg)
     snapshot=args.actor.read_bytes();payload=pickle.loads(snapshot)
     params=jax.tree_util.tree_map(jnp.asarray,payload['actor_params'])
@@ -70,7 +77,10 @@ def main():
     report=dict(schema=1,checkpoint=str(args.checkpoint),actor=str(args.actor),
         actor_sha256=hashlib.sha256(snapshot).hexdigest(),actor_version=int(payload['version']),
         recording=str(args.recording),robot_publishers=0,learner_updates=0,
-        baseline_prewarm_ms=prewarm,profiles={},limitations=[
+        baseline_prewarm_ms=prewarm,profiles={},policy_metadata=policy.metadata,
+        config_path=str(args.config),config_sha256=hashlib.sha256(args.config.read_bytes()).hexdigest(),
+        algorithm_config=config_mapping['experiment']['rl'],requested_profiles=args.profiles,
+        requested_prompt=args.prompt,limitations=[
         'Perfect synthetic joint tracking and one recorded camera frame; no real dynamics or insertion success.',
         'In-process Stage1/Actor calls exclude production RPC overhead and online Learner contention.',
         'RTC-conditioned online Replay training does not mean Stage1 training-time RTC fine-tuning.'])
@@ -90,6 +100,8 @@ def main():
     variants=[("faithful20",20,None)]+[(f"async_rtc{hz}",hz,ExecutionProfile(publish_hz=hz)) for hz in (20,30,40,50)]
     variants += [("async40_no_rtc",40,ExecutionProfile(publish_hz=40,rtc=False)),
                  ("async40_no_smoothing",40,ExecutionProfile(publish_hz=40,smoothing_tau_sec=0.))]
+    if args.profiles is not None:
+        variants=[v for v in variants if v[0] in args.profiles]
     for name,hz,profile in variants:
         io=IO()
         env=RightArmCobotOnlineEnv(io,chunk_exec_horizon=10,control_frequency_hz=20,max_episode_steps=None,

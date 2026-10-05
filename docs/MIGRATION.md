@@ -466,3 +466,11 @@ Currentoffline handoff identified formalrlt_up seed block neverforwards existing
 CPUactualseedblock/nativeCLI real5k comparison fixedstagedserved/pending separation, allparameters/optimizer/RNG retained; originalseed/snapshot/norm/Replay SHA unchanged, resumeunchanged.19targeted(10new actualshell/CLIcases),478full/61existingwarnings, bashsyntax/diffchecks passed; ownedtestPIDs911903/913454 exited. No models/services/ROS/GPU/training/field/productionReplay/weights/default/fixedupstream changes or modelpromotion. This fixes optionalentryavailability, not a proven historicalQ/robotrootcause.
 
 Outputs/preonline-delivery-package-20261005 containsREPORT, manifest/delivery, sources/patch, tests/realstateevidence and standaloneoperator_acceptance_prompt.txt; privatefull5k branchassets remainA6000, onlysmallreports retrieved. ConsolidatesStage1/Warmup/Online findings and rollbackidentities; no candidatepasses joint/grip/oldscene retention, historicalvalidcommand/input andindependentautonomouscapability stillinsufficient. Latestsourcefacts/packet are notcurrentfieldruntime/load/acceptance evidence. Formaloperatingflows unchanged; guidefactualsummary only.
+
+## 2026-10-05：真机前现场静态交付与实际提示词 CPU 补证
+
+用户要求完成真机 Online 前确认与交付。本批核对现场发布 bf111eb 与运行实现 5320b56：完整 622 文件中 75 个不同或缺失，未登记修改冲突为零；备份 19 个旧文件及原发布收据、新增 56 个文件后同步并全量 SHA 校验，默认配置与固定上游不变。现场九个关键模块导入通过，实际 Python3.10 环境输入/HIL/Replay/seed CPU 专项 68 项通过；网页 PID970937、RLT offline/recorder idle 保持，生产 Replay SHA0fb87e9ecc3b4e0ede50208caa3ceea93db3330bf976edf682cd6c21f684525a 未变。没有现场模型加载、GPU、服务启停或运动。
+
+现场 NVMe Stage1 的31资产及固定 Warmup5k checkpoint/Actor/原件norm哈希一致。A6000 CPU4 补用现场实际短提示词，两个保留的旧录制诊断锚点、两次独立 Stage1 恢复六字段逐值一致；固定5k私有 Actor RPC四调用与直接推理一致，完整资产不变，所有私有进程/端口退出。这是新构造数值链证据，不是历史输入、独立测试、命令最优性或自主能力证明。
+
+执行分析工具增加显式 --prompt/--profiles，报告保留实际 policy metadata 和配置 SHA；省略参数保留历史默认，空提示词在加载前拒绝。CLI检查通过；实际现场 GPU 前向/执行检查仍未进行。没有新 Actor 晋升或 Online 放行，独立冻结真机结果仍缺失。详细命令、配置、SHA、同步/回退与边界：outputs/preonline-field-verification-20261005/；现场源码备份在 runtime/verification/preonline-field-verification-20261005/pre-sync-source.tar.gz。正式流程MD未修改。
