@@ -121,7 +121,8 @@ class AsyncExecution:
         if sample.outcome is not None:
             self.terminal_outcome = sample.outcome
         return SimpleNamespace(observation=sample.observation,mode=sample.mode,
-            outcome=self.terminal_outcome,paused=sample.paused,timestamp=sample.timestamp)
+            outcome=self.terminal_outcome,paused=sample.paused,timestamp=sample.timestamp,
+            io_evidence=getattr(sample, 'io_evidence', None))
 
     def observation(self, observation):
         result = dict(observation)
@@ -297,15 +298,19 @@ class AsyncExecution:
                     env._sleep(1/self.config.publish_hz)
                     continue
                 paused_last = False
+                hil_command_receipt = None
                 if state.phase is EpisodePhase.HIL:
                     if self.plan is not None:
                         io.set_chunk_ready(False)
                         self.invalidate()
                     current = dict(current)
                     current.pop('rtc', None)
+                    if env._hil_target == 'coordinator_command':
+                        from .hil_targets import right_command_at_step_start
+                        hil_command, hil_command_receipt = right_command_at_step_start(sample, runtime.snapshot().expert_mask)
                     env._sleep(1/self.config.logical_hz)
                     after = self.sample()
-                    executed = env._state(after.observation)
+                    executed = hil_command if hil_command_receipt is not None else env._state(after.observation)
                     ref_action = executed.copy()
                     source, version, publications = runtime.control_source(self.last_policy_source), -1, []
                     next_observation = dict(after.observation)
@@ -385,6 +390,8 @@ class AsyncExecution:
                         current = after.observation
                         continue
                     if after_state.phase is EpisodePhase.HIL:
+                        if env._hil_target == 'coordinator_command':
+                            raise ValueError('Policy-to-HIL boundary has no single start-of-step human command; Episode not submitted')
                         source = runtime.control_source(source)
                         executed = env._state(after.observation)
                     else:
@@ -413,6 +420,10 @@ class AsyncExecution:
                     io_evidence_before_step=getattr(sample, 'io_evidence', None),
                     io_evidence_after_step=getattr(after, 'io_evidence', None),
                     publications=publications)
+                record['hil_target_mode'] = env._hil_target
+                record['hil_command_receipt'] = hil_command_receipt
+                if hil_command_receipt is not None:
+                    record['action_semantics'] = 'coordinator_command_at_step_start'
                 trace.append(record); rewards.append(reward)
                 io.record_raw_step(record)
                 current = next_observation

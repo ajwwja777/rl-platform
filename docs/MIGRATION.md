@@ -377,3 +377,13 @@ HIL 配对 Critic 补证（同日）：CPU 原 5k Critic、229 个窗口/31 个 
 新增可选 COBOT_RLT_INPUT_AUDIT=off/record/strict（默认off）：原生窗口构建后记录当前/next原始输入及实际transition.to_numpy序列化指纹，兼容可选FP32 action；strict拒绝state不一致或存储非有限字段。单独replay_inputs回执不替代提交ack、GPU处理、真实权重加载/执行证据，不改变生产默认或Replay。整套426通过，补充record/溢出边界后相关17通过；私有三路480x640 RGB哈希p95约1.97ms，不是现场deadline结果。详情与实际命令/身份/两图：outputs/online-provenance-audit-20261005/。
 
 本轮不训练、不占GPU、不部署、不启停现场或运动；生产Replay/权重与固定上游不变。输入工具完成不等于模型放行，独立自主能力与受控冻结验收仍证据不足。
+
+## 2026-10-05：HIL 命令目标与实际原始观测的可选合同修复
+
+CPU固定上游复现确认：原始append忽略trace当前observation，本地重采样后可出现实际起点state5、原始起点0、缓存proprio5；第二步重规划缓存还能把上一动作Replay next-state从实际1换成5。新增 COBOT_RLT_RAW_OBSERVATION_CONTRACT=trace（默认legacy）保留实际起点、上一next-state和重新规划的独立输入，并重定位缓存锚点；无暂停空白的伪造动作。复现是私有合成Episode/mock特征，不是历史全量受影响数或真实网络能力证据。
+
+固定上游HIL读取周期初命令、本地原路径取周期末反馈的差异已追到实现。新增 COBOT_RLT_HIL_TARGET=coordinator_command（默认feedback），限定右臂7D/显式logical20/trace，使用同一接管epoch内新鲜/master/joint_right命令；左臂无效不影响右臂。缺失/过期/未来/接管前命令及策略周期中途接管明确拒绝本轮Replay提交，不伪造纠正动作、不发布人类命令。最新收到命令不是执行确认；首步topic传递次序与真实拒绝率尚待现场验证。
+
+新异步测试发现sample包装丢弃io_evidence，修复后默认/可选路径均传递；修正此前“写trace字段即完整传递”的过强推断，真实失败日志保留。完整C10经过原生trace/raw/Replay/实际FP32 serializer/严格输入回执验证，保留VLA锚点reference及周期末next反馈；HIL无新Actor推理时版本-1。454整套、82最终相关测试通过；实际命令/身份/边界见 outputs/hil-target-contract-20261005/。
+
+无训练/GPU/现场启停、模型加载、部署或运动，生产Replay/权重/默认配置和固定上游未修改。该批是数据链候选，不放行新Actor；命令执行时基、算法收益和独立自主能力仍证据不足。正式流程MD未改。

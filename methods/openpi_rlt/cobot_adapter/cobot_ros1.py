@@ -235,6 +235,7 @@ class RosTask2IO:
         self._joints: dict[str, Any] = {}
         self._coordinator_commands: dict[str, tuple[Any, float]] = {}
         self._mode = "policy"
+        self._right_takeover_started_monotonic = None
         self._paused = True
         self._chunk_ready = False
         self._outcome: EpisodeOutcome | None = None
@@ -401,7 +402,16 @@ class RosTask2IO:
 
     def _mode_callback(self, message: Any) -> None:
         with self._condition:
-            self._mode = str(getattr(message, "data", "fault"))
+            previous = self._mode.strip().lower()
+            value = str(getattr(message, "data", "fault"))
+            following = value.strip().lower()
+            was_right = previous.startswith("manual:") and "right" in previous.split(":", 1)[1].split("+")
+            is_right = following.startswith("manual:") and "right" in following.split(":", 1)[1].split("+")
+            if is_right and not was_right:
+                self._right_takeover_started_monotonic = time.perf_counter()
+            elif not is_right:
+                self._right_takeover_started_monotonic = None
+            self._mode = value
             self._condition.notify_all()
         if self._session_application is not None:
             value = self._mode.strip().lower()
@@ -453,6 +463,7 @@ class RosTask2IO:
             "captured_ros_time": float(now),
             "captured_monotonic": time.perf_counter(),
             "mode": self._mode,
+            "right_takeover_started_monotonic": getattr(self, "_right_takeover_started_monotonic", None),
             "coordinator_commands": commands,
             "feedback_ros_stamps": {side: self._stamp(msg) for side, msg in self._joints.items()},
             "camera_ros_stamps": {key: self._stamp(msg) for key, msg in self._images.items()},

@@ -55,6 +55,10 @@ class CobotOnlineEnv:
         self._chunk_exec_horizon = int(chunk_exec_horizon)
         self._period = 1.0 / float(control_frequency_hz)
         self._hil_sampling = os.environ.get('COBOT_RLT_HIL_SAMPLING', 'legacy')
+        from .raw_observation_contract import selected_contract
+        self._raw_observation_contract = selected_contract()
+        from .hil_targets import selected_target
+        self._hil_target = selected_target()
         if self._hil_sampling not in {'legacy', 'logical20'}:
             raise ValueError('HIL sampling must be legacy or logical20')
         if self._hil_sampling == 'logical20' and float(control_frequency_hz) != 20.0:
@@ -179,6 +183,7 @@ class CobotOnlineEnv:
             interval_start_sample_received_monotonic = sample_received_monotonic
             publish_started_monotonic = None
             publish_finished_monotonic = None
+            hil_command_receipt = None
             ref_action_index = action_index
             before = self._runtime.snapshot()
             after = self._runtime.observe_mode(sample.mode)
@@ -222,6 +227,10 @@ class CobotOnlineEnv:
             if after.phase is EpisodePhase.HIL:
                 if bool(getattr(sample, "paused", False)) and before.phase is EpisodePhase.ROLLOUT:
                     current_observation = sample.observation
+                if self._hil_target == 'coordinator_command':
+                    from .hil_targets import right_command_at_step_start
+                    hil_command, hil_command_receipt = right_command_at_step_start(
+                        sample, self._runtime.snapshot().expert_mask)
                 if self._hil_sampling == 'logical20':
                     # HIL publishes no policy command. Match its feedback
                     # trajectory sampling to the logical action time base,
@@ -231,7 +240,8 @@ class CobotOnlineEnv:
                     self._sleep(period)
                     sample = self._io.sample()
                     sample_received_monotonic = time.perf_counter()
-                executed = self._state(sample.observation)
+                executed = (hil_command if self._hil_target == 'coordinator_command'
+                            else self._state(sample.observation))
                 source = self._runtime.control_source(plan.source)
                 next_observation = sample.observation
             else:
@@ -263,6 +273,8 @@ class CobotOnlineEnv:
                 sample = self._io.sample()
                 sample_received_monotonic = time.perf_counter()
                 after_publish = self._runtime.observe_mode(sample.mode)
+                if self._hil_target == 'coordinator_command' and after_publish.phase is EpisodePhase.HIL:
+                    raise ValueError('Policy-to-HIL boundary has no single start-of-step human command; Episode not submitted')
                 if published is False:
                     self._io.set_chunk_ready(False)
                     current_observation = sample.observation
@@ -301,7 +313,7 @@ class CobotOnlineEnv:
             record = {
                 "observation": current_observation,
                 "action": np.asarray(executed, dtype=np.float32),
-                "ref_action": np.asarray(
+                "ref_action": np.asarray(executed if hil_command_receipt is not None else
                     plan.ref_chunk[min(ref_action_index, len(plan.ref_chunk) - 1)],
                     dtype=np.float32,
                 ),
@@ -309,7 +321,7 @@ class CobotOnlineEnv:
                 "next_observation": next_observation,
                 "human_controlled": source in (ControlSource.HUMAN, ControlSource.MIXED),
                 "source": int(source),
-                "actor_param_version": int(plan.actor_param_version),
+                "actor_param_version": -1 if hil_command_receipt is not None else int(plan.actor_param_version),
                 "done": done,
                 "outcome": None if outcome is None else outcome.value,
                 "expert_mask": list(self._runtime.snapshot().expert_mask),
@@ -318,12 +330,15 @@ class CobotOnlineEnv:
                 "replay_episode_id": getattr(self, "_trace_replay_episode_id", None),
                 "collection_phase": self.current_phase_name(),
                 "action_semantics": (
-                    "measured_joint_feedback" if source in (ControlSource.HUMAN, ControlSource.MIXED)
+                    "coordinator_command_at_step_start" if hil_command_receipt is not None
+                    else "measured_joint_feedback" if source in (ControlSource.HUMAN, ControlSource.MIXED)
                     else "shadow_target" if self._shadow_mode else "published_policy_target"
                 ),
                 "sample_received_monotonic": sample_received_monotonic,
                 "interval_start_sample_received_monotonic": interval_start_sample_received_monotonic,
                 "hil_sampling_mode": self._hil_sampling,
+                "hil_target_mode": self._hil_target,
+                "hil_command_receipt": hil_command_receipt,
                 "io_evidence_before_step": io_evidence_before_step,
                 "io_evidence_after_step": getattr(sample, "io_evidence", None),
                 "command_publish_started_monotonic": publish_started_monotonic,
@@ -350,6 +365,12 @@ class CobotOnlineEnv:
                 break
 
         sources = {int(step["source"]) for step in trace}
+        if (self._raw_observation_contract == "trace" and trace
+                and trace[0]["observation"] is not observation):
+            # Initial planning and the first executed step may straddle HIL or
+            # pause. Recompute true first-input features rather than reusing
+            # a plan from another RGB/state/RTC observation.
+            chunk_start_features = None
         chunk_source = sources.pop() if len(sources) == 1 else int(ControlSource.MIXED)
         return current_observation, rewards, outcome is not None, {
             "step_trace": trace,

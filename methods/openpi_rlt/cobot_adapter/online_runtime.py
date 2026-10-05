@@ -128,9 +128,13 @@ def install_bimanual_runtime_patch() -> None:
     """Install the Cobot adapter before importing any Machine B role."""
     global _PATCH_INSTALLED
     from methods.openpi_rlt.cobot_adapter import input_audit
+    from methods.openpi_rlt.cobot_adapter import raw_observation_contract
+    from methods.openpi_rlt.cobot_adapter import hil_targets
 
     # Reject invalid optional configuration before constructing any ROS I/O.
     input_audit.audit_mode()
+    raw_observation_contract.selected_contract()
+    hil_targets.selected_target()
     if not _PATCH_INSTALLED:
         upstream_actions.ActionRepresentationAdapter = CobotBimanualActionRepresentationAdapter
         upstream_actions.jax_denormalize_to_abs_chunk = cobot_jax_denormalize_to_abs_chunk
@@ -179,7 +183,15 @@ def install_bimanual_runtime_patch() -> None:
                 # result to the last executed action and omit the empty chunk.
                 _mark_previous_step_terminal(raw_episode, int(kwargs.get("success", 0)))
                 return kwargs["observation_idx"]
-            return original_append_raw_chunk(driver, raw_episode, **kwargs)
+            preserve = (getattr(driver._env, "cobot_task2_contract", False)
+                        and raw_observation_contract.selected_contract() == "trace")
+            step_start = len(raw_episode.steps)
+            anchors_before = dict(raw_episode.summary.get("feature_anchors", {})) if preserve else None
+            next_index = original_append_raw_chunk(driver, raw_episode, **kwargs)
+            if preserve:
+                raw_observation_contract.preserve_trace_observations(
+                    driver, raw_episode, kwargs, step_start, anchors_before)
+            return next_index
 
         _append_raw_chunk_with_terminal_last_action._cobot_terminal_last_action = True
         inference.EnvDriver._append_raw_chunk = _append_raw_chunk_with_terminal_last_action
