@@ -443,3 +443,10 @@ trace动作身份可追的Online训练仅1个人类动作Episode、对应Online�
 此前A6000已保存的真实尺寸候选RGB与合成feature fixture：6张480×640×3无损往返，原始5530213bytes/压缩1003299bytes，单次写加构建130ms/恢复29ms；不是现场p95/deadline，不能计入发布循环。完整身份/实际配置/命令/回退/容量与错误日志见outputs/input-snapshot-verification-20261005/{REPORT.md,delivery.json,final_verification.json}；快照/私有Replay/权重只留A6000，小报告取回。
 
 算法、Actor/Critic默认、固定上游、生产Replay/权重不改，snapshot默认关闭作回退；无GPU、现场部署/启停/模型加载/运动。实际Stage1输入处理/有效命令/独立自主能力仍缺证，不晋升模型，后续同输入网络复算需单独核资源和边界。正式流程MD未改。
+
+
+## 2026-10-05: actual Stage1 CPU lossless-input numerical closure
+
+Isolated source base0b50423, actualStage1 checkpoint4999 restored in two independent CPU processes (4cores, seed42,10denoising,legacy30Hz C10,noRTC). Existing retained rawRGB/rightstate candidate frames0/2 from WarmupEp3, fresh correct plug prompt; one synthetic native EnvDriver transition, not historical input/command/task outcome. Six current/next z/proprio/ref native fields match exactly (maxabs0), and actualserializer casts match snapshot arrays exactly. Snapshot externalmetadataSHA b022d5ee3e2290a6488d21110f3eea00272c663f4e869a1eb07627be33e9ca36;31checkpoint/assetfiles SHA unchanged before/after. Actual3,757,772,560 inferenceparameters restoredBF16, no weightrewrite.
+
+CPUworkers879350/882640 exited; outputs/stage1-input-snapshot-model-20261005/{REPORT.md,delivery.json,create_report.json,verify_report.json} retain exactcommands/config/source/dataSHA/load/calltiming. No runtimecode changes, training, GPU, field services/model/motion, production Replay/weights/default/upstream changes or Actorpromotion. FP16 feature serialization remains explicit/quantized; independent CPU equality does not prove GPU parity, historical image identity, validHIL commands, autonomous improvement or fieldtiming. This offline input check passed; model/Online acceptance remains insufficient. Formal operating flows unchanged.
