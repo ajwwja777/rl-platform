@@ -37,9 +37,10 @@ def main():
         actual_hash=hashlib.sha256(indices.tobytes()).hexdigest();assert actual_hash==run['indices_sha256']
         frequency=np.bincount(indices.ravel(),minlength=len(optimization));draws=int(frequency.sum())
         human=np.isin(source,[2,3]);ep_draws={str(int(ep)):int(frequency[episodes==ep].sum()) for ep in np.unique(episodes)}
+        expert=np.logical_or(episodes<0,episodes>=100000)
         output['runs'].append({'label':run['label'],'verified_indices_sha256':actual_hash,
-            'batch_count':len(indices),'transition_draws':draws,'expert_transition_draw_ratio':float(frequency[episodes<0].sum()/draws),
-            'rollout_transition_draw_ratio':float(frequency[episodes>=0].sum()/draws),
+            'batch_count':len(indices),'transition_draws':draws,'expert_transition_draw_ratio':float(frequency[expert].sum()/draws),
+            'rollout_transition_draw_ratio':float(frequency[~expert].sum()/draws),
             'hil_window_draw_ratio':float(frequency[human.any(1)].sum()/draws),
             'human_action_slot_draw_ratio':float((frequency*human.sum(1)).sum()/(draws*source.shape[1])),
             'success_transition_draw_ratio':float(frequency[success==1].sum()/draws),

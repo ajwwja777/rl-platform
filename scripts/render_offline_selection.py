@@ -13,7 +13,8 @@ def main():
     figdir=out/'figures';figdir.mkdir(exist_ok=True)
     def read(name):return json.loads((out/name).read_text())
     def save(name,fig):
-        fig.tight_layout();fig.savefig(figdir/(name+'.png'),dpi=170);fig.savefig(figdir/(name+'.svg'));plt.close(fig)
+        if fig._suptitle is not None:fig._suptitle.set_fontsize(11)
+        fig.tight_layout(rect=(0,0,1,.91));fig.savefig(figdir/(name+'.png'),dpi=170);fig.savefig(figdir/(name+'.svg'));plt.close(fig)
     stage=read('stage1_full/report.json');rows=stage['episodes'];complete=stage.get('complete',False)
     n=len(rows);picks=np.random.default_rng(42).integers(n,size=(10000,n))
     metrics=['sample30_first10','legacy_first10_at20','retimed30to20_first10','hold_current_state_at20']
@@ -140,6 +141,37 @@ def main():
             axes[0].set_ylabel('HIL joint MAE (mrad)');axes[1].set_ylabel('HIL gripper MAE (mm)');axes[0].legend(fontsize=8)
             fig.suptitle('Cold native Warmup5k: exclude 29 wrong-task records only; 6 HIL/reused 20 dev Episodes; 3 seed range')
             save('warmup_prompt_filter',fig)
+    if (out/'warmup_prompt_filter/actual_sampling.json').exists():
+        sampling=read('warmup_prompt_filter/actual_sampling.json');summary['actual_sampling_verified']='Six new trials: complete batch-index SHA verified; historical missing batches not recovered.'
+        fig,axes=plt.subplots(1,2,figsize=(11,4))
+        names=['Episodes\noriginal','Transitions\noriginal','Episodes\nexclude2','Transitions\nexclude29']
+        ratios=np.asarray([120/204,1186/2567,120/202,1186/2538]);x=np.arange(4)
+        axes[0].bar(x,ratios,label='expert',color='#24547A');axes[0].bar(x,1-ratios,bottom=ratios,label='rollout',color='#D68B35')
+        axes[0].set_xticks(x);axes[0].set_xticklabels(names,fontsize=8);axes[0].set_ylabel('Training pool share');axes[0].legend(fontsize=8)
+        labels=[];ratios=[]
+        for condition in ['all','exclude_wrong_task']:
+            runs=[r for r in sampling['runs'] if r['label'].startswith(condition+'_seed')]
+            for r in runs:labels.append(r['label'].replace('_wrong_task','').replace('_seed','\ns'));ratios.append(r['expert_transition_draw_ratio'])
+        ratios=np.asarray(ratios);x=np.arange(len(ratios));axes[1].bar(x,ratios,color='#24547A');axes[1].bar(x,1-ratios,bottom=ratios,color='#D68B35')
+        axes[1].set_xticks(x);axes[1].set_xticklabels(labels,fontsize=7);axes[1].set_ylabel('Actual transition batch-draw share')
+        fig.suptitle('Train pool vs verified new 5000x128 batch draws; success/HIL overlap expert/rollout labels; no independent test')
+        save('warmup_actual_sampling',fig)
+    if (out/'rollout_window_time_summary.json').exists():
+        timing=read('rollout_window_time_summary.json');summary['rollout_recorded_time_contract']=timing
+        fig,axes=plt.subplots(1,2,figsize=(11,4))
+        for split,color,offset in [('train','#24547A',-.16),('development','#D68B35',.16)]:
+            rows=[r for r in timing['summaries'] if r['split']==split]
+            for ax,labels in [(axes[0],['policy_only','human_only']),(axes[1],['mixed'])]:
+                selected=[r for r in rows if r['label'] in labels];x=np.arange(len(selected))+offset
+                mean=np.asarray([r['equal_episode_mean_seconds'] for r in selected]);ci=np.asarray([r['episode_bootstrap_ci95'] for r in selected])
+                ax.bar(x,mean,width=.3,color=color,label=split,yerr=np.maximum(0,np.stack([mean-ci[:,0],ci[:,1]-mean])),capsize=3)
+                for xx,yy,r in zip(x,mean,selected):ax.text(xx,yy,'n='+str(r['fully_covered_complete_episodes']),ha='center',va='bottom',fontsize=7)
+                ax.set_xticks(range(len(selected)));ax.set_xticklabels([r['label'] for r in selected],fontsize=8)
+        for ax in axes:
+            ax.axhline(.45,color='black',ls='--',lw=1,label='Expert20 target span');ax.axhline(.3,color='#17815A',ls=':',lw=1,label='Legacy30 reference span');ax.set_ylabel('Recorded C10 first-to-last span (seconds)')
+        axes[0].legend(fontsize=7)
+        fig.suptitle('Unique full C10 identity joins; fully covered complete-Episode bootstrap; recorded steps, not hardware publish clocks')
+        save('rollout_recorded_time_contract',fig)
     if (out/'reference_timebase/report.json').exists():
         factor=read('reference_timebase/report.json');summary['prompt_time_comparison']=factor['summaries']
         fig,axes=plt.subplots(1,2,figsize=(11,4));names=[]
@@ -170,6 +202,8 @@ def main():
     (out/'summary.json').write_text(json.dumps(summary,indent=2,ensure_ascii=False,allow_nan=False))
     figures=['stage1_timebase','stage1_horizon_error','stage1_joint_gripper_error','candidate_development','reference_dropout','token_information','actor_time_adaptation']
     if (figdir/'warmup_prompt_filter.png').exists():figures.append('warmup_prompt_filter')
+    if (figdir/'warmup_actual_sampling.png').exists():figures.append('warmup_actual_sampling')
+    if (figdir/'rollout_recorded_time_contract.png').exists():figures.append('rollout_recorded_time_contract')
     if (figdir/'prompt_timebase_actor.png').exists():figures.append('prompt_timebase_actor')
     html='''<!doctype html><meta charset="utf-8"><title>Offline model selection</title><style>body{max-width:1100px;margin:32px auto;font:16px/1.6 sans-serif;color:#203040}img{width:100%}pre{white-space:pre-wrap;background:#f2f5f8;padding:16px}h2{margin-top:40px}</style><h1>真机 Online 前：模型验证与候选选择</h1><p>完整 Episode、真实 checkpoint、只读数据；没有机器人动作或独立真机成功率。此页持续保存进度，最终状态以 progress.json 为准。</p><p><b>结论边界：</b>已验证离线运行与数据合同；新训练模型尚未建立稳定优势，不以低 TD loss、Actor Q 上升或拟合最小值放行。当前保留 Warmup5k 作初始 Actor，分离训练候选与正在执行的 Actor。</p>'''
     html+='<p><b>新的关键问题：</b>Stage1 的 30 Hz 输出与 Warmup 专家 20 Hz 动作目标不在同一时基。参考轨迹重采样改善训练内拟合，但现有 Actor 已适应旧参考输入；单独换成 20 Hz 参考使同一 Actor 的关节误差增加约 16%，该组合被拒绝。旧 Actor 仍配旧合同。训练、反复选型开发集和独立测试不可混用；本次独立测试为空。</p>'
