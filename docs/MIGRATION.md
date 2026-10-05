@@ -474,3 +474,15 @@ Outputs/preonline-delivery-package-20261005 containsREPORT, manifest/delivery, s
 现场 NVMe Stage1 的31资产及固定 Warmup5k checkpoint/Actor/原件norm哈希一致。A6000 CPU4 补用现场实际短提示词，两个保留的旧录制诊断锚点、两次独立 Stage1 恢复六字段逐值一致；固定5k私有 Actor RPC四调用与直接推理一致，完整资产不变，所有私有进程/端口退出。这是新构造数值链证据，不是历史输入、独立测试、命令最优性或自主能力证明。
 
 执行分析工具增加显式 --prompt/--profiles，报告保留实际 policy metadata 和配置 SHA；省略参数保留历史默认，空提示词在加载前拒绝。CLI检查通过；实际现场 GPU 前向/执行检查仍未进行。没有新 Actor 晋升或 Online 放行，独立冻结真机结果仍缺失。详细命令、配置、SHA、同步/回退与边界：outputs/preonline-field-verification-20261005/；现场源码备份在 runtime/verification/preonline-field-verification-20261005/pre-sync-source.tar.gz。正式流程MD未修改。
+
+## 2026-10-06：真实 GPU 无动作检查与执行诊断修复
+
+用户明确要求自动完成，无需再确认；本批仅接管Cobot空闲RTX4090的有界无动作检查，不启停现场服务、不运动、不改生产Replay/权重/默认或固定上游。实际GPU代码c1e8409071fc21f573513586f9c81d119502894d已提交push并同步Cobot623文件SHA一致。
+
+首次真实检查恢复Stage14999并成功前向，async_rtc20合成路径通过；faithful20因分析工具错误使用Async PlannerBackend访问None.stats失败。工具已改走原生EnvDriver与现场适配补丁，同步用原生planner、异步用自己的backend；显式Online动作路径以实际调用5k Actor，20Hz/C10，eval_actor_only、不写Replay/不学习，30逻辑步限制并核对Actor版本。FakeIO生命周期补齐，真实任务结果为null，不将合成停止称作失败任务或成功任务。两项有意义回归防止faithful重新误走async后端及Actor被Warmup Reference替代。A6000完整480通过/61既有warning，Cobot Python3.10新回归2通过；中间失败保留。
+
+第二轮真实RTX4090 backend=gpu/cuda:0，原固定5k Actor2500/norm、NVMe4999、实际短提示词、旧Online Episode1 frame0与理想反馈；faithful20/async_rtc20均30逻辑步/30模拟命令、RL30/BASE0/HUMAN0、fallback0、intervention0、Replay0、学习0，退出码0/25.195秒。faithful模拟有效17.924Hz，p95间隔98.422ms、chunk边界max130.445ms；async约20.000Hz/p95间隔50.038ms、max50.042ms。这是单条合成执行诊断，不是实际机器人deadline、跟踪或自主能力证据；没有RPC/Learner争用，RTC条件不同。
+
+运行后31个Stage1资产、5k checkpoint/Actor/norm、原录制及生产Replay SHA均未变；实际web970937保持、RLT offline/recorder idle、自有进程退出、GPU空闲。第一次launch把历史部署登记PID754128写作web_pid，第二轮改用实际进程证据，旧收据保留并明确更正。源码同步未切换当前网页选择或模型服务，没有新Actor晋升。交付可转入受控冻结真机验收准备，独立自主测试仍0，持续Online学习未放行，模型改善目标未完成。
+
+报告、8图、版本/配置/命令/SHA、原失败、退出码、回退与独立现场prompt：outputs/preonline-gpu-20261006/。Cobot对应runtime/verification/preonline-gpu-20261006/，pre-attempt2-source.tar.gz保留上版诊断脚本/release收据。小报告取回，不复制完整数据或权重。本节只记事实，正式操作流程未改。
