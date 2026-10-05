@@ -53,7 +53,7 @@ def main():
 
     fig,axes=plt.subplots(1,2,figsize=(10,4.8))
     vals=[seed['results'][k]['startup_pending_updates'] for k in ['inherit','new_arrivals']]
-    axes[0].bar(['Inherited old anchor','New-arrival branch anchor'],vals,color=['#c0392b','#27ae60'])
+    axes[0].bar(['Inherited\nold anchor','New-arrival\nbranch anchor'],vals,color=['#c0392b','#27ae60'])
     for i,v in enumerate(vals):axes[0].text(i,v+150,str(v),ha='center')
     axes[0].set_ylim(0,8500);axes[0].set_ylabel('Earned updates at startup');axes[0].set_title('Actual 5k state + synthetic adds_total=4013')
     parts=[runtime['spawned_updates'],runtime['resumed_updates']]
@@ -79,7 +79,7 @@ def main():
         cached_pool_integrity=dict(windows=integrity['windows'],return_available=integrity['available_observed_returns'],
             duplicate_identities=integrity['phase_episode_step_duplicate_count'],conflicting_overlap_episodes=sum(bool(r['conflicting_overlap_steps']) for r in integrity['episodes']),
             inconsistent_terminal_episodes=sum(not r['terminal_reward_consistent'] for r in integrity['episodes'])),
-        tests=dict(project_cpu=383,online_environment_related=34),runtime=runtime,seed=seed,
+        tests=dict(project_cpu=383,online_environment_related=34,additional_acceptance_gate=8),runtime=runtime,seed=seed,
         release=dict(offline_candidate_preparation='已验证',fresh_field_no_motion_consistency='证据不足',frozen_robot_acceptance='证据不足',online_autonomous_improvement='证据不足'),
         boundary=['No independent test or robot movement','HIL measured feedback is not verified human command','Critic target-change effect is not proof of optimal action preference','FP32 rollout storage / HIL sampling / branch fixes not deployed','No new Actor promoted; existing Warmup5k is acceptance baseline only'])
     (out/'summary.json').write_text(json.dumps(summary,indent=2,ensure_ascii=False))
@@ -100,6 +100,14 @@ def main():
     table=''.join('<tr><td>%s</td><td>%s</td><td>%s</td></tr>'%tuple(html.escape(x) for x in r) for r in rows)
     text='''<!doctype html><html lang="zh"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Online 真机前验证交付</title><style>body{max-width:1100px;margin:35px auto;padding:0 20px;font:16px/1.7 system-ui;color:#223}h1{font-size:28px}h2{font-size:22px;margin-top:35px}img{width:100%;height:auto}table{border-collapse:collapse;width:100%}td,th{padding:10px;border:1px solid #ccd;text-align:left}code{overflow-wrap:anywhere}a{color:#246}article{padding:14px;background:#eef4f8}small{color:#567}</style><h1>真机 Online RL 前：修复与验证交付</h1><article><b>已修复可确认的数据与启动问题，离线更新闭环已跑通；尚未放行自主 Online RL。</b><p>本轮新增6次 Critic诊断训练，复用此前18次 Actor/Critic 对照。未发布新 Actor；受控冻结验收以现有 Warmup5k 为基线。生产Replay、权重、配置、固定上游及现场均未修改。</p></article><h2>已定位的问题与证据边界</h2><table><tr><th>检查</th><th>结论</th><th>证据与边界</th></tr>'''+table+'''</table><h2>Critic 的目标和动作偏好</h2><p>训练 HIL 的记录动作Q1平均比当前TD目标高约0.011，不是普遍拟合不上目标。TD目标与观测回报的差异在训练和旧开发数据上方向不同。不能把“人类动作Q低”简单归结为标签都低，也不能给未执行 Actor 动作补造真实回报。</p><img src="target_decomposition.png"><img src="target_refit.png"><p>上述训练仅更新Critic；Actor、target网络、初始优化器和每seed采样身份固定。改变回归目标能改变排序，是机制证据；不支持自主能力变好、HIL最优、或直接把MC100部署的结论。</p><h2>启动→更新→保存→恢复</h2><img src="update_budget.png"><p>完整离线闭环使用真实5k checkpoint与网络、独立loopback角色，DummyFeatureProvider/DummyChunkEnv提供合成经验。它验证状态和预算，不验证真实视觉、触觉、现场时延或插入成功。</p><h2>可回退的实现</h2><ul><li>每个spawn子进程重新安装项目补丁，验证FP32动作和真实batch审计有效。</li><li>新建5k分支默认new_arrivals预算起点；显式inherit可复现历史追赶，现有分支不迁移。</li><li>COBOT_RLT_REPLAY_ACTION_PRECISION=float32 为可选新经验精度；撤销需下次启动回到legacy，旧FP16数据不能恢复。</li><li>COBOT_RLT_HIL_SAMPLING=logical20 为同步HIL可选采样；撤销回legacy。它仍记录反馈，不冒充人类命令，也不保证严格物理20Hz。</li><li>Actor版本相同但参数不同拒绝分支；旧快照缺step时只能依靠逐值匹配完整checkpoint确认。</li></ul><h2>验收包与尚未通过的条件</h2><p>独立测试、自主收益、真实HIL命令/反馈对应以及现场deadline/跟踪仍缺证。交付包分无动作一致性、冻结验收、分批学习三个门槛，禁止从前两项测试结果自动放行学习。</p><p><a href="operator_acceptance_prompt.txt">单独转交现场负责人的验收prompt</a> · <a href="acceptance_bundle.json">验收配置与门槛</a> · <a href="summary.json">本轮机器可读总结</a></p><h2>完整过程与复现</h2><p>入口和Git核对→复用历史产物→当前Replay只读结构检查→逐Episode目标归因→单因素Critic重拟合→定位spawn继承和seed预算→隔离修复→真实多进程CPU闭环→完整项目383项与在线环境34项回归→输出小报告/代码差异。未改正式流程MD。</p><p>代码提交 <code>'''+head+'''</code>，分支 audit/q-guidance-20261005；未合并/部署。实验启动的dirty source SHA在launch收据中，不冒称使用后来提交的代码。</p><p><a href="critic_targets/target_attribution.json">6次训练、实际配置、输入SHA和每Episode指标</a> · <a href="critic_targets/episode_integrity.json">窗口重叠和terminal审计</a> · <a href="replay_integrity.json">当前生产Replay只读收据</a> · <a href="seed_budget_validation.json">真实种子预算验证</a> · <a href="spawned_runtime/report.json">真实多进程验证</a> · <a href="full_regression_final.log">完整CPU回归</a> · <a href="online_environment_tests.log">在线Python版本回归</a></p><p><a href="../full-chain-audit-20261001/index.html">Stage1/Warmup/Online完整追溯及论文借鉴</a> · <a href="../model-repair-20261005/index.html">前轮18次训练和6张动作/质量图</a></p><small>缺失证据留空。训练、反复选型开发和独立测试分开；没有独立测试。区间按Episode计算；重叠窗口不是独立样本。</small></html>'''
     (out/'index.html').write_text(text,encoding='utf-8')
+    mc_path=out/'spawned_runtime_mc30/report.json'
+    if mc_path.exists():
+        summary['mc30_spawned_fixture']=json.loads(mc_path.read_text())
+        summary['mc30_fixture_boundary']='Same Warmup5k fixture used to test MC30 role initialization and restore; not the actual historical MC30 initialization or field model.'
+        (out/'summary.json').write_text(json.dumps(summary,indent=2,ensure_ascii=False))
+        text=text.replace('完整CPU回归</a>','完整CPU回归</a>')
+        text=text.replace('<h2>可回退的实现</h2>','<p>MC30入口也通过真实多进程闭环：spawn后的实际MC权重0.3已核对，精度、batch审计、退出与恢复通过。这里使用同一Warmup5k状态作为入口测试fixture，不冒称核实了历史MC30的实际初始化。</p><p><a href="spawned_runtime_mc30/report.json">MC30多进程入口验证</a> · <a href="acceptance_gate_tests.log">额外8项完整Episode门槛测试</a></p><h2>可回退的实现</h2>')
+        (out/'index.html').write_text(text,encoding='utf-8')
 
 
 if __name__=='__main__':main()

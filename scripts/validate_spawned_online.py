@@ -29,6 +29,7 @@ def main():
     parser.add_argument('--replay', type=Path, required=True)
     parser.add_argument('--norm', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--experiment-profile', choices=['mc_30'])
     args = parser.parse_args()
     if args.output.exists(): parser.error('Use a fresh isolated output directory')
     import numpy as np
@@ -42,7 +43,8 @@ def main():
     def digest(path): return hashlib.sha256(path.read_bytes()).hexdigest()
     sources = {name: getattr(args,name).resolve() for name in ['checkpoint','replay','norm']}
     hashes = {name:digest(path) for name,path in sources.items()}
-    run = out/'run'; (run/'checkpoints').mkdir(parents=True)
+    run = out/'candidates/run' if args.experiment_profile else out/'run'
+    (run/'checkpoints').mkdir(parents=True)
     shutil.copyfile(args.checkpoint, run/'checkpoints/latest.pkl')
     shutil.copyfile(args.norm, run/'action_norm_stats.json')
     shutil.copyfile(args.replay, run/'replay.pkl')
@@ -68,6 +70,8 @@ def main():
         RLT_OUTPUT_DIR=str(run),XLA_PYTHON_CLIENT_PREALLOCATE='false',OMP_NUM_THREADS='4',OPENBLAS_NUM_THREADS='4')
     for key in ['COBOT_RLT_EXPERIMENT_PROFILE','COBOT_RLT_EXECUTION_OPTIONS','COBOT_EXECUTION_OPTIONS','RLT_DISABLE_LEARNER']:
         env.pop(key,None)
+    if args.experiment_profile:
+        env['COBOT_RLT_EXPERIMENT_PROFILE']=args.experiment_profile
     cmd=[sys.executable,str(ROOT/'methods/openpi_rlt/scripts/online_role.py'),'--upstream-root',str(ROOT/'third_party/openpi-rlt'),
         '--config',str(cfg_path),'--num-episodes','1']
     for s in sockets:s.close()
@@ -112,6 +116,17 @@ def main():
     audit=run/'metrics/batch_composition.jsonl'
     batches=[json.loads(line) for line in audit.read_text().splitlines() if line.strip()] if audit.exists() else []
     assert len(batches)==step-int(initial['global_step'])
+    if args.experiment_profile:
+        learner_metrics=[json.loads(line) for line in (run/'metrics/learner_metrics.jsonl').read_text().splitlines() if line.strip()]
+        assert learner_metrics and all(abs(row['mc_effective_weight']-.3)<1e-5 for row in learner_metrics)
+        from methods.openpi_rlt.experiments.runtime import install_learner, CreditIndex
+        install_learner({'mc_weight':.3},str(run/'replay.pkl'),system.rl.gamma)
+        index=CreditIndex(run/'replay.pkl',system.rl.gamma)
+        original_replay=replay
+        class CreditSource:
+            def stats(self):return original_replay.stats()
+            def sample_batch(self,*a,**kw):return index.attach(original_replay.sample_batch(*a,**kw))
+        replay=CreditSource()
     restored=LearnerService(system.rl,system.learner_service,replay,metrics_path=str(out/'restart/metrics.jsonl'))
     for key in initial:
         for x,y in zip(jax.tree_util.tree_leaves(getattr(restored.state,key)),jax.tree_util.tree_leaves(final['state'][key])):
@@ -137,6 +152,7 @@ def main():
         spawned_batch_audit_verified=bool(batches),published_step=snapshot['global_step'],
         published_actor=snapshot['version'],full_restart_state_exact=True,source_sha256=hashes,sources_unchanged=True,
         spawned_precision_verified=True,owned_ports_closed=True,
+        experiment_profile=args.experiment_profile,spawned_mc_weight_verified=.3 if args.experiment_profile else None,
         robot_publishers=0,stage1_loads=0,field_operations=0,
         boundary='Actual fixed network/checkpoint and project spawn entry; dummy features/dynamics only. Not timing, HIL, insertion success or autonomous learning acceptance.')
     (out/'report.json').write_text(json.dumps(result,indent=2))
