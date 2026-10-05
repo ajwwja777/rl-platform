@@ -18,7 +18,8 @@ names=['legacy_fp16','raw_fp32','raw_fp32_qoff'];colors=['#586f7c','#e59a35','#2
 labels=['Stored FP16','Recovered FP32','FP32 + Actor Q off']
 
 def savefig(name):
-    plt.tight_layout();plt.savefig(figdir/(name+'.png'),dpi=160);plt.savefig(figdir/(name+'.svg'));plt.close()
+    plt.tight_layout(rect=(0,0,1,.89) if getattr(plt.gcf(),'_suptitle',None) else (0,0,1,1))
+    plt.savefig(figdir/(name+'.png'),dpi=160);plt.savefig(figdir/(name+'.svg'));plt.close()
 def ep_errors(rows):
     return np.asarray([e['human_per_dimension_mae'] for e in rows if e['human_per_dimension_mae'] is not None])
 def mean_joint(rows):return float(ep_errors(rows)[:,:6].mean())
@@ -33,7 +34,7 @@ rows=[e for e in frozen['episodes'] if e['assisted'] and e['raw_verified']]
 axes[0].bar(range(len(rows)),[e['human_endpoint_q1_change'] for e in rows],color=['#207a70' if e['phase']=='warmup' else '#8c54a2' for e in rows])
 axes[0].set_xticks(range(len(rows)));axes[0].set_xticklabels([str(e['episode_id']) for e in rows],rotation=60)
 axes[0].axhline(0,color='#444444',lw=.7);axes[0].set_ylabel('Q1(HIL-slot replacement) - Q1(Actor)')
-axes[0].set_title('13 complete Episodes with verified FP32 actions\nAll assisted success; historical training/development')
+axes[0].set_title('Verified FP32: 12 Warmup train + 1 Online dev\nAll assisted success; no independent test')
 old=[e for e in frozen['episodes'] if e['assisted'] and not e['raw_verified']]
 axes[1].bar(range(len(old)),[e['q_gradient_toward_human'] for e in old],color='#586f7c')
 axes[1].set_xticks(range(len(old)));axes[1].set_xticklabels([str(e['episode_id']) for e in old])
