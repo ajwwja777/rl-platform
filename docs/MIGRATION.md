@@ -407,3 +407,13 @@ CPU固定上游复现确认：原始append忽略trace当前observation，本地�
 trace动作身份可追的Online训练仅1个人类动作Episode、对应Online开发0个；六旧诊断全部辅助成功。cached z/ref及FP32反馈的匹配不证明精确历史命令/VLA输入/因果时序，独立测试缺失。可继续诊断夹爪分维度/source/loss梯度，不能直接把更多近期采样当修复。CPU先导20更新×两条件通过，六组完成且源资产SHA不变，PID720279退出；GPU0外部IsaacSim任务占用、本轮不占GPU，GPU1/现场/默认/生产Replay/权重/固定上游未动。
 
 完整数据/代码SHA、配置、命令、逐Episode/关节/夹爪误差与区间、checkpoints路径：delivery.json、main/study.json、summary.json、launch.json；四图及REPORT.md/PROGRESS.md同目录。六份研究权重留A6000，不复制整份资产；回退仍原5k/均匀采样。正式流程MD未改写。
+
+## 2026-10-05：原生 Actor 来源/夹爪梯度与单因素继续训练诊断
+
+独立 audit/q-guidance-20261005、基线95edbf7，CPU原生7完整状态×6来源batch共42案例；aux-only梯度捕获和原函数参数差0，梯度加和最大误差3.34e-6。夹爪为absolute、前六维delta，往返夹爪误差0，不存在本研究路径夹爪delta mask错误；分位归一化/Actor输出均不裁剪。初始5k专家/策略更新增加旧六个HIL开发Episode夹爪误差，HIL来源减少；六类固定batch去Q均略差，不能将现象简单归因于Q。零梯度仍恢复Adam动量更新，未把非线性更新误算成可相加贡献。
+
+六旧辅助成功开发Episode177窗口、同状态当前冻结Actor提议与反馈目标的分维替换：初始5k仅关节ΔQ1=-0.0504，完整Episode区间[-0.0819,-0.0229]；仅夹爪+0.000855，区间跨0。不是历史介入前提议、有效执行命令或动作最优性证据；Q1/Q2/min-Q分开记录。
+
+本批六组CPU单因素非HIL夹爪BC0.5 vs既有原生1.0，各sampler/种子配对采样索引SHA一致，从不可变5k各2000Critic/1000Actor更新至7000/3500。stratified旧六条夹爪MAE相对原生下降0.03490mm，但120专家夹爪上升0.02430mm，相对初始5k仍回退；uniform也有取舍，联合代理条件失败。lambda1完整更新与原生数值完全一致，不晋升研究Actor，不继续无目的扫描。
+
+已验证条件性来源/loss拟合冲突；真机根因、自主改善、冻结验收仍证据不足。实际数据身份/SHA、配置、命令、42案例、6训练日志与三图见outputs/gripper-update-diagnosis-20261005/{REPORT.md,delivery.json,summary.json}。训练2496/开发189，Warmup被5k见过，旧六条反复诊断；没有独立测试，区间以整Episode计算。研究权重只留A6000。无新运行代码修复、GPU/现场启停/部署/运动/生产Replay/权重/默认/固定上游修改，原5k与旧reference保持回退。
