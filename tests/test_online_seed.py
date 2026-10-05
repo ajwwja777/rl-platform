@@ -19,9 +19,11 @@ def fixture(tmp_path, step=5000):
     (seed/'checkpoints/latest.pkl').write_bytes(pickle.dumps(dict(state=state,progress=dict(warmup_ready_adds_total=600))))
     (seed/'actor_snapshot/actor_snapshot.pkl').write_bytes(pickle.dumps(dict(version=2500,global_step=step,actor_params=state['actor_params'])))
     (seed/'action_norm_stats.json').write_text('{}')
-    replay=tmp_path/'replay.pkl';replay.write_bytes(b'existing replay')
+    replay=tmp_path/'replay.pkl'
+    with replay.open('wb') as stream:
+        for i in range(700): pickle.dump(dict(episode_id=i), stream)
     config=tmp_path/'config.yaml'
-    config.write_text(yaml.safe_dump(dict(experiment=dict(rl=dict(freeze_after_warmup=True)),runtime=dict(
+    config.write_text(yaml.safe_dump(dict(experiment=dict(rl=dict(freeze_after_warmup=True,warmup_post_collect_updates=5000)),runtime=dict(
         actor_service={},learner_service={},monitoring={},env_driver={},replay=dict(journal_path=str(replay))))))
     return seed,config,replay
 
@@ -32,7 +34,14 @@ def test_fork_retains_full_resume_state_seed_and_replay_and_registers_new_steps(
     before=replay.read_bytes();branch=tmp_path/'models/online_from_5000/run1';target=tmp_path/'run/online.yaml'
     prepare(seed,branch,config,target,tmp_path/'run')
     assert all(hashlib.sha256(p.read_bytes()).hexdigest()==h for p,h in hashes.items())
-    assert (branch/'checkpoints/latest.pkl').read_bytes()==(seed/'checkpoints/latest.pkl').read_bytes()
+    original=pickle.loads((seed/'checkpoints/latest.pkl').read_bytes())
+    created=pickle.loads((branch/'checkpoints/latest.pkl').read_bytes())
+    assert created['state']==original['state']
+    assert created['progress']['warmup_ready_adds_total']==700
+    assert original['progress']['warmup_ready_adds_total']==600
+    metadata=json.loads((branch/'seed.json').read_text())
+    assert metadata['replay_budget_policy']=='new_arrivals'
+    assert metadata['replay_boundary']['adds_total']==700
     saved=yaml.safe_load(target.read_text());runtime=saved['runtime']
     assert runtime['learner_service']['checkpoint_dir']==str(branch/'checkpoints')
     assert runtime['actor_service']['snapshot_path']==str(branch/'actor_snapshot/actor_snapshot.pkl')
@@ -56,3 +65,43 @@ def test_stage1_registration_keeps_nvme_separate_from_online_usb_storage():
     manifest=json.loads((root/'configs/rlt/plug_v3_yyshadow/manifest.json').read_text())
     assert manifest['checkpoint']==manifest['stage1_root']=='/home/agilex/jiaan/data/rlt/plug_insertion/reference_4999'
     assert manifest['model_root'].startswith('/media/agilex/Getea1/')
+
+
+def test_same_version_different_actor_parameters_refused(tmp_path):
+    seed,config,_=fixture(tmp_path)
+    path=seed/'actor_snapshot/actor_snapshot.pkl'
+    value=pickle.loads(path.read_bytes());value['actor_params']['weight'][0]=99
+    path.write_bytes(pickle.dumps(value))
+    with pytest.raises(ValueError,match='identity_mismatch'):
+        prepare(seed,tmp_path/'new',config,tmp_path/'cfg',tmp_path/'run')
+    assert not (tmp_path/'new').exists()
+
+
+def test_partial_replay_tail_refused_without_creating_assets(tmp_path):
+    seed,config,replay=fixture(tmp_path)
+    with replay.open('ab') as stream:stream.write(pickle.dumps(dict(episode_id=999))[:-2])
+    with pytest.raises(ValueError,match='replay_incomplete'):
+        prepare(seed,tmp_path/'new',config,tmp_path/'cfg',tmp_path/'run')
+    assert not (tmp_path/'new').exists()
+
+
+def test_historical_catchup_requires_explicit_inherit_policy(tmp_path):
+    seed,config,_=fixture(tmp_path)
+    branch=tmp_path/'new'
+    prepare(seed,branch,config,tmp_path/'cfg',tmp_path/'run',replay_budget_policy='inherit')
+    created=pickle.loads((branch/'checkpoints/latest.pkl').read_bytes())
+    assert created['progress']['warmup_ready_adds_total']==600
+    assert json.loads((branch/'seed.json').read_text())['replay_budget_policy']=='inherit'
+
+
+def test_legacy_snapshot_step_requires_exact_full_checkpoint_parameter_match(tmp_path):
+    seed,config,_=fixture(tmp_path)
+    path=seed/'actor_snapshot/actor_snapshot.pkl'
+    actor=pickle.loads(path.read_bytes());actor.pop('global_step')
+    path.write_bytes(pickle.dumps(actor))
+    branch=tmp_path/'new'
+    prepare(seed,branch,config,tmp_path/'cfg',tmp_path/'run')
+    assert json.loads((branch/'seed.json').read_text())['actor_step_source']=='parameter_matched_full_checkpoint'
+    actor['actor_params']['weight'][0]=99;path.write_bytes(pickle.dumps(actor))
+    with pytest.raises(ValueError,match='identity_mismatch'):
+        prepare(seed,tmp_path/'bad',config,tmp_path/'cfg2',tmp_path/'run2')

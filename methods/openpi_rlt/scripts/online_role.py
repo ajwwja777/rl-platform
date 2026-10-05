@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import argparse
 import os
-import runpy
+import multiprocessing as mp
 import sys
 from pathlib import Path
 
@@ -39,16 +39,16 @@ def main() -> None:
         if str(path) not in sys.path:
             sys.path.insert(0, str(path))
 
-    from methods.openpi_rlt.cobot_adapter.online_runtime import (
-        install_bimanual_runtime_patch,
+    # Use an importable upstream module so spawn can resolve its role targets.
+    # Patches must be reinstalled inside every worker, not just this supervisor.
+    sys.path.insert(0, str(runtime_root / "scripts"))
+    import run_online_rl as native
+    from methods.openpi_rlt.cobot_adapter.process_bootstrap import (
+        initialize_process, install_spawn_bootstrap,
     )
-
-    from methods.openpi_rlt.cobot_adapter.replay_precision import install_action_precision_patch
-    install_action_precision_patch()
-    install_bimanual_runtime_patch()
-    if "--config" in upstream_args:
-        from integrations.cobot_runtime.replay_audit import install_batch_audit
-        install_batch_audit(upstream_args[upstream_args.index("--config") + 1])
+    config_path = upstream_args[upstream_args.index("--config") + 1] if "--config" in upstream_args else None
+    initialize_process(config_path)
+    install_spawn_bootstrap(native, config_path)
     sys.argv = [str(runner), *upstream_args]
     try:
         profile = os.environ.get("COBOT_RLT_EXPERIMENT_PROFILE")
@@ -56,7 +56,8 @@ def main() -> None:
             from methods.openpi_rlt.experiments.runtime import run_registered
             run_registered(upstream_root, upstream_args, profile)
         else:
-            runpy.run_path(str(runner), run_name="__main__")
+            mp.set_start_method("spawn", force=True)
+            native.main(native._parse_args())
     except RuntimeError as error:
         if not _is_expected_operator_shutdown(error):
             raise

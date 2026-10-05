@@ -6,11 +6,54 @@ import shutil
 import tempfile
 import pickle
 from uuid import uuid4
+import hashlib
+
+import numpy as np
 
 import yaml
 
 
-def prepare(seed, destination, config_source, config_target, run_root):
+def _same_tree(left, right):
+    if isinstance(left, dict) and isinstance(right, dict):
+        return left.keys() == right.keys() and all(_same_tree(left[k], right[k]) for k in left)
+    if isinstance(left, (tuple, list)) and isinstance(right, (tuple, list)):
+        return len(left) == len(right) and all(_same_tree(a, b) for a, b in zip(left, right))
+    a, b = np.asarray(left), np.asarray(right)
+    return a.shape == b.shape and a.dtype == b.dtype and np.array_equal(a, b)
+
+
+def _journal_boundary(path):
+    """Count a stable trusted Replay journal without constructing a buffer.
+
+    Preparing a branch during an append is refused, rather than guessing an
+    adds_total anchor. This does not alter or copy the shared Replay.
+    """
+    path = Path(path)
+    before = path.stat()
+    rows = 0
+    digest = hashlib.sha256()
+    with path.open('rb') as stream:
+        while stream.tell() < before.st_size:
+            try:
+                row = pickle.load(stream)
+            except (EOFError, pickle.UnpicklingError) as error:
+                raise ValueError('online_seed_replay_incomplete') from error
+            if not isinstance(row, dict) or 'episode_id' not in row:
+                raise ValueError('online_seed_replay_invalid')
+            rows += 1
+        if stream.tell() != before.st_size:
+            raise ValueError('online_seed_replay_changed')
+        stream.seek(0)
+        for block in iter(lambda: stream.read(8 * 1024 * 1024), b''):
+            digest.update(block)
+    after = path.stat()
+    if (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns) != (
+            after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns):
+        raise ValueError('online_seed_replay_changed')
+    return dict(adds_total=rows, bytes=before.st_size, sha256=digest.hexdigest())
+
+
+def prepare(seed, destination, config_source, config_target, run_root, *, replay_budget_policy='new_arrivals'):
     seed, destination = Path(seed).resolve(), Path(destination).resolve()
     if destination.exists():
         raise ValueError('online_seed_destination_already_exists')
@@ -32,12 +75,14 @@ def prepare(seed, destination, config_source, config_target, run_root):
                 'target_critic_params', 'actor_opt_state', 'critic_opt_state',
                 'rng', 'global_step', 'actor_version'}
     if (not required.issubset(state) or int(state['global_step']) != 5000
-            or int(actor['global_step']) != 5000
-            or int(state['actor_version']) != int(actor['version'])
+            or int(actor.get('global_step', state['global_step'])) != 5000
+            or int(state['actor_version']) != int(actor.get('version', -1))
+            or not _same_tree(state['actor_params'], actor.get('actor_params'))
             or checkpoint.get('progress', {}).get('warmup_ready_adds_total') is None):
         raise ValueError('online_seed_training_identity_mismatch')
-    del actor, checkpoint, state
     config = yaml.safe_load(Path(config_source).read_text())
+    if replay_budget_policy not in ('new_arrivals', 'inherit'):
+        raise ValueError('online_seed_replay_budget_policy_invalid')
     runtime = config['runtime']
     config['experiment']['rl']['action_norm_stats_path'] = str(destination/'action_norm_stats.json')
     config['experiment']['rl']['freeze_after_warmup'] = False
@@ -50,6 +95,15 @@ def prepare(seed, destination, config_source, config_target, run_root):
     if not journal.is_absolute():
         journal = (Path(config_source).parent/journal).resolve()
     runtime['replay']['journal_path'] = str(journal)
+    boundary = _journal_boundary(journal)
+    source_anchor = int(checkpoint['progress']['warmup_ready_adds_total'])
+    if replay_budget_policy == 'new_arrivals':
+        # The branch starts at 5000. Existing shared data remain sampleable but
+        # earn no new update budget merely because the seed was created earlier.
+        if config['experiment']['rl'].get('warmup_post_collect_updates') != 5000:
+            raise ValueError('online_seed_new_arrivals_requires_warmup5000')
+        checkpoint['progress'] = dict(checkpoint['progress'], warmup_ready_adds_total=boundary['adds_total'])
+    branch_anchor = int(checkpoint['progress']['warmup_ready_adds_total'])
     runtime['monitoring']['wandb_dir'] = str(Path(run_root)/'online/wandb')
     runtime['env_driver']['actor_deterministic'] = False
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -59,11 +113,21 @@ def prepare(seed, destination, config_source, config_target, run_root):
             target = staging/relative
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(source, target)
+        # Only branch budget metadata changes; every training-state leaf stays
+        # identical to the seed, which is never a write target.
+        with (staging/'checkpoints/latest.pkl').open('wb') as stream:
+            pickle.dump(checkpoint, stream, protocol=pickle.HIGHEST_PROTOCOL)
         (staging/'seed.json').write_text(json.dumps({
             'model_id': 'plug-v3-warmup-5k', 'source': str(seed),
             'source_step': 5000, 'training_method': 'original',
             'run_root': str(Path(run_root).resolve()),
             'config_target': str(Path(config_target).resolve()),
+            'replay_budget_policy': replay_budget_policy,
+            'seed_warmup_ready_adds_total': source_anchor,
+            'branch_warmup_ready_adds_total': branch_anchor,
+            'replay_boundary': boundary,
+            'state_unchanged_from_seed': True,
+            'actor_step_source': 'snapshot_metadata' if 'global_step' in actor else 'parameter_matched_full_checkpoint',
         }, indent=2)+'\n')
         os.rename(staging, destination)
     finally:
@@ -105,5 +169,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     for name in ('seed', 'destination', 'config_source', 'config_target', 'run_root'):
         parser.add_argument(name, type=Path)
+    parser.add_argument('--replay-budget-policy', choices=('new_arrivals', 'inherit'), default='new_arrivals')
     args = parser.parse_args()
-    prepare(args.seed, args.destination, args.config_source, args.config_target, args.run_root)
+    prepare(args.seed, args.destination, args.config_source, args.config_target, args.run_root,
+            replay_budget_policy=args.replay_budget_policy)

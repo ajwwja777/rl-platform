@@ -211,7 +211,9 @@ def retention_evaluate(state):
     return rows
 
 fixed={'retention_journal':str(retained_path),'retention_sha256':hashlib.sha256(retained_path.read_bytes()).hexdigest(),
- 'retention_note':'All Warmup episodes were seen by initial Warmup5k. Errors against stored FP16 targets are fitting/retention proxies only.',
+ 'retention_note':'All Warmup episodes were seen by initial Warmup5k. Errors against original stored targets are fitting/retention proxies only. Storage is mixed: inspect dtype counts before stacking.',
+ 'retention_action_storage':{dtype:sum(str(np.asarray(r['action_chunk']).dtype)==dtype for r in retained)
+                            for dtype in sorted({str(np.asarray(r['action_chunk']).dtype) for r in retained})},
  'initial':{'evaluation':evaluate(initial),'retention':retention_evaluate(initial)},'variants':[]}
 for row in report['runs']:
     state_payload=pickle.loads(Path(row['checkpoint']).read_bytes())['state']

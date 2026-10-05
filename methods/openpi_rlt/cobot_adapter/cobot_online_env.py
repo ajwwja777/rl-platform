@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+import os
 from collections.abc import Callable
 from typing import Any
 
@@ -53,6 +54,11 @@ class CobotOnlineEnv:
         )
         self._chunk_exec_horizon = int(chunk_exec_horizon)
         self._period = 1.0 / float(control_frequency_hz)
+        self._hil_sampling = os.environ.get('COBOT_RLT_HIL_SAMPLING', 'legacy')
+        if self._hil_sampling not in {'legacy', 'logical20'}:
+            raise ValueError('HIL sampling must be legacy or logical20')
+        if self._hil_sampling == 'logical20' and float(control_frequency_hz) != 20.0:
+            raise ValueError('logical20 HIL sampling requires logical Replay 20 Hz')
         self._max_episode_steps = None if max_episode_steps is None else int(max_episode_steps)
         self._enable_robot_reset = bool(enable_robot_reset)
         self._auto_next_delay_sec = auto_next_delay_sec
@@ -143,6 +149,8 @@ class CobotOnlineEnv:
             if float(control_hz) <= 0:
                 raise ValueError("control_hz must be positive")
             period = 1.0 / float(control_hz)
+            if self._hil_sampling == 'logical20' and float(control_hz) != 20.0:
+                raise ValueError('Publication Hz must not replace logical HIL Replay Hz')
         if observation is None:
             observation = self._io.sample().observation
         inference_started = time.perf_counter()
@@ -167,6 +175,7 @@ class CobotOnlineEnv:
         while len(trace) < self._chunk_exec_horizon and outcome is None:
             sample = self._io.sample()
             sample_received_monotonic = time.perf_counter()
+            interval_start_sample_received_monotonic = sample_received_monotonic
             publish_started_monotonic = None
             publish_finished_monotonic = None
             ref_action_index = action_index
@@ -212,6 +221,15 @@ class CobotOnlineEnv:
             if after.phase is EpisodePhase.HIL:
                 if bool(getattr(sample, "paused", False)) and before.phase is EpisodePhase.ROLLOUT:
                     current_observation = sample.observation
+                if self._hil_sampling == 'logical20':
+                    # HIL publishes no policy command. Match its feedback
+                    # trajectory sampling to the logical action time base,
+                    # rather than recording one action per incoming ROS frame.
+                    # Source describes the interval that began in HIL; release
+                    # at its end is handled by fresh planning on the next loop.
+                    self._sleep(period)
+                    sample = self._io.sample()
+                    sample_received_monotonic = time.perf_counter()
                 executed = self._state(sample.observation)
                 source = self._runtime.control_source(plan.source)
                 next_observation = sample.observation
@@ -303,6 +321,8 @@ class CobotOnlineEnv:
                     else "shadow_target" if self._shadow_mode else "published_policy_target"
                 ),
                 "sample_received_monotonic": sample_received_monotonic,
+                "interval_start_sample_received_monotonic": interval_start_sample_received_monotonic,
+                "hil_sampling_mode": self._hil_sampling,
                 "command_publish_started_monotonic": publish_started_monotonic,
                 "command_publish_finished_monotonic": publish_finished_monotonic,
                 "plan_created_monotonic": plan_created_monotonic,
