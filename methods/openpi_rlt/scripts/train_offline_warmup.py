@@ -16,6 +16,8 @@ def main():
     data=importlib.util.module_from_spec(spec);spec.loader.exec_module(data)
     import jax,jax.numpy as jnp
     from methods.openpi_rlt.cobot_adapter.online_runtime import install_bimanual_runtime_patch
+    from methods.openpi_rlt.cobot_adapter.replay_precision import install_action_precision_patch
+    install_action_precision_patch()
     install_bimanual_runtime_patch()
     from methods.openpi_rlt.cobot_adapter.status_io import install_status_write_throttle
     install_status_write_throttle()

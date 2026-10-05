@@ -333,6 +333,11 @@ def install_bimanual_runtime_patch() -> None:
         original_run_episode = inference.EnvDriver.run_episode
 
         def _run_episode_with_session_finalize(driver, episode_id):
+            if getattr(driver._env, "cobot_task2_contract", False):
+                driver._env._trace_replay_episode_id = int(episode_id)
+                io = getattr(driver._env, "_io", None)
+                if hasattr(io, "_trace_replay_episode_id"):
+                    io._trace_replay_episode_id = int(episode_id)
             result = original_run_episode(driver, episode_id)
             _mark_cobot_replay_finalized(driver._env)
             return result

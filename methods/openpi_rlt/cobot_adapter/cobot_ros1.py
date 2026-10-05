@@ -102,6 +102,7 @@ class AtomicEpisodeTraceWriter:
         self._root = Path(root)
         self._root.mkdir(parents=True, exist_ok=True)
         self._pending: Path | None = None
+        self._finalized: Path | None = None
         self._lock = threading.RLock()
         self._discarded = False
 
@@ -114,7 +115,44 @@ class AtomicEpisodeTraceWriter:
 
     def start_episode(self) -> None:
         with self._lock:
+            # Keep unfinished evidence on disk, but never append a new Episode
+            # to it. A pending trace is not a failed/successful outcome.
+            self._pending = None
+            self._finalized = None
             self._discarded = False
+
+    def finalize(self, outcome: str, *, identity: dict[str, Any] | None = None) -> None:
+        """Label the last executed step after pause, without adding an action."""
+        with self._lock:
+            if outcome == "aborted":
+                self.discard()
+                return
+            if outcome not in {"success", "failure"}:
+                raise ValueError("Trace terminal outcome must be success, failure or aborted")
+            source = self._pending or self._finalized
+            if source is None or self._discarded:
+                return
+            lines = source.read_text(encoding="utf-8").splitlines()
+            if not lines:
+                return
+            last = json.loads(lines[-1])
+            last.update(done=True, outcome=outcome, reward=float(outcome == "success"))
+            if identity:
+                last.update(identity)
+            lines[-1] = json.dumps(last, sort_keys=True)
+            # Atomic replacement prevents a partial rewrite from destroying
+            # the recoverable original. This happens once per Episode.
+            temporary = source.with_suffix(".finalizing.tmp")
+            with temporary.open("w", encoding="utf-8") as handle:
+                handle.write("\n".join(lines) + "\n")
+                handle.flush()
+                os.fsync(handle.fileno())
+            target = source.with_name(source.name.replace(".pending.jsonl", f"_{outcome}.jsonl"))
+            os.replace(temporary, target)
+            if source != target:
+                source.unlink()
+            self._pending = None
+            self._finalized = target
 
     def append(self, record: dict[str, Any]) -> None:
         with self._lock:
@@ -145,6 +183,7 @@ class AtomicEpisodeTraceWriter:
             target = self._pending.with_name(self._pending.name.replace(".pending.jsonl", f"_{outcome}.jsonl"))
             os.replace(self._pending, target)
             self._pending = None
+            self._finalized = target
 
 
 class RosTask2IO:
@@ -184,6 +223,7 @@ class RosTask2IO:
         self._max_sync_skew_sec = float(max_sync_skew_sec)
         self._shadow_mode = bool(shadow_mode)
         self._trace_writer = AtomicEpisodeTraceWriter(trace_dir)
+        self._trace_replay_episode_id = None
         self._condition = threading.Condition(threading.RLock())
         self._images: dict[str, Any] = {}
         self._joints: dict[str, Any] = {}
@@ -300,6 +340,17 @@ class RosTask2IO:
     def mark_replay_finalized(self) -> None:
         if self._session_application is not None:
             self._session_application.mark_replay_finalized()
+
+    def finalize_raw_episode(self, outcome: EpisodeOutcome) -> None:
+        identity = {}
+        if self._session_application is not None:
+            snapshot = self._session_application.snapshot()
+            identity = {
+                "session_id": snapshot.session_id,
+                "session_episode_id": snapshot.episode_id,
+                "task5_episode_uuid": snapshot.task5_episode_uuid,
+            }
+        self._trace_writer.finalize(EpisodeOutcome(outcome).value, identity=identity)
 
     def report_chunk(self, latency_sec: float, actor_version: int) -> None:
         self._chunk_count += 1
@@ -519,7 +570,18 @@ class RosTask2IO:
             return True
 
     def record_raw_step(self, record: dict[str, Any]) -> None:
-        self._trace_writer.append(record)
+        payload = dict(record)
+        payload.setdefault("replay_episode_id", self._trace_replay_episode_id)
+        payload.setdefault("record_written_monotonic", time.perf_counter())
+        payload.setdefault("action_semantics", (
+            "measured_joint_feedback" if payload.get("human_controlled")
+            else "shadow_target" if payload.get("shadow") else "published_policy_target"
+        ))
+        # Optional async execution already records its individual physical
+        # publications. A missing proposal stays missing, never reconstructed
+        # from feedback or a subsequently trained Actor.
+        payload.setdefault("proposal_semantics", "not_recorded")
+        self._trace_writer.append(payload)
 
     def request_home(self) -> None:
         pose = os.environ.get("COBOT_RLT_HOME_POSE", "").strip()

@@ -43,6 +43,8 @@ def main() -> None:
         install_bimanual_runtime_patch,
     )
 
+    from methods.openpi_rlt.cobot_adapter.replay_precision import install_action_precision_patch
+    install_action_precision_patch()
     install_bimanual_runtime_patch()
     if "--config" in upstream_args:
         from integrations.cobot_runtime.replay_audit import install_batch_audit

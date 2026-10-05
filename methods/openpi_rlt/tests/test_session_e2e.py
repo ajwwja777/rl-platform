@@ -93,3 +93,25 @@ def test_three_episode_session_success_failure_with_hil_then_abort() -> None:
     assert state.task5_episode_uuid == "uuid-2"
     assert state.replay_eligible is False
     assert paused[-1] is True
+
+
+def test_outcome_delivery_exposes_final_recorder_identity_before_driver_runs():
+    from methods.openpi_rlt.cobot_adapter.session import RltSessionController, SessionPhase
+    from methods.openpi_rlt.cobot_adapter.session_http import RltSessionApplication, SessionHooks
+    from methods.openpi_rlt.cobot_adapter.task5_client import Task5EpisodeIdentity
+    from methods.openpi_rlt.cobot_adapter.trace import EpisodeOutcome
+    observed = []
+    def delivered(outcome):
+        snapshot = app.snapshot()
+        observed.append((outcome, snapshot.phase, snapshot.task5_episode_uuid))
+    app = RltSessionApplication(
+        RltSessionController(session_id_factory=lambda: "identity-test"), _Task5(),
+        identity_factory=lambda _: Task5EpisodeIdentity("plug", "rlt", "4999", "online", "/rlt", 600),
+        hooks=SessionHooks(is_policy_mode=lambda: True, set_policy_paused=lambda _: None,
+            submit_outcome=delivered, signal_episode_ready=lambda: None, request_front_home=lambda: None),
+        home_after_terminal=False,
+    )
+    state = app.arm_operator()
+    state = app.start(episode_id=-1, generation=state.generation)
+    app.terminal(EpisodeOutcome.SUCCESS, episode_id=0, generation=state.generation, home_after_terminal=False)
+    assert observed == [(EpisodeOutcome.SUCCESS, SessionPhase.REPLAY_COMMITTING, "uuid-0")]

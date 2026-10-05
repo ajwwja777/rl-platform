@@ -90,6 +90,9 @@ class CobotOnlineEnv:
 
     def mark_replay_finalized(self) -> None:
         """Advance the operator UI only after EnvDriver has finished replay work."""
+        finalize_trace = getattr(self._io, "finalize_raw_episode", None)
+        if finalize_trace is not None and self._last_outcome is not None:
+            finalize_trace(self._last_outcome)
         self._io.mark_replay_finalized()
 
     def reset(self) -> dict[str, Any]:
@@ -144,6 +147,7 @@ class CobotOnlineEnv:
             observation = self._io.sample().observation
         inference_started = time.perf_counter()
         plan = policy_planner(observation, 0)
+        plan_created_monotonic = time.perf_counter()
         inference_latency = time.perf_counter() - inference_started
         if hasattr(self._io, "report_chunk"):
             self._io.report_chunk(inference_latency, int(plan.actor_param_version))
@@ -162,6 +166,9 @@ class CobotOnlineEnv:
 
         while len(trace) < self._chunk_exec_horizon and outcome is None:
             sample = self._io.sample()
+            sample_received_monotonic = time.perf_counter()
+            publish_started_monotonic = None
+            publish_finished_monotonic = None
             ref_action_index = action_index
             before = self._runtime.snapshot()
             after = self._runtime.observe_mode(sample.mode)
@@ -213,6 +220,7 @@ class CobotOnlineEnv:
                     current_observation = sample.observation
                     inference_started = time.perf_counter()
                     plan = policy_planner(current_observation, len(trace))
+                    plan_created_monotonic = time.perf_counter()
                     inference_latency = time.perf_counter() - inference_started
                     if hasattr(self._io, "report_chunk"):
                         self._io.report_chunk(inference_latency, int(plan.actor_param_version))
@@ -224,13 +232,17 @@ class CobotOnlineEnv:
                     action_index = 0
                     ref_action_index = 0
                 requested = np.asarray(plan.action_chunk[action_index], dtype=np.float32)
+                proposal_action_index = action_index
                 executed = self._runtime.safe_policy_target(
                     requested,
                     self._state(sample.observation),
                 )
+                publish_started_monotonic = time.perf_counter()
                 published = self._io.publish_policy_action(executed)
+                publish_finished_monotonic = time.perf_counter()
                 self._sleep(period)
                 sample = self._io.sample()
+                sample_received_monotonic = time.perf_counter()
                 after_publish = self._runtime.observe_mode(sample.mode)
                 if published is False:
                     self._io.set_chunk_ready(False)
@@ -284,6 +296,24 @@ class CobotOnlineEnv:
                 "expert_mask": list(self._runtime.snapshot().expert_mask),
                 "timestamp": float(sample.timestamp),
                 "shadow": self._shadow_mode,
+                "replay_episode_id": getattr(self, "_trace_replay_episode_id", None),
+                "collection_phase": self.current_phase_name(),
+                "action_semantics": (
+                    "measured_joint_feedback" if source in (ControlSource.HUMAN, ControlSource.MIXED)
+                    else "shadow_target" if self._shadow_mode else "published_policy_target"
+                ),
+                "sample_received_monotonic": sample_received_monotonic,
+                "command_publish_started_monotonic": publish_started_monotonic,
+                "command_publish_finished_monotonic": publish_finished_monotonic,
+                "plan_created_monotonic": plan_created_monotonic,
+                "plan_inference_started_monotonic": inference_started,
+                # A proposal at a plan anchor is not a fresh Actor inference at
+                # each HIL observation. Preserve that distinction explicitly.
+                "planned_action": np.asarray(plan.action_chunk[min(
+                    ref_action_index, len(plan.action_chunk) - 1)], dtype=np.float32),
+                "proposal_anchor_state": np.asarray(plan.start_features.proprio, dtype=np.float32),
+                "proposal_action_index": ref_action_index,
+                "proposal_semantics": "plan_anchor_action; not same-state HIL counterfactual",
             }
             trace.append(record)
             rewards.append(reward)

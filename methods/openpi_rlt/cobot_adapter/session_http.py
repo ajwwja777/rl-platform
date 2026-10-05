@@ -219,11 +219,13 @@ class RltSessionApplication:
                 self._task5_ref = finalized
                 # Saved/unlabelled HDF5 stays on disk, but the driver must drop
                 # its learning trace exactly as for a discarded episode.
-                self._hooks.submit_outcome(EpisodeOutcome.ABORTED if outcome is EpisodeOutcome.SAVED else EpisodeOutcome(outcome))
                 committed = self._controller.episode_finalized(
                     expected_episode_id=finalizing.episode_id,
                     task5_episode_uuid=finalized.episode_uuid,
                 )
+                # Make the recorder identity and terminal phase visible before
+                # the driver can consume the outcome and finalize its trace.
+                self._hooks.submit_outcome(EpisodeOutcome.ABORTED if outcome is EpisodeOutcome.SAVED else EpisodeOutcome(outcome))
                 # Aborted episodes are deliberately excluded from replay.  There is
                 # therefore no replay work for EnvDriver to acknowledge.  Advance
                 # immediately instead of leaving the operator UI in
