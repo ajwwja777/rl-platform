@@ -119,7 +119,7 @@ def main():
     summary={'stage1_complete':complete,'stage1_episodes':n,'stage1_frames':sum(r['frames'] for r in rows),
         'stage1':stage_summary,'new_dropout_runs':len(dropout['runs']),'retained_candidates_compared':len(comparison['models']),
         'staged_runtime':read('staged_publication/report.json'),'new_actor_promoted':False,
-        'best_supported_initial_actor':'Existing immutable Warmup5k; no tested continuation established joint/gripper development dominance.',
+        'best_supported_initial_actor':'Existing immutable Warmup5k as comparison/rollback only; not an accepted Online model. No tested continuation established robust joint/gripper development dominance.',
         'online_autonomous_improvement':'证据不足','robot_release':False}
     summary['actor_only_time_adaptation']=adaptation_summary
     summary['actual_service_independent_restore']=read('service_restore_comparison.json')
@@ -205,7 +205,7 @@ def main():
     if (figdir/'warmup_actual_sampling.png').exists():figures.append('warmup_actual_sampling')
     if (figdir/'rollout_recorded_time_contract.png').exists():figures.append('rollout_recorded_time_contract')
     if (figdir/'prompt_timebase_actor.png').exists():figures.append('prompt_timebase_actor')
-    html='''<!doctype html><meta charset="utf-8"><title>Offline model selection</title><style>body{max-width:1100px;margin:32px auto;font:16px/1.6 sans-serif;color:#203040}img{width:100%}pre{white-space:pre-wrap;background:#f2f5f8;padding:16px}h2{margin-top:40px}</style><h1>真机 Online 前：模型验证与候选选择</h1><p>完整 Episode、真实 checkpoint、只读数据；没有机器人动作或独立真机成功率。此页持续保存进度，最终状态以 progress.json 为准。</p><p><b>结论边界：</b>已验证离线运行与数据合同；新训练模型尚未建立稳定优势，不以低 TD loss、Actor Q 上升或拟合最小值放行。当前保留 Warmup5k 作初始 Actor，分离训练候选与正在执行的 Actor。</p>'''
+    html='''<!doctype html><meta charset="utf-8"><title>Offline model selection</title><style>body{max-width:1100px;margin:32px auto;font:16px/1.6 sans-serif;color:#203040}img{width:100%}pre{white-space:pre-wrap;background:#f2f5f8;padding:16px}h2{margin-top:40px}</style><h1>真机 Online 前：模型验证与候选选择</h1><p>完整 Episode、真实 checkpoint、只读数据；没有机器人动作或独立真机成功率。此页持续保存进度，最终状态以 progress.json 为准。</p><p><b>结论边界：</b>离线更新与恢复链路通过验证；输入时间合同存在已证实的不一致，模型自主收益尚未放行。不以低 TD loss、Actor Q 上升或拟合最小值放行。当前保留 Warmup5k 作回退及冻结比较基线，分离训练候选与正在执行的 Actor。</p>'''
     html+='<p><b>新的关键问题：</b>Stage1 的 30 Hz 输出与 Warmup 专家 20 Hz 动作目标不在同一时基。参考轨迹重采样改善训练内拟合，但现有 Actor 已适应旧参考输入；单独换成 20 Hz 参考使同一 Actor 的关节误差增加约 16%，该组合被拒绝。旧 Actor 仍配旧合同。训练、反复选型开发集和独立测试不可混用；本次独立测试为空。</p>'
     html+='<p><b>任务数据：</b>两个早期插入 Episode 记录的是锅盖任务提示词，29 条 transition 已精确追到 Warmup 训练清单。已修复插入环境入口的静默错误任务默认，排除训练对照使用独立副本。大多数历史插入轨迹提示词正确，不能把这项问题概括为整个 Online 的根因。</p>'
     html+='<p><b>数值验证：</b>3 个固定真实输入、两个独立恢复进程的实际服务动作和 Token 完全一致；训练加载器批处理缓存与服务的严格数值阈值仍有失败，全部保留。前者不替后者补证，也不证明机器人动作与成功率。</p>'
