@@ -21,7 +21,7 @@ def resolve(model_id,root=ROOT,models_root=None):
     if row.get('kind')!='rlt' or row.get('mode')!='online':raise ValueError('Supported runtime requires online RLT')
     if models_root is None:
         from .paths import RLT_MODELS
-        models_root=RLT_MODELS
+        models_root=row.get('supported_model_root') or RLT_MODELS
     base=Path(models_root).resolve();run=(base/relative).resolve()
     if base not in run.parents or 'candidates'not in run.parts:raise ValueError('Candidate path must remain isolated')
     profile=run/'profile.json';config=run/'online.yaml'

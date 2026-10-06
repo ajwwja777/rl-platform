@@ -356,10 +356,10 @@
     },
     {
       "id": "plug-v3-supported-7k",
-      "label": "RLT supported 7k - frozen candidate",
+      "label": "插孔 · 新7k（冻结验收）",
       "kind": "rlt",
       "mode": "frozen",
-      "checkpoint": "{RLT_MODELS}/history/candidates/supported_online_20261006_v3/actor_snapshot/actor_snapshot.pkl",
+      "checkpoint": "/home/agilex/jiaan/data/rlt/plug_insertion/history/candidates/supported_online_20261006_v4/actor_snapshot/actor_snapshot.pkl",
       "base_checkpoint": "{BASE_CHECKPOINT}",
       "step": 7000,
       "actor_version": 3500,
@@ -401,10 +401,10 @@
     },
     {
       "id": "plug-v3-supported-online",
-      "label": "RLT supported - staged online candidate",
+      "label": "插孔 · 新7k（分批 Online）",
       "kind": "rlt",
       "mode": "online",
-      "checkpoint": "{RLT_MODELS}/history/candidates/supported_online_20261006_v3/actor_snapshot/actor_snapshot.pkl",
+      "checkpoint": "/home/agilex/jiaan/data/rlt/plug_insertion/history/candidates/supported_online_20261006_runtime_v4/actor_snapshot/actor_snapshot.pkl",
       "base_checkpoint": "{BASE_CHECKPOINT}",
       "step": 7000,
       "actor_version": 3500,
@@ -444,8 +444,9 @@
       "publish_hz": 50,
       "hold_right_gripper": true,
       "evaluation_allowed": false,
-      "supported_runtime": "history/candidates/supported_online_20261006_runtime",
-      "shutdown_grace_seconds": 35
+      "supported_runtime": "history/candidates/supported_online_20261006_runtime_v4",
+      "shutdown_grace_seconds": 35,
+      "supported_model_root": "/home/agilex/jiaan/data/rlt/plug_insertion"
     }
   ]
 }

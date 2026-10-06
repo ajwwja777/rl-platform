@@ -4,13 +4,13 @@
 
 ## 交付身份
 
-- 冻结模型 ID：`plug-v3-supported-7k`；Online ID：`plug-v3-supported-online`。
-- 不可变交付目录：`models/rlt/plug_v3_yyshadow/history/candidates/supported_online_20261006_v3/`。
+- 冻结模型 ID：`plug-v3-supported-7k`（网页：插孔 · 新7k（冻结验收））；Online ID：`plug-v3-supported-online`（网页：插孔 · 新7k（分批 Online））。
+- 不可变交付目录：`models/rlt/plug_v3_yyshadow/history/candidates/supported_online_20261006_v4/`。
 - 原型 `supported_online_20261006` 和 `_v2` 存在恢复/专家phase打包缺陷，不使用。
 - Learner7000 / Actor3500；初始完整5k状态继续2000 Critic /1000 Actor，预先指定seed42。
 - MC=.3、Actor Q=.1、BC=5、delta=10、ActorLR=1e-5、CriticLR=1e-4、batch128、C10、gamma=.99、dropout=.5、Actor周期2、目标EMA tau=.005。
 - 固定初始Actor作为teacher，权重50，仅约束旧专家/自主成功TRAIN的前6关节。夹爪固定，Critic各备选动作投影到相同测量夹爪，保留原生7D wire格式。
-- 执行固定 `async_rtc50`：发布50Hz、逻辑20Hz、RTC、物理时间滤波；目标网络EMA不等同执行滤波。
+- 执行固定 `async_rtc50`：发布50Hz、逻辑20Hz、RTC、物理时间滤波；目标网络EMA不等同执行滤波。网页等价的 `user_options` 按完整解析配置核验，名称不同不误拒绝；40Hz、关闭RTC/滤波或输入审计不符仍拒绝。实际解析配置写入私有runtime的 `metrics/runtime-contract.json`。
 
 ## 第一步：无动作加载与一致性验证
 
@@ -21,10 +21,10 @@
 先在独立目录建立候选runtime（不存在才允许创建）：
 
 ```bash
-python scripts/fork_supported_runtime.py --source <不可变候选目录> --target <RLT_MODELS>/history/candidates/supported_online_20261006_runtime
+python scripts/fork_supported_runtime.py --source <不可变候选目录> --target /home/agilex/jiaan/data/rlt/plug_insertion/history/candidates/supported_online_20261006_runtime_v4
 ```
 
-此命令只复制/校验候选并重定位YAML，不启动服务、不加载Stage1、不发布Actor。冻结ID的Actor路径使用不可变候选；Online ID读取这个单独runtime。`profile.json`与teacher/norm/source SHA必须一致；现场asset root须与注册的RLT_MODELS一致，不改生产root。
+此命令只复制/校验候选并重定位YAML，不启动服务、不加载Stage1、不发布Actor。冻结ID的Actor路径使用不可变候选；Online ID读取这个单独runtime。`profile.json`与teacher/norm/source SHA必须一致；候选使用独立NVMe root `/home/agilex/jiaan/data/rlt/plug_insertion`，注册项显式绑定该root，不改全局生产RLT_MODELS。
 
 选冻结ID并加载，保持Session未开始、机械臂暂停，核对Actor3500、Learner禁用、所选checkpoint/归一化SHA、右夹爪hold、50Hz/RTC/滤波实际设置与Stage1 RTC协议。加载失败、回退Reference、版本-1、身份不符即停止，不开始运动。旧绑定5k的诊断设置需在释放时禁用，或重新绑定新冻结ID：`configure_evaluation_diagnostics.py --enable --model-id plug-v3-supported-7k --trace-root <独立目录>`。设置只在下一次构建读取。
 

@@ -11,6 +11,6 @@ def test_registered_task_hold_and_default_unchanged():
 def test_registered_runtime_is_fresh_and_isolated(tmp_path):
     assert resolve('plug-v3-warmup-5k',models_root=tmp_path)is None
     with pytest.raises(ValueError,match='Prepare'):resolve('plug-v3-supported-online',models_root=tmp_path)
-    run=tmp_path/'history/candidates/supported_online_20261006_runtime';run.mkdir(parents=True)
+    run=tmp_path/'history/candidates/supported_online_20261006_runtime_v4';run.mkdir(parents=True)
     for name in ['online.yaml','profile.json']:(run/name).write_text('{}')
     assert resolve('plug-v3-supported-online',models_root=tmp_path)['run']==str(run)

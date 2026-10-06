@@ -52,3 +52,18 @@ def test_profile_asset_and_publication_identity(tmp_path):
     with pytest.raises(ValueError,match='identity'):load_profile(path)
     profile['teacher']['sha256']=sha256(teacher);profile['publication_policy']='automatic';path.write_text(json.dumps(profile))
     with pytest.raises(ValueError,match='staged'):load_profile(path)
+
+
+def test_equivalent_web_execution_alias_is_accepted_and_different_settings_rejected():
+    from methods.openpi_rlt.experiments.supported_runtime import validate_runtime_environment
+    environment=dict(COBOT_RLT_EXECUTION_PROFILE='async_rtc50',COBOT_RLT_INPUT_AUDIT='strict')
+    profile=dict(runtime_environment=environment)
+    assert validate_runtime_environment(profile,environment)['name']=='async_rtc50'
+    web=dict(environment,COBOT_RLT_EXECUTION_PROFILE='user_options',COBOT_EXECUTION_OPTIONS=json.dumps(dict(enabled=True,publish_hz=50,rtc=True,smoothing=True)))
+    assert validate_runtime_environment(profile,web)['name']=='user_options'
+    for key,value in [('publish_hz',40),('rtc',False),('smoothing',False)]:
+        options=dict(enabled=True,publish_hz=50,rtc=True,smoothing=True);options[key]=value
+        with pytest.raises(ValueError,match='execution settings'):
+            validate_runtime_environment(profile,dict(web,COBOT_EXECUTION_OPTIONS=json.dumps(options)))
+    with pytest.raises(ValueError,match='INPUT_AUDIT'):
+        validate_runtime_environment(profile,dict(web,COBOT_RLT_INPUT_AUDIT='off'))

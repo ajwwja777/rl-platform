@@ -175,6 +175,22 @@ def run_learner(system,profile_path,config_path):
     return _run_learner_service(system)
 
 
+
+def validate_runtime_environment(profile,environ):
+    """Validate settings, accepting the web alias only for identical execution."""
+    from dataclasses import asdict
+    from methods.openpi_rlt.cobot_adapter.execution_profiles import selected_profile
+    expected=profile['runtime_environment']
+    for key,value in expected.items():
+        if key!='COBOT_RLT_EXECUTION_PROFILE'and environ.get(key)!=str(value):
+            raise ValueError('Candidate environment differs from offline delivery contract: '+key)
+    required=selected_profile(environ={'COBOT_RLT_EXECUTION_PROFILE':expected['COBOT_RLT_EXECUTION_PROFILE']})
+    actual=selected_profile(environ=environ)
+    if required is None or actual is None or required[1]!=actual[1]:
+        raise ValueError('Candidate execution settings differ from fixed50 RTC/filter contract')
+    return dict(name=actual[0],settings=asdict(actual[1]))
+
+
 def run_registered(upstream_root,argv,profile_path):
     """Optional supervisor entry. It is not activated by model selection alone."""
     import functools,multiprocessing as mp,sys,os
@@ -190,9 +206,10 @@ def run_registered(upstream_root,argv,profile_path):
         raise ValueError('Every candidate asset and Replay must be isolated')
     if system.actor_service.snapshot_path==system.learner_service.actor_snapshot_path:
         raise ValueError('Candidate learner cannot publish directly to served Actor')
-    expected=profile['runtime_environment']
-    if any(os.environ.get(k)!=str(v)for k,v in expected.items()):
-        raise ValueError('Candidate environment differs from offline delivery contract')
+    actual_execution=validate_runtime_environment(profile,os.environ)
+    receipt=Path(config_path).parent/'metrics/runtime-contract.json'
+    receipt.parent.mkdir(parents=True,exist_ok=True)
+    receipt.write_text(json.dumps(dict(profile_sha256=sha256(profile_path),actual_execution=actual_execution,publication_policy='staged'),indent=2))
     # The new journal excludes old DEV. Reserve legacy DEV IDs rather than reuse
     # them for fresh Episodes; the Task5 UUID remains the raw collection identity.
     install_environment_floor(profile_path)
