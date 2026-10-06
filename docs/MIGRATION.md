@@ -506,3 +506,14 @@ outputs/erlt-reference-review-20261006/保存REPORT、两份实际训练曲线�
 代码f5f11f5c32222270cdb3f083012c1a51ec525194已串行提交push，A6000两目录503通过/61既有warning，Cobot实际Python3.10 CPU29通过；630文件旧源无冲突核验后同步4文件，保留runtime/verification/acceleration-hil-ablation-20261006/pre-sync-source.tar.gz。原5k三资产与生产Replay SHA复核不变。现场挂载已恢复、模型目录存在，但网页8015只读查询连接被拒绝；旧PID/旧上线结果不是当前运行证据。没有现场GPU/模型加载/服务启停/运动或生产Replay/default/fixedupstream变化。
 
 outputs/acceleration-hil-ablation-20261006保存REPORT、5图、18组真实状态/曲线/采样身份、完整Episode bootstrap、命令/配置/SHA、失败尝试及独立现场prompt。私有脚本错误数字RL=4在发现后终止自有worker，保留原尝试并改用真实枚举RL=1重跑，未进生产。软件与静态同步已验证；冻结真机与持续Online仍证据不足。本节只记事实，正式RUNBOOK流程未改，guide只追加事实摘要、不提交guide Git。
+
+
+## 2026-10-06：共享采集／评测 trace 终结接口修复
+
+现场16:14 MC30 frozen（Actor3740）和16:22 Warmup5k frozen（Actor2500）在轮次收尾时均出现 `CollectionTrace` 缺少 `finalize`，env_driver退出。原始AtomicEpisodeTraceWriter已有终结方法，共享包装器遗漏转发；独立评测NoTraceWriter亦缺少完整生命周期。
+
+本批只补充CollectionTrace.finalize按本轮已锁定用途转发，评测不写采集trace；NoTraceWriter补齐start/discard/finalize空操作。成功/失败/放弃、Session身份和收尾先于推进、幂等、连续轮次及采集→评测不改写上一轮均有回归。固定上游、模型/执行参数、Replay和历史标签不变。
+
+A6000 CPU：直接相关88项通过；9个新增回归在基线均失败、修复后通过。全量383通过，19失败与同环境基线374通过/19失败的失败集合完全一致（缺少openpi/lerobot与Stage1 Orbax环境版本不匹配），没有新增失败，不声称全量全绿。证据：scratch/rl-platform/trace-writer-lifecycle-20261006/pytest-{reproduction,terminal-session,baseline,fixed}.txt。
+
+16:14故障轮次metrics记载transitions_written=0，日志Learner disabled，不能将其计作训练样本或已学习轮次。部署同步与实际运行切换另记；本批不补写历史pending标签，也不启动真机Episode。

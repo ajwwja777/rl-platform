@@ -39,7 +39,18 @@ class EvaluationEpisodeLifecycle:
 
 
 class NoTraceWriter:
+    """Full trace lifecycle with no persistent evaluation output."""
+
+    def start_episode(self):
+        pass
+
     def append(self, record):
+        pass
+
+    def discard(self):
+        pass
+
+    def finalize(self, outcome, *, identity=None):
         pass
 
 

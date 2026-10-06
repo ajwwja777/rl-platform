@@ -93,6 +93,14 @@ class CollectionTrace:
         if self.lifecycle.collecting:
             self.writer.discard()
 
+    def finalize(self, outcome, *, identity=None):
+        # Purpose stays latched until the next episode, including Replay's
+        # asynchronous terminal acknowledgement. Do not finalize evaluation
+        # into the previous collection trace.
+        if self.lifecycle.collecting:
+            self.writer.finalize(outcome, identity=identity)
+
+
 
 def create_shared_env():
     from methods.openpi_rlt.cobot_adapter import task5_client
