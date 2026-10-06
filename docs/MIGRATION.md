@@ -521,3 +521,5 @@ A6000 CPU：直接相关88项通过；9个新增回归在基线均失败、修�
 现场交付：修复4ce0a88已push，锁内确认Frozen runtime退出、录制idle后仅同步4个文件，全清单630文件SHA一致，15个ROS/相机/机械臂/web/Stage1进程身份在同步前后相同。Cobot冻结online Python3.10的14项trace终结测试全部通过。
 
 用户随后自行重新加载Warmup5k（16:25:44，supervisor PID83992）；本会话恢复调用的前置检查发现已有新加载，未发送POST、未停止其进程。16:26:04后只读确认新运行ready/disarmed/policy_paused=true、Session未开始、step0、录制idle、Learner disabled，Actor2500。此为启动及离线收尾回归验收，尚未替用户进行修复后的真机success/failure轮次。没有网页/硬件重启或机器人动作。现场证据runtime/verification/trace-writer-lifecycle-20261006，A6000证据scratch/rl-platform/trace-writer-lifecycle-20261006；历史pending trace未改写。
+
+后续现场观测更新：用户自主执行的Warmup5k Frozen评测连续三轮点击success均正常收尾，metrics原生episode245/246/247为success=1、transitions_written=0，Actor2500；日志三次success提交，无Traceback，env_driver85189仍存活，随后用户开始第四轮。证明本次评测终结崩溃已在真实调用路径消除；不将操作者标签当成独立成功率验收，采集入Replay、failure/aborted真机路径仍未在本批现场试验。证据live-terminal-observation.json（现场）/同名txt（A6000scratch）。
