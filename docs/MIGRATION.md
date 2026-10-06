@@ -523,3 +523,16 @@ A6000 CPU：直接相关88项通过；9个新增回归在基线均失败、修�
 用户随后自行重新加载Warmup5k（16:25:44，supervisor PID83992）；本会话恢复调用的前置检查发现已有新加载，未发送POST、未停止其进程。16:26:04后只读确认新运行ready/disarmed/policy_paused=true、Session未开始、step0、录制idle、Learner disabled，Actor2500。此为启动及离线收尾回归验收，尚未替用户进行修复后的真机success/failure轮次。没有网页/硬件重启或机器人动作。现场证据runtime/verification/trace-writer-lifecycle-20261006，A6000证据scratch/rl-platform/trace-writer-lifecycle-20261006；历史pending trace未改写。
 
 后续现场观测更新：用户自主执行的Warmup5k Frozen评测连续三轮点击success均正常收尾，metrics原生episode245/246/247为success=1、transitions_written=0，Actor2500；日志三次success提交，无Traceback，env_driver85189仍存活，随后用户开始第四轮。证明本次评测终结崩溃已在真实调用路径消除；不将操作者标签当成独立成功率验收，采集入Replay、failure/aborted真机路径仍未在本批现场试验。证据live-terminal-observation.json（现场）/同名txt（A6000scratch）。
+
+
+## 2026-10-06：A6000产物归拢与可选按轮更新（未发布Actor）
+
+按plug_v3_online_rl_review(1).md复核并实现可选CPU按轮更新：完整Episode/source/奖励、多次接管截断、四池归一化且Episode先采样、Actor全轨迹／无Q梯度及优势权重、原生两头Critic／独立导出。docs/ROUNDWISE_ONLINE.md正文已先展示，用户授权自动实现。未改生产默认／固定上游／Replay／原5k，未同步或重启现场。
+
+两种子每候选Critic1000／Actor1500，对照末段LR1e-4、全轨迹LR1e-4、全轨迹LR1e-5；末段损害旧专家和自主拟合，全轨迹／低LR缓解但未过独立OOD／保持放行。恢复参数／优化器／RNG和双采样状态逐位一致；下一轮初始Actor预测继承一致；32状态CPU原生ActorService最大误差1.1921e-7，不绑定端口／加载Stage1／运动。
+
+基线384通过18失败，候选417通过18同名环境失败；早期隔离依赖缺失26项补齐后消除。生产Replay只读4013行279Episode，SHA0fb87e9ecc3b4e0ede50208caa3ceea93db3330bf976edf682cd6c21f684525a，时间代理合格1800／混合37，非评审1861。新工具batch22.656/21.875/21.875/33.594%非生产历史采样或成功失败8:2。
+
+1311既有笔记本文件逐SHA归拢A6000scratch/rl-platform/laptop-artifact-migration-20261006：1227相同／84补齐／0冲突。outputs忽略；Windows删除遭自动策略拒绝，保留旧副本。新增代码／CPU实验／报告／PNG-PDF仅A6000；身份／命令／验证／失败在outputs/roundwise-online-review-20261006/REPORT.md和JSON，最终提交收据delivery.json。
+
+补正早期web只读探测：继承HTTP代理导致adhoc本机请求拒绝，禁用代理后200，不是现场故障。用户冻结评测Replay0／无Learner不算Online改善。现场所有权归用户；guide只事实摘要，不提交推送guideGit。

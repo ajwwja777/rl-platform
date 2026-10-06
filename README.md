@@ -115,3 +115,8 @@ RLT Replay, sampling experiments and recorded-image diagnosis: [2026-09-29 repor
 ## 2026-09-30: opt-in credit experiments
 
 See [RLT experiments and candidate operation](docs/EXPERIMENTS_20260930.md) for the module structure, 21-run comparison, MC30 registration, recorded-data RTC results and rollback. The original online entry remains unchanged; the candidate has separate weights and logs, shares Replay, and still needs robot acceptance.
+
+
+## 2026-10-06 optional roundwise updates
+
+See [closed-round candidate workflow](docs/ROUNDWISE_ONLINE.md). CPU-only explicit entry; original online defaults and 5k Actor remain unchanged. Offline diagnostics and complete experiment receipts live on A6000 in outputs/roundwise-online-review-20261006. No candidate has passed independent robot release acceptance.

@@ -35,10 +35,17 @@ def sha(path):
 
 def read_journal(path):
     rows = []
-    with Path(path).open("rb") as f:
-        while True:
+    path = Path(path); before = path.stat()
+    with path.open("rb") as f:
+        while f.tell() < before.st_size:
             try: rows.append(pickle.load(f))
-            except EOFError: return rows
+            except (EOFError, pickle.UnpicklingError) as error:
+                raise ValueError("incomplete Replay snapshot") from error
+            if f.tell() > before.st_size: raise ValueError("Replay changed while reading")
+    after = path.stat()
+    if (before.st_dev,before.st_ino,before.st_size,before.st_mtime_ns) != (after.st_dev,after.st_ino,after.st_size,after.st_mtime_ns):
+        raise ValueError("Replay changed while reading")
+    return rows
 
 
 def write_json(path, payload):
@@ -53,6 +60,7 @@ def main():
         p.add_argument("--" + name, type=Path, required=True)
     p.add_argument("--upstream-root", type=Path, default=ROOT / "third_party/openpi-rlt")
     p.add_argument("--development-journal", type=Path)
+    p.add_argument("--excluded-episodes", type=Path, help="SHA-bound complete-Episode exclusion manifest")
     p.add_argument("--rounds", type=Path, help="JSON mapping canonical Episode key to explicit round ID")
     p.add_argument("--round-id", default="offline-round-1")
     p.add_argument("--critic-steps", type=int, default=1000)
@@ -65,6 +73,8 @@ def main():
     p.add_argument("--legacy-expert-id-base", type=int, help="explicit archived materialize_warmup_experts.py ID convention; not production negative-ID rule")
     p.add_argument("--delta-weight", type=float, default=1.)
     p.add_argument("--failure-anchor", type=float, default=.1)
+    p.add_argument("--actor-scope", choices=["full", "tail"], default="full")
+    p.add_argument("--actor-lr", type=float)
     p.add_argument("--actor-target", choices=["reference_bc", "outcome_bc"], default="outcome_bc")
     p.add_argument("--critic-target", choices=["guarded_td", "mc"], default="guarded_td")
     p.add_argument("--resume", action="store_true")
@@ -74,7 +84,7 @@ def main():
     out = a.output.resolve()
     if not a.output.is_absolute() or "candidates" not in out.parts:
         p.error("absolute independent candidates output required")
-    inputs = [a.journal, a.init_checkpoint, a.norm_stats] + ([a.development_journal] if a.development_journal else []) + ([a.rounds] if a.rounds else [])
+    inputs = [a.journal, a.init_checkpoint, a.norm_stats] + ([a.development_journal] if a.development_journal else []) + ([a.rounds] if a.rounds else []) + ([a.excluded_episodes] if a.excluded_episodes else [])
     for source in inputs:
         source = source.resolve()
         if source == out or source in out.parents or out in source.parents:
@@ -93,15 +103,23 @@ def main():
     import jax.numpy as jnp
     import optax
     from rlt_online_rl import trainer
-    from rlt_online_rl.config import RLTOnlineRLConfig
+    from rlt_online_rl.config import RLTOnlineRLConfig, relativize_rl_config_paths
     from rlt_online_rl.action_representation import ActionRepresentationAdapter
     from methods.openpi_rlt.experiments.roundwise import annotate, RoundSampler, SamplingProfile, derive_batch, episode_key
     from methods.openpi_rlt.experiments.round_learning import make_critic_step, make_actor_step
 
     identities = {str(path.resolve()): sha(path) for path in inputs}
     checkpoint = pickle.loads(a.init_checkpoint.read_bytes())
-    cfg_dict = dict(checkpoint["rl_config"])
+    if "rl_config" in checkpoint:
+        cfg_dict = dict(checkpoint["rl_config"])
+    elif checkpoint.get("settings",{}).get("method") == "roundwise-td-outcome-bc-v1":
+        cfg_dict = dict(checkpoint["settings"]["config"])
+    else:
+        raise ValueError("unsupported initial training checkpoint")
     cfg_dict["action_norm_stats_path"] = str(a.norm_stats.resolve())
+    if a.actor_lr is not None:
+        if a.actor_lr <= 0: raise ValueError("positive Actor learning rate required")
+        cfg_dict["actor_lr"] = a.actor_lr
     cfg = RLTOnlineRLConfig(**cfg_dict)
     adapter = ActionRepresentationAdapter.from_config(cfg)
     if adapter is None: raise ValueError("explicit action normalization is required")
@@ -111,18 +129,33 @@ def main():
     if set(episode_key(r) for r in rows) & set(episode_key(r) for r in external):
         raise ValueError("external development Episode overlaps training source")
     rows += external
+    if any(sha(path) != identities[str(path.resolve())] for path in inputs):
+        raise ValueError("source assets changed during initialization")
     rounds = json.loads(a.rounds.read_text()) if a.rounds else {}
     if set(rounds) - set(episode_key(r) for r in rows):
         raise ValueError("round manifest contains unknown Episode identity")
     metadata = annotate(rows, gamma=cfg.gamma, tail_steps=a.tail_steps,
                         heldout_fraction=a.heldout_fraction, rounds=rounds, legacy_expert_id_base=a.legacy_expert_id_base)
     for m in metadata[n:]: m["split"] = "external_development"
+    if a.excluded_episodes:
+        exclusions=json.loads(a.excluded_episodes.read_text())
+        if exclusions["journal_sha256"] != identities[str(a.journal.resolve())]:
+            raise ValueError("exclusion manifest applies to a different journal")
+        if exclusions.get("expected_excluded_rows") is not None and sum(m["episode_key"] in exclusions["episodes"] for m in metadata[:n]) != exclusions["expected_excluded_rows"]:
+            raise ValueError("excluded row count changed")
+        known={m["episode_key"] for m in metadata[:n]}
+        if set(exclusions["episodes"]) - known: raise ValueError("unknown excluded Episode")
+        for m in metadata[:n]:
+            if m["episode_key"] in exclusions["episodes"]:
+                m.update(eligible=False,split="excluded",reason="explicit_source_exclusion")
     keys = ("z_rl", "proprio", "ref_chunk", "action_chunk", "rewards", "done",
             "next_z_rl", "next_proprio", "next_ref_chunk", "source_chunk")
     raw = {k: np.stack([r[k] for r in rows]) for k in keys}
     normalized = adapter.prepare_training_batch(raw)
     profile = SamplingProfile(recent_round=a.round_id if a.rounds else None)
     sampler = RoundSampler(metadata, profile=profile)
+    actor_metadata = [dict(m, eligible=("outcome" in m and m["reason"] != "mixed_source_window")) for m in metadata] if a.actor_scope == "full" else metadata
+    actor_sampler = RoundSampler(actor_metadata, profile=profile)
     settings = {k: v for k, v in vars(a).items() if k not in ["resume", "critic_steps", "actor_steps"] and not isinstance(v, Path)}
     settings.update(method="roundwise-td-outcome-bc-v1", source_sha256=identities,
         code_sha256={str(path.relative_to(ROOT)):sha(path) for path in [Path(__file__), ROOT/"methods/openpi_rlt/experiments/roundwise.py", ROOT/"methods/openpi_rlt/experiments/round_learning.py"]},
@@ -159,6 +192,9 @@ def main():
         rng.bit_generator.state = payload["sampler_rng"]
         sampler.draws = payload["sampler_draws"]
         sampler.pool_draws, sampler.total, sampler.recent = payload["pool_draws"], payload["sample_total"], payload["sample_recent"]
+        actor_sampling = payload["actor_sampling_state"]
+        actor_sampler.draws = actor_sampling["draws"]
+        actor_sampler.pool_draws, actor_sampler.total, actor_sampler.recent = actor_sampling["pool_draws"], actor_sampling["total"], actor_sampling["recent"]
     if progress["actor_updates"] and a.critic_steps > progress["critic_updates"]:
         raise ValueError("cannot extend Critic phase after Actor updates; start a new round")
     if a.critic_steps < progress["critic_updates"] or a.actor_steps < progress["actor_updates"]:
@@ -175,7 +211,7 @@ def main():
         return jnp.stack([q1,q2,jnp.minimum(q1,q2)],-1)
     groups = collections.defaultdict(list)
     for i,m in enumerate(metadata):
-        if "split" in m: groups[(m["split"],m["episode_key"])].append(i)
+        if "split" in m and m["split"] != "excluded": groups[(m["split"],m["episode_key"])].append(i)
     def evaluate():
         prediction = predict(state.actor_params)
         physical = np.asarray(adapter.denormalize_to_abs_chunk(np.asarray(prediction), raw["proprio"]))
@@ -206,7 +242,7 @@ def main():
                 preterminal_time_proxy_q=float(q_exec[timed,2].mean()) if timed else None)
             records.append(rec)
         summary = {}
-        for split in {m["split"] for m in metadata if "split" in m}:
+        for split in {k[0] for k in groups}:
             subset=[r for r in records if r["split"]==split]
             targets=[r["mae_per_dim"] for r in subset if r["mae_per_dim"] is not None]
             scores={r["outcome"]:[] for r in subset}
@@ -223,12 +259,13 @@ def main():
     def save(complete=False):
         payload=dict(state={k:trainer._tree_to_numpy(getattr(state,k)) for k in state_fields},settings=settings,
             progress=dict(progress),history=history,sampler_rng=rng.bit_generator.state,sampler_draws=sampler.draws,
-            pool_draws=sampler.pool_draws,sample_total=sampler.total,sample_recent=sampler.recent)
+            pool_draws=sampler.pool_draws,sample_total=sampler.total,sample_recent=sampler.recent,
+            actor_sampling_state=dict(draws=actor_sampler.draws,pool_draws=actor_sampler.pool_draws,total=actor_sampler.total,recent=actor_sampler.recent))
         tmp=saved.with_suffix(".tmp")
         with tmp.open("wb") as f: pickle.dump(payload,f,pickle.HIGHEST_PROTOCOL)
         tmp.replace(saved)
         write_json(out/"report.json",dict(settings=settings,progress=progress,history=history,
-            sampler=sampler.receipt(),complete=complete,release_status="evidence_insufficient",
+            sampler=sampler.receipt(),actor_sampler=actor_sampler.receipt(),complete=complete,release_status="evidence_insufficient",
             limitations=["No independent test or new real robot task result", "HIL assets contain historical feedback, not proven optimal commands",
                 "Preterminal windows do not certify semantic task phase or outcome concealment",
                 "No Q gradient or Q-derived BC advantage before action-value acceptance",
@@ -243,19 +280,23 @@ def main():
         history.append(dict(phase="initial",evaluation=evaluate()));save()
     for phase,budget,step_fn in [("critic",a.critic_steps,critic_step),("actor",a.actor_steps,actor_step)]:
         counter=phase+"_updates"
+        selected_sampler = sampler if phase == "critic" else actor_sampler
         for step in range(progress[counter]+1,budget+1):
-            idx=sampler.sample(rng,a.batch)
+            idx=selected_sampler.sample(rng,a.batch)
             batch={k:jnp.asarray(v) for k,v in derive_batch(normalized,metadata,idx).items()}
             state,metrics=step_fn(state,batch);progress[counter]=step
             if step%a.eval_every==0 or step==budget:
                 metric={k:float(v) for k,v in metrics.items()}
                 if not all(np.isfinite(list(metric.values()))): raise FloatingPointError("nonfinite learning metrics")
                 history.append(dict(phase=phase,metrics=metric,evaluation=evaluate(),sample_index_sha256=hashlib.sha256(idx.tobytes()).hexdigest()))
-                save();print(json.dumps(dict(phase=phase,step=step,metrics=metric,sampling=sampler.receipt())),flush=True)
+                save();print(json.dumps(dict(phase=phase,step=step,metrics=metric,sampling=selected_sampler.receipt())),flush=True)
+    if any(sha(path) != identities[str(path.resolve())] for path in inputs):
+        save(); raise ValueError("source assets changed; candidate export refused")
     snapshot=out/"actor_snapshot";snapshot.mkdir(exist_ok=True)
     with (snapshot/"actor_snapshot.pkl").open("wb") as f:
         pickle.dump(dict(actor_params=trainer._tree_to_numpy(state.actor_params),version=int(state.actor_version),
-                        global_step=int(state.global_step),rl_config=cfg_dict),f,pickle.HIGHEST_PROTOCOL)
+                        global_step=int(state.global_step),rl_config=dataclasses.asdict(
+                            relativize_rl_config_paths(cfg,str(snapshot/"actor_snapshot.pkl")))),f,pickle.HIGHEST_PROTOCOL)
     import shutil
     shutil.copyfile(a.norm_stats,out/"action_norm_stats.json")
     write_json(out/"publication.json",dict(publication_policy="staged",candidate_snapshot=str(snapshot/"actor_snapshot.pkl"),

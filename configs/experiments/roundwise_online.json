@@ -1,0 +1,75 @@
+{
+  "enabled_by_default": false,
+  "entry": "scripts/train_roundwise_candidate.py",
+  "method": "roundwise-td-outcome-bc-v1",
+  "publication": "staged_candidate_only",
+  "profiles": {
+    "conservative": {
+      "actor_target": "outcome_bc",
+      "actor_scope": "full",
+      "critic_target": "guarded_td",
+      "critic_steps": 1000,
+      "actor_steps": 1500,
+      "actor_lr": 1e-05,
+      "delta_weight": 1.0,
+      "failure_anchor": 0.1
+    },
+    "coverage_control": {
+      "actor_target": "outcome_bc",
+      "actor_scope": "tail",
+      "critic_target": "guarded_td",
+      "critic_steps": 1000,
+      "actor_steps": 1500,
+      "actor_lr": 0.0001,
+      "delta_weight": 1.0,
+      "failure_anchor": 0.1
+    },
+    "learning_rate_control": {
+      "actor_target": "outcome_bc",
+      "actor_scope": "full",
+      "critic_target": "guarded_td",
+      "critic_steps": 1000,
+      "actor_steps": 1500,
+      "actor_lr": 0.0001,
+      "delta_weight": 1.0,
+      "failure_anchor": 0.1
+    }
+  },
+  "sampling": {
+    "category_weights": [
+      0.2,
+      0.2,
+      0.2,
+      0.3
+    ],
+    "normalized_category_weights": [
+      0.2222222222222222,
+      0.2222222222222222,
+      0.2222222222222222,
+      0.3333333333333333
+    ],
+    "episode_first": true,
+    "recent_round_weight": 2.0,
+    "recent_identity": "explicit manifest required; not inferred from Episode IDs"
+  },
+  "critic": {
+    "heads": 2,
+    "target_actor": "frozen initial Actor",
+    "target_clip": [
+      0,
+      1
+    ],
+    "reward_contract": "one terminal unit reward, no other reward",
+    "cut_every_takeover": true,
+    "human_reference_replacement": false
+  },
+  "actor": {
+    "q_gradient": false,
+    "q_advantage_weighting": false,
+    "human_target": "historical recorded action; optimal command unverified"
+  },
+  "release": {
+    "automatic": false,
+    "independent_robot_evaluation_required": true
+  }
+}

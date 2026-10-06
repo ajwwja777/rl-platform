@@ -108,6 +108,7 @@ def test_explicit_recency_and_deterministic_holdout():
     sampler=RoundSampler(annotate(episode(1),heldout_fraction=0))
     sampler.sample(np.random.default_rng(0),16)
     assert not sampler.receipt()["recent_identity_available"]
+    assert sampler.receipt()["recent_ratio"] is None
     assert SamplingProfile().recent_round is None
 
 
@@ -119,3 +120,33 @@ def test_archive_expert_convention_is_explicit_and_not_applied_to_online():
     assert archive[0]["pool"]=="expert" and archive[0]["outcome"]=="expert_success"
     online=annotate(episode(100007,[[2]*10]*3),heldout_fraction=0,legacy_expert_id_base=100000)
     assert online[0]["pool"]=="human_correction"
+
+
+def test_replay_reader_rejects_truncated_pickle_instead_of_silent_partial_round(tmp_path):
+    import importlib.util,pickle
+    from pathlib import Path
+    path=Path(__file__).resolve().parents[3]/"scripts/train_roundwise_candidate.py"
+    spec=importlib.util.spec_from_file_location("round_cli",path)
+    module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+    journal=tmp_path/"rows.pkl"
+    journal.write_bytes(pickle.dumps({"valid":1})+pickle.dumps({"incomplete":2})[:-3])
+    with pytest.raises(ValueError,match="incomplete Replay snapshot"):
+        module.read_journal(journal)
+    journal.write_bytes(pickle.dumps({"valid":1}))
+    assert module.read_journal(journal)==[{"valid":1}]
+
+
+def test_every_takeover_cuts_bootstrap_not_just_first_intervention():
+    rows=episode(1,[[1]*10,[2]*10,[1]*10,[2]*10,[1]*10])
+    meta=annotate(rows,heldout_fraction=0)
+    assert meta[0]["autonomy_cut"] and meta[2]["autonomy_cut"]
+    assert meta[2]["next_human_step"]==30 and meta[2]["mc_return"]==0.
+    assert meta[2]["takeover_steps"]==[10,30]
+    assert not meta[4]["autonomy_cut"] and meta[4]["pool"]=="failure"
+
+
+def test_overlapping_source_conflict_excludes_episode():
+    rows=episode(1,[[1]*10,[2]*10])
+    overlapping=dict(rows[0],step_id=5,source_chunk=np.array([2]*10))
+    rows.insert(1,overlapping)
+    assert not any(m["eligible"] for m in annotate(rows))

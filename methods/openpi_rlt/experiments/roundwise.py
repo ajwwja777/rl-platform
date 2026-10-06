@@ -61,7 +61,7 @@ def annotate(rows, *, gamma=.99, tail_steps=60, takeover_before=20,
         if len(ends) != 1 or len(outcomes) != 1 or not outcomes <= {0, 1}:
             reject("conflicting_terminal_identity"); continue
         end, success = next(iter(ends)), next(iter(outcomes))
-        timeline, human_times = {}, set()
+        timeline, human_times, human_by_step = {}, set(), {}
         valid = True
         for i in ids:
             start = int(rows[i]["step_id"])
@@ -75,11 +75,15 @@ def annotate(rows, *, gamma=.99, tail_steps=60, takeover_before=20,
                 if t > end or not np.isfinite(reward) or reward != expected or (t in timeline and timeline[t] != reward):
                     valid = False
                 timeline[t] = float(reward)
-                if sources[slot] in HUMAN:
+                is_human = sources[slot] in HUMAN
+                if t in human_by_step and human_by_step[t] != is_human: valid = False
+                human_by_step[t] = is_human
+                if is_human:
                     human_times.add(t)
         if not valid or starts[0] != 0 or len(timeline) != end + 1:
             reject("inconsistent_sparse_reward_or_incomplete_timeline"); continue
-        first_human = min(human_times) if human_times else None
+        takeover_steps = sorted(t for t in human_times if t-1 not in human_times)
+        first_human = takeover_steps[0] if takeover_steps else None
         expert = all(int(rows[i]["episode_id"]) < 0 for i in ids)
         if legacy_expert_id_base is not None and all(rows[i].get("collection_phase") == "warmup"
                 and int(rows[i]["episode_id"]) >= legacy_expert_id_base for i in ids):
@@ -92,13 +96,14 @@ def annotate(rows, *, gamma=.99, tail_steps=60, takeover_before=20,
             source = np.asarray(row["source_chunk"])
             human = np.isin(source, HUMAN)
             mixed = human.any() and not human.all()
-            pre = first_human is not None and start < first_human and not expert
+            next_human = next((t for t in takeover_steps if t >= start), None)
+            pre = next_human is not None and not human.any() and not expert
             pool = ("expert" if expert else "human_correction" if human.all()
                     else "auto_success" if success and first_human is None else "failure")
             critical = start >= max(0, end + 1 - tail_steps)
             if first_human is not None and not expert:
-                critical |= first_human - takeover_before <= start <= first_human + takeover_after
-            autonomous_cut = pre and start + len(source) >= first_human
+                critical |= any(t - takeover_before <= start <= t + takeover_after for t in takeover_steps)
+            autonomous_cut = pre and start + len(source) >= next_human
             # Use raw logical time, including the reward slot in the final
             # chunk. Assisted pre-HIL zero is an explicitly different objective.
             mc = 0. if pre else float(success) * gamma ** (end - start)
@@ -109,7 +114,7 @@ def annotate(rows, *, gamma=.99, tail_steps=60, takeover_before=20,
                     else "auto_success" if success else "failure",
                 split="development" if development else "train", logical_start=start, logical_end=end,
                 reward_bound=[0., 1.], mc_return=mc, autonomy_cut=autonomous_cut,
-                pre_takeover=pre, first_human_step=first_human, round_id=rounds.get(key),
+                pre_takeover=pre, first_human_step=first_human, next_human_step=next_human, takeover_steps=takeover_steps, round_id=rounds.get(key),
                 uuid_verified=bool(row.get("task5_episode_uuid") or row.get("episode_uuid")))
     return result
 
@@ -169,7 +174,7 @@ class RoundSampler:
     def receipt(self):
         return {"draws": self.total, "pool_draws": self.pool_draws,
             "actual_pool_ratio": {p: n / self.total if self.total else None for p, n in self.pool_draws.items()},
-            "recent_ratio": self.recent / self.total if self.total else None,
+            "recent_ratio": self.recent / self.total if self.total and self.profile.recent_round is not None else None,
             "recent_identity_available": self.profile.recent_round is not None,
             "unique_rows_drawn": int((self.draws > 0).sum()),
             "per_pool_mean_row_reuse": {p: float(self.draws[[i for ids in g.values() for i in ids]].mean()) if g else None
