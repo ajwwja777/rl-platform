@@ -71,9 +71,6 @@ def test_numeric_trace_uses_real_terminal_lifecycle_without_collection_write(
     assert list((tmp_path / "collection").iterdir()) == []
     assert "images" in record["observation"]  # Does not mutate live inputs.
     files = list((tmp_path / "diagnostic").rglob("*.jsonl"))
-    if outcome == "aborted":
-        assert files == []
-        return
     path, = files
     row = json.loads(path.read_text())
     assert row["ref_action"] == record["ref_action"].tolist()
@@ -83,8 +80,12 @@ def test_numeric_trace_uses_real_terminal_lifecycle_without_collection_write(
     assert "images" not in row["observation"]
     assert row["trace_purpose"] == "evaluation_diagnostic" and not row["replay_eligible"]
     assert row["task5_episode_uuid"] == "uuid" and row["session_id"] == "session"
-    assert row["done"] and row["reward"] == float(outcome == "success")
+    assert row["done"] == (outcome != "aborted")
+    assert row["reward"] == float(outcome == "success")
+    if outcome == "aborted":
+        assert row["truncated"] and not row["replay_eligible"]
     assert row["command_publish_finished_monotonic"] == 1.2
+    assert len(row["runtime_provenance"]["code_files_sha256"]) == 5
 
 
 def test_shared_purpose_switch_does_not_leak_or_finalize_previous_episode(tmp_path, monkeypatch):
@@ -142,3 +143,46 @@ def test_opt_in_environment_keeps_replay_gate_closed(tmp_path, monkeypatch, shar
     io._trace_writer.finalize("success")
     assert len(list((tmp_path / "diagnostic").rglob("*_success.jsonl"))) == 1
     assert list((tmp_path / "collection").iterdir()) == []
+
+
+def test_collection_abort_default_still_discards(tmp_path):
+    writer = AtomicEpisodeTraceWriter(tmp_path)
+    writer.append({"action": [1], "done": False})
+    writer.finalize("aborted")
+    assert not list(tmp_path.iterdir())
+
+
+def test_diagnostic_abort_in_step_keeps_prior_steps_and_no_fake_action(tmp_path):
+    from integrations.cobot_runtime.evaluation_trace import EvaluationTraceWriter
+    writer = EvaluationTraceWriter(tmp_path)
+    writer.append({"action": [1], "done": False})
+    writer.append({"action": [2], "done": True, "outcome": "aborted"})
+    writer.finalize("aborted", identity={"session_episode_id": 4})
+    path, = tmp_path.glob("*_aborted.jsonl")
+    rows = [json.loads(line) for line in path.read_text().splitlines()]
+    assert len(rows) == 2
+    assert rows[-1]["action"] == [2]
+    assert not rows[-1]["done"] and rows[-1]["truncated"]
+    assert rows[-1]["session_episode_id"] == 4
+    before = path.read_bytes()
+    writer.start_episode()
+    writer.finalize("aborted")
+    assert path.read_bytes() == before
+
+
+def test_web_next_runtime_optin_settings_are_model_bound(tmp_path, monkeypatch):
+    from integrations.cobot_runtime import paths
+    monkeypatch.setattr(paths, "RUNTIME_ROOT", tmp_path)
+    monkeypatch.delenv("COBOT_RLT_EVALUATION_TRACE_DIR", raising=False)
+    monkeypatch.delenv("COBOT_RLT_TRACE_DIR", raising=False)
+    settings = tmp_path / "evaluation-diagnostic.json"
+    settings.write_text(json.dumps(dict(schema_version=1, enabled=True,
+        model_id="plug-v3-warmup-5k", trace_root=str(tmp_path / "numeric"))))
+    monkeypatch.setenv("COBOT_DEPLOYMENT_MODEL_ID", "plug-v3-warmup-20k")
+    with pytest.raises(ValueError, match="model does not match"):
+        evaluation_trace_writer()
+    assert not (tmp_path / "numeric").exists()
+    monkeypatch.setenv("COBOT_DEPLOYMENT_MODEL_ID", "plug-v3-warmup-5k")
+    assert evaluation_trace_writer() is not None
+    settings.write_text(json.dumps(dict(enabled=False)))
+    assert evaluation_trace_writer() is None

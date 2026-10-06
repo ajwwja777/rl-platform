@@ -33,6 +33,9 @@ class AsyncExecution:
         self.epoch, self.request_id = 0, 0
         self.future, self.pending, self.plan = None, None, None
         self.anchors = {}
+        self.inference_events = []
+        self.evidence_lock = threading.Lock()
+        self.plan_event_id = 0
         self.stats = dict(profile=name, logical_hz=20, publish_hz=profile.publish_hz,
                           inference_requests=0, stale_results=0, emitted_commands=0,
                           rtc_training_data=profile.rtc, smoothing=profile.smoothing_tau_sec > 0)
@@ -61,6 +64,8 @@ class AsyncExecution:
     def set_episode(self, episode_id):
         self.invalidate()
         self.anchors.clear()
+        with self.evidence_lock:
+            self.inference_events.clear()
         for key in ("inference_requests","stale_results","emitted_commands"):
             self.stats[key] = 0
         self.last_policy_source = ControlSource.BASE
@@ -122,7 +127,8 @@ class AsyncExecution:
             self.terminal_outcome = sample.outcome
         return SimpleNamespace(observation=sample.observation,mode=sample.mode,
             outcome=self.terminal_outcome,paused=sample.paused,timestamp=sample.timestamp,
-            io_evidence=getattr(sample, 'io_evidence', None))
+            io_evidence=getattr(sample, 'io_evidence', None),
+            received_monotonic=float(self.clock()))
 
     def observation(self, observation):
         result = dict(observation)
@@ -133,6 +139,32 @@ class AsyncExecution:
                 result['rtc'] = dict(previous_actions=pending.copy(), delay_steps=0,
                                      execution_horizon=min(self.config.replan_after_steps, len(pending)))
         return result
+
+    def diagnostic_plan(self, observation, logical_step):
+        # Numeric request evidence only. Never infer a plan's anchor from the
+        # state present when a queued command later executes.
+        event_id = self.plan_event_id
+        self.plan_event_id += 1
+        started = float(self.clock())
+        epoch = self.epoch
+        episode_id = getattr(self.backend, "episode_id", None)
+        plan = self.backend.plan(observation, logical_step)
+        event = dict(request_id=event_id, logical_step=int(logical_step),
+                     execution_epoch=int(epoch), episode_id=episode_id,
+                     request_started_monotonic=started,
+                     request_finished_monotonic=float(self.clock()),
+                     anchor_state=self.env._state(observation).copy(),
+                     actor_param_version=int(plan.actor_param_version),
+                     rtc_requested="rtc" in observation,
+                     semantics="request and completed plan; not proof of queue acceptance")
+        with self.evidence_lock:
+            self.inference_events.append(event)
+        return plan
+
+    def take_inference_events(self):
+        with self.evidence_lock:
+            events, self.inference_events = self.inference_events, []
+        return events
 
     def fresh_plan(self, observation):
         if self.backend is None:
@@ -150,7 +182,7 @@ class AsyncExecution:
         request = dict(observation)
         request.pop('rtc', None)
         epoch = self.epoch
-        self.future = self.pool.submit(self.backend.plan, copy.deepcopy(request), self.env._episode_steps)
+        self.future = self.pool.submit(self.diagnostic_plan, copy.deepcopy(request), self.env._episode_steps)
         plan = self.future.result(timeout=10.)
         self.future = None
         sample = self.sample()
@@ -188,7 +220,7 @@ class AsyncExecution:
         else:
             request.pop('rtc', None)
         self.pending = (self.epoch, snapshot, self.env._episode_steps)
-        self.future = self.pool.submit(self.backend.plan, request, self.env._episode_steps)
+        self.future = self.pool.submit(self.diagnostic_plan, request, self.env._episode_steps)
         self.stats['inference_requests'] += 1
 
     def accept_result(self):
@@ -301,6 +333,7 @@ class AsyncExecution:
                     continue
                 paused_last = False
                 hil_command_receipt = None
+                logical_proposal = logical_reference = None
                 if state.phase is EpisodePhase.HIL:
                     if self.plan is not None:
                         io.set_chunk_ready(False)
@@ -330,6 +363,7 @@ class AsyncExecution:
                     current = self.observation(current)
                     target_bundle = self.queue.pop()
                     target, ref_target = target_bundle[:7], target_bundle[7:14]
+                    logical_proposal, logical_reference = target.copy(), ref_target.copy()
                     version, source = int(target_bundle[14]), ControlSource(int(target_bundle[15]))
                     self.last_policy_source = source
                     # This request starts at the NEXT logical boundary, below.
@@ -356,7 +390,10 @@ class AsyncExecution:
                             -self.config.gripper_velocity_limit/self.config.publish_hz,
                             self.config.gripper_velocity_limit/self.config.publish_hz)
                         command = runtime.safe_policy_target(filtered, env._state(check.observation))
-                        if io.publish_policy_action(command) is False:
+                        publish_started = float(self.clock())
+                        accepted = io.publish_policy_action(command)
+                        publish_finished = float(self.clock())
+                        if accepted is False:
                             io.set_chunk_ready(False)
                             self.invalidate()
                             break
@@ -368,7 +405,13 @@ class AsyncExecution:
                         self.filter.previous = command.copy()
                         self.last_ref = self.segment_ref_start + alpha*(ref_target-self.segment_ref_start) if hasattr(self,'segment_ref_start') else ref_target.copy()
                         publications.append(dict(timestamp=float(io.ros.Time.now().to_sec()) if hasattr(getattr(io,'ros',None),'Time') else float(check.timestamp),
-                                                 monotonic_timestamp=float(self.clock()), action=command.copy(),
+                                                 monotonic_timestamp=publish_finished, action=command.copy(),
+                                                 scheduled_monotonic=float(interval_origin+timestamp),
+                                                 publish_started_monotonic=publish_started,
+                                                 publish_finished_monotonic=publish_finished,
+                                                 feedback_received_monotonic=check.received_monotonic,
+                                                 feedback_state=env._state(check.observation).copy(),
+                                                 execution_epoch=int(epoch),
                                                  ref_action=self.last_ref.copy(), actor_param_version=int(version)))
                         self.stats['emitted_commands'] += 1
                     # A partial segment can end on pause/HIL. Never wait on
@@ -419,9 +462,21 @@ class AsyncExecution:
                     outcome=None if outcome is None else outcome.value, expert_mask=list(runtime.snapshot().expert_mask),
                     timestamp=float(after.timestamp), shadow=env._shadow_mode,
                     execution_profile=self.name, logical_hz=20, publish_hz=self.config.publish_hz,
+                    execution_settings=dict(logical_hz=self.config.logical_hz,
+                        publish_hz=self.config.publish_hz, rtc=self.config.rtc,
+                        smoothing_tau_sec=self.config.smoothing_tau_sec,
+                        joint_velocity_limit=self.config.joint_velocity_limit,
+                        gripper_velocity_limit=self.config.gripper_velocity_limit,
+                        replan_after_steps=self.config.replan_after_steps,
+                        max_delay_steps=self.config.max_delay_steps),
                     io_evidence_before_step=getattr(sample, 'io_evidence', None),
                     io_evidence_after_step=getattr(after, 'io_evidence', None),
-                    publications=publications)
+                    publications=publications,
+                    interval_start_sample_received_monotonic=sample.received_monotonic,
+                    sample_received_monotonic=after.received_monotonic,
+                    planned_action=logical_proposal, logical_ref_action=logical_reference,
+                    proposal_semantics="queued logical Actor target before interpolation/filter/clamp; no fresh HIL counterfactual" if logical_proposal is not None else "not_recorded_during_HIL",
+                    inference_events=self.take_inference_events())
                 record['hil_target_mode'] = env._hil_target
                 record['hil_command_receipt'] = hil_command_receipt
                 if hil_command_receipt is not None:

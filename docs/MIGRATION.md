@@ -543,3 +543,10 @@ A6000 CPU：直接相关88项通过；9个新增回归在基线均失败、修�
 后续按用户要求改为 Windows SendToRecycleBin：仅在完整目录清单与 A6000 迁移收据一致、所有文件逐 SHA 验证且无新增／修改／链接文件后执行。1311 个旧产物（132236382 字节）及临时目录3文件已移入回收站，原路径消失；回收站内1311个文件与归档再次逐SHA核对一致，未清空回收站，可恢复。A6000副本、项目入口与代码未删除。前述永久删除的策略拒绝保留为历史事件，不能据此推断所有清理均被禁止；具体拒绝规则仍未知。
 
 收据 scratch/rl-platform/laptop-artifact-migration-20261006/cleanup-recycle-20261006.json；交付报告及delivery.json已补记当前状态。本批只更新事实文档，无生产模型／Replay／默认配置／现场进程变化。
+
+
+## 2026-10-06: frozen target-position / jitter diagnostic closure
+
+Isolated a0c00e4 worktree adds opt-in next-runtime model-bound numeric capture, diagnostic-only aborted retention (not MDP terminal / not Replay), async logical Actor/Reference target plus scheduled/start/finish/feedback receipts and inference request anchors. Ordinary collection abort behavior and command/queue/Replay/training defaults remain unchanged; shared VLA/web/fixed-upstream not edited. CPU analyzer rejects duplicate Episode/snapshot identities, excludes HIL-replaced Reference from counterfactual pairs, separates physical vs logical rows, leaves missing measurements null, uses whole-Episode bootstrap and does not turn reused DEV into TEST.
+
+76 targeted CPU tests pass, including actual native async EnvDriver/Replay/training contracts; no model checkpoint loaded. Synthetic I/O trace plots verify software output only, not robot capability. Initial plotting failed because project .venv lacks matplotlib; preserved failed output, existing A6000 system Python generated three plots without changing environments. Workflow docs/FROZEN_LOCALIZATION.md was previewed and written under existing automatic execution authorization. Field source sync and frozen real Episodes remain pending at this record; no model/service/GPU/motion/production Replay/weights/defaults changed. Evidence outputs/position-jitter-diagnosis-20261006, final-targeted-tests.log, software-analysis-2, pre-delivery-field.json. Six measured-position diagnostic DEV Episodes are the next evidence requirement; no Actor promotion / Online acceptance.

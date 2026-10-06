@@ -417,3 +417,24 @@ def test_named_async20_without_rtc_or_smoothing_emits_logical_trace(monkeypatch)
             np.testing.assert_array_equal(row["action"], row["publications"][-1]["action"])
     finally:
         engine.close()
+
+
+def test_diagnostic_records_queue_proposal_not_filtered_command_and_real_schedule(monkeypatch):
+    engine, env, io, clock = setup(monkeypatch, hz=50)
+    try:
+        env.execute_chunk(io.sample().observation)
+        row = io.records[0]
+        np.testing.assert_array_equal(row["planned_action"], np.array([.04]*6+[.005], np.float32))
+        assert not np.array_equal(row["planned_action"], row["action"])
+        assert row["actor_param_version"] == 3500
+        assert row["execution_settings"]["publish_hz"] == 50
+        assert row["execution_settings"]["logical_hz"] == 20
+        assert row["inference_events"][0]["logical_step"] == 0
+        assert row["inference_events"][0]["actor_param_version"] == 3500
+        for item in row["publications"]:
+            assert item["publish_started_monotonic"] >= item["scheduled_monotonic"] - 1e-10
+            assert item["publish_finished_monotonic"] >= item["publish_started_monotonic"]
+            assert item["feedback_received_monotonic"] <= item["publish_finished_monotonic"]
+        assert row["sample_received_monotonic"] >= row["publications"][-1]["publish_finished_monotonic"]
+    finally:
+        engine.close()

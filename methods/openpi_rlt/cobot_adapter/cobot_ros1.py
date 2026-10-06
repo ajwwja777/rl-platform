@@ -104,7 +104,8 @@ def _jsonable(value: Any) -> Any:
 class AtomicEpisodeTraceWriter:
     """Append recoverable metadata, then atomically publish only terminal traces."""
 
-    def __init__(self, root: str | Path) -> None:
+    def __init__(self, root: str | Path, *, retain_aborted: bool = False) -> None:
+        self._retain_aborted = retain_aborted
         self._root = Path(root)
         self._root.mkdir(parents=True, exist_ok=True)
         self._pending: Path | None = None
@@ -130,10 +131,10 @@ class AtomicEpisodeTraceWriter:
     def finalize(self, outcome: str, *, identity: dict[str, Any] | None = None) -> None:
         """Label the last executed step after pause, without adding an action."""
         with self._lock:
-            if outcome == "aborted":
+            if outcome == "aborted" and not self._retain_aborted:
                 self.discard()
                 return
-            if outcome not in {"success", "failure"}:
+            if outcome not in {"success", "failure", "aborted"}:
                 raise ValueError("Trace terminal outcome must be success, failure or aborted")
             source = self._pending or self._finalized
             if source is None or self._discarded:
@@ -142,7 +143,9 @@ class AtomicEpisodeTraceWriter:
             if not lines:
                 return
             last = json.loads(lines[-1])
-            last.update(done=True, outcome=outcome, reward=float(outcome == "success"))
+            last.update(done=outcome != "aborted", outcome=outcome, reward=float(outcome == "success"))
+            if outcome == "aborted":
+                last.update(truncated=True, replay_eligible=False)
             if identity:
                 last.update(identity)
             lines[-1] = json.dumps(last, sort_keys=True)
@@ -163,8 +166,10 @@ class AtomicEpisodeTraceWriter:
     def append(self, record: dict[str, Any]) -> None:
         with self._lock:
             if str(record.get("outcome")) == "aborted":
-                self.discard()
-                return
+                if not self._retain_aborted:
+                    self.discard()
+                    return
+                record = dict(record, done=False, truncated=True, replay_eligible=False, reward=0.)
             if not self._discarded:
                 self._append(record)
 
