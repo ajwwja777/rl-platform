@@ -65,7 +65,8 @@ def create_evaluation_env():
     finally:
         task5_client.Task5Client = original
     env.replay_commit_allowed = lambda: False
-    env._io._trace_writer = NoTraceWriter()
+    from .evaluation_trace import evaluation_trace_writer
+    env._io._trace_writer = evaluation_trace_writer() or NoTraceWriter()
     application = env._io._session_application
     original_takeover = application.update_takeover
     intervention = {"active": False, "count": 0}

@@ -78,27 +78,33 @@ class SharedEpisodeLifecycle:
 
 
 class CollectionTrace:
-    def __init__(self, writer, lifecycle):
+    def __init__(self, writer, lifecycle, *, evaluation_writer=None):
         self.writer, self.lifecycle = writer, lifecycle
+        self.evaluation_writer = evaluation_writer
+
+    @property
+    def active_writer(self):
+        # episode_use remains latched through the terminal acknowledgement.
+        return self.writer if self.lifecycle.collecting else self.evaluation_writer
 
     def start_episode(self):
-        if self.lifecycle.collecting:
-            self.writer.start_episode()
+        if self.active_writer is not None:
+            self.active_writer.start_episode()
 
     def append(self, record):
-        if self.lifecycle.collecting:
-            self.writer.append(record)
+        if self.active_writer is not None:
+            self.active_writer.append(record)
 
     def discard(self):
-        if self.lifecycle.collecting:
-            self.writer.discard()
+        if self.active_writer is not None:
+            self.active_writer.discard()
 
     def finalize(self, outcome, *, identity=None):
         # Purpose stays latched until the next episode, including Replay's
         # asynchronous terminal acknowledgement. Do not finalize evaluation
         # into the previous collection trace.
-        if self.lifecycle.collecting:
-            self.writer.finalize(outcome, identity=identity)
+        if self.active_writer is not None:
+            self.active_writer.finalize(outcome, identity=identity)
 
 
 
@@ -124,7 +130,9 @@ def create_shared_env():
     recorder = application._task5
     commit = env.replay_commit_allowed
     env.replay_commit_allowed = lambda: recorder.collecting and commit()
-    env._io._trace_writer = CollectionTrace(env._io._trace_writer, recorder)
+    from .evaluation_trace import evaluation_trace_writer
+    env._io._trace_writer = CollectionTrace(
+        env._io._trace_writer, recorder, evaluation_writer=evaluation_trace_writer())
     takeover = application.update_takeover
     intervention = {"active": False, "count": 0}
 
