@@ -54,7 +54,7 @@ def plots(report, output):
         if physical:
             axes[0].legend(loc="best")
         axes[-1].set_xlabel("Seconds since first physical receipt; pauses/gaps retained")
-        fig.suptitle("Physical command / endpoint feedback | "+str(ep["episode_identity"])+" | "+ep["split"])
+        fig.suptitle("Physical command / endpoint feedback | "+str(ep["episode_identity"])+" | "+ep["split"]+" | "+str(ep["condition"]))
         fig.tight_layout(rect=[0,0,1,.97])
         fig.savefig(output / ("episode-%03d-physical.png" % index), dpi=140)
         plt.close(fig)
@@ -63,6 +63,11 @@ def plots(report, output):
             t = np.array([r["t"] for r in physical])
             axes[0].plot(t[1:]-t[0], np.diff(t)*1000, ".-", label="All receipt intervals, including pauses/gaps")
             axes[0].legend()
+            axes[0].ticklabel_format(axis="y", style="plain", useOffset=False)
+            gaps = np.diff(t)*1000
+            if np.ptp(gaps) < 1.:
+                centre = float(np.median(gaps))
+                axes[0].set_ylim(centre-1., centre+1.)
         else:
             axes[0].text(.5,.5,"Physical publication receipts missing",ha="center",transform=axes[0].transAxes)
         for ev in ep["series"]["inference_events"]:
@@ -71,7 +76,7 @@ def plots(report, output):
                 axes[1].plot([start, end], [ev.get("logical_step"), ev.get("logical_step")], "o-")
         axes[0].set(xlabel="Seconds since first receipt", ylabel="Interval (ms)")
         axes[1].set(xlabel="Request monotonic time (s)", ylabel="Inference anchor logical step")
-        fig.suptitle("Diagnostic timing | " + str(ep["episode_identity"]) + " | " + ep["split"])
+        fig.suptitle("Diagnostic timing | " + str(ep["episode_identity"]) + " | " + ep["split"] + " | " + str(ep["condition"]))
         fig.tight_layout(rect=[0,0,1,.95])
         fig.savefig(output / ("episode-%03d-timing.png" % index), dpi=140)
         plt.close(fig)
