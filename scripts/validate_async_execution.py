@@ -41,7 +41,7 @@ def main():
     p.add_argument('--output',type=Path,required=True)
     p.add_argument('--guard-web-url',default='http://127.0.0.1:8015')
     p.add_argument('--prompt', help='Explicit task prompt; omitted preserves the historical Stage1 default.')
-    p.add_argument('--profiles', nargs='+', choices=('faithful20','async_rtc20','async_rtc30','async_rtc40','async_rtc50','async40_no_rtc','async40_no_smoothing'),
+    p.add_argument('--profiles', nargs='+', choices=('faithful20','async_rtc20','async_rtc30','async_rtc40','async_rtc50','async40_no_rtc','async40_no_smoothing','async20_no_rtc_no_smoothing'),
                    help='Select execution comparisons; omitted preserves all seven historical variants.')
     args=p.parse_args()
     if args.prompt is not None and not args.prompt.strip():
@@ -124,6 +124,8 @@ def main():
     variants=[("faithful20",20,None)]+[(f"async_rtc{hz}",hz,ExecutionProfile(publish_hz=hz)) for hz in (20,30,40,50)]
     variants += [("async40_no_rtc",40,ExecutionProfile(publish_hz=40,rtc=False)),
                  ("async40_no_smoothing",40,ExecutionProfile(publish_hz=40,smoothing_tau_sec=0.))]
+    if args.profiles is not None and 'async20_no_rtc_no_smoothing' in args.profiles:
+        variants.append(('async20_no_rtc_no_smoothing',20,ExecutionProfile(publish_hz=20,rtc=False,smoothing_tau_sec=0.)))
     if args.profiles is not None:
         variants=[v for v in variants if v[0] in args.profiles]
     for name,hz,profile in variants:

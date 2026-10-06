@@ -209,7 +209,9 @@ class AsyncExecution:
         bundle = np.concatenate([actions, plan.ref_chunk,
             np.full((len(actions),1),plan.actor_param_version,np.float32),
             np.full((len(actions),1),plan.source,np.float32)], -1)
-        bundle[:n,14:] = snapshot.previous_actions[:n,14:]
+        # Keep the reference belonging to each committed old action too.
+        # Mixing a new reference with an old action changes Replay/BC provenance.
+        bundle[:n] = snapshot.previous_actions[:n]
         actual_delay = self.queue.cursor - snapshot.execution_horizon
         self.stats['last_actual_delay_steps'] = actual_delay
         self.stats['allowed_delay_steps'] = self.config.max_delay_steps

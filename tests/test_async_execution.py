@@ -48,13 +48,13 @@ class Backend:
         return SimpleNamespace(action_chunk=actions,ref_chunk=actions.copy(),
                                source=1,actor_param_version=3500,start_features=features)
 
-def setup(monkeypatch, hz=40, state_at=None, reject=False):
+def setup(monkeypatch, hz=40, state_at=None, reject=False, profile=None):
     monkeypatch.setenv('COBOT_RLT_EXECUTION_PROFILE','faithful20')
     clock=Clock();io=IO(clock,state_at,reject)
     env=RightArmCobotOnlineEnv(io,chunk_exec_horizon=10,control_frequency_hz=20,
         max_episode_steps=None,joint_step_limit=.03,gripper_step_limit=.004,sleep=clock.sleep)
     env._runtime.arm()
-    engine=AsyncExecution(env,'test',ExecutionProfile(publish_hz=hz),clock)
+    engine=AsyncExecution(env,'test',profile or ExecutionProfile(publish_hz=hz),clock)
     env._execution=engine;engine.backend=Backend()
     return engine,env,io,clock
 
@@ -150,15 +150,17 @@ def test_registry_and_explicit_rollback():
         assert profile.publish_hz==hz and profile.logical_hz==20
     with pytest.raises(ValueError):ExecutionProfile(publish_hz=60)
 
-def test_actual_envdriver_replay_keeps_emitted_actions_and_rtc_anchors(monkeypatch):
+@pytest.mark.parametrize("profile_name", ["async_rtc40", "async20_no_rtc_no_smoothing"])
+def test_actual_envdriver_replay_keeps_emitted_actions_and_rtc_anchors(monkeypatch, profile_name):
     from rlt_online_rl.inference import EnvDriver, ActorResponse
     from rlt_online_rl.config import RLTOnlineRLConfig, EnvDriverConfig
     from methods.openpi_rlt.cobot_adapter.execution_runtime import install
     from methods.openpi_rlt.plug_v3_yyshadow.right_arm_env import RightArmPolicyRuntime
-    engine,env,io,clock=setup(monkeypatch,state_at=lambda t:('policy',False,'success' if t>=.8 else None))
+    _, profile = selected_profile(environ={'COBOT_RLT_EXECUTION_PROFILE': profile_name})
+    engine,env,io,clock=setup(monkeypatch,state_at=lambda t:('policy',False,'success' if t>=.8 else None), profile=profile)
     # EnvDriver performs reset/arm itself.
     env._runtime=RightArmPolicyRuntime(joint_step_limit=.03,gripper_step_limit=.004)
-    monkeypatch.setenv('COBOT_RLT_EXECUTION_PROFILE','async_rtc40')
+    monkeypatch.setenv('COBOT_RLT_EXECUTION_PROFILE',profile_name)
     for key in ('__init__','run_episode','_append_raw_chunk','close'):
         monkeypatch.setattr(EnvDriver,key,getattr(EnvDriver,key))
     monkeypatch.setattr(EnvDriver,'_cobot_execution_installed',False,raising=False)
@@ -182,7 +184,7 @@ def test_actual_envdriver_replay_keeps_emitted_actions_and_rtc_anchors(monkeypat
     try:
         result=driver.run_episode(11)
         assert result['success']==1 and replay.rows
-        assert any('rtc' in obs for obs in features.seen)
+        assert any('rtc' in obs for obs in features.seen) == profile.rtc
         for transition in replay.rows:
             start=transition.step_id
             expected=np.stack([x['action'] for x in io.records[start:start+10]])
@@ -365,5 +367,53 @@ def test_pause_racing_between_precheck_and_clock_does_not_fault(monkeypatch):
         assert done and info["outcome"] == "failure"
         assert "last_error" not in engine.stats
         assert not any(.20 <= t < .30 for t, _ in io.published)
+    finally:
+        engine.close()
+
+
+@pytest.mark.parametrize("rtc", [False, True])
+@pytest.mark.parametrize("delay_steps", [0, 2, 4])
+def test_committed_prefix_keeps_reference_with_action_version_and_source(monkeypatch, rtc, delay_steps):
+    engine, env, io, clock = setup(monkeypatch, profile=ExecutionProfile(publish_hz=20, rtc=rtc, smoothing_tau_sec=0.))
+    try:
+        engine.fresh_plan(io.sample().observation)
+        for _ in range(5):
+            engine.queue.pop()
+        committed = engine.queue.remaining_actions()[:4].copy()
+        original = engine.backend.plan
+        def replacement(obs, step):
+            result = original(obs, step)
+            result.actor_param_version = 3600
+            return result
+        engine.backend.plan = replacement
+        engine.request_next(io.sample().observation)
+        engine.future.result(timeout=2)
+        for _ in range(delay_steps):
+            engine.queue.pop()
+        engine.accept_result()
+        remaining = engine.queue.remaining_actions()
+        np.testing.assert_array_equal(remaining[:4-delay_steps], committed[delay_steps:])
+        assert (remaining[4-delay_steps:, 14] == 3600).all()
+        assert any("rtc" in obs for obs, _ in engine.backend.requests) == rtc
+    finally:
+        engine.close()
+
+
+def test_named_async20_without_rtc_or_smoothing_emits_logical_trace(monkeypatch):
+    name, profile = selected_profile(environ={"COBOT_RLT_EXECUTION_PROFILE": "async20_no_rtc_no_smoothing"})
+    assert name == "async20_no_rtc_no_smoothing"
+    assert profile.logical_hz == profile.publish_hz == 20
+    assert not profile.rtc and profile.smoothing_tau_sec == 0
+    assert profile.replan_after_steps == 5 and profile.max_delay_steps == 4
+    engine, env, io, clock = setup(monkeypatch, profile=profile)
+    try:
+        for _ in range(3):
+            _, rewards, done, info = env.execute_chunk(io.sample().observation)
+            assert not done and len(rewards) == len(info["step_trace"]) == 10
+        assert len(io.published) == len(io.records) == 30
+        np.testing.assert_allclose(np.diff([t for t, _ in io.published]), .05, atol=1e-10)
+        assert not any("rtc" in obs for obs, _ in engine.backend.requests)
+        for row in io.records:
+            np.testing.assert_array_equal(row["action"], row["publications"][-1]["action"])
     finally:
         engine.close()

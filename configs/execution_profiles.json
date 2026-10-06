@@ -22,6 +22,11 @@
     "async40_no_smoothing": {
       "publish_hz": 40,
       "smoothing_tau_sec": 0.0
+    },
+    "async20_no_rtc_no_smoothing": {
+      "publish_hz": 20,
+      "rtc": false,
+      "smoothing_tau_sec": 0.0
     }
   }
 }
