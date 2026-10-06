@@ -536,3 +536,10 @@ A6000 CPU：直接相关88项通过；9个新增回归在基线均失败、修�
 1311既有笔记本文件逐SHA归拢A6000scratch/rl-platform/laptop-artifact-migration-20261006：1227相同／84补齐／0冲突。outputs忽略；Windows删除遭自动策略拒绝，保留旧副本。新增代码／CPU实验／报告／PNG-PDF仅A6000；身份／命令／验证／失败在outputs/roundwise-online-review-20261006/REPORT.md和JSON，最终提交收据delivery.json。
 
 补正早期web只读探测：继承HTTP代理导致adhoc本机请求拒绝，禁用代理后200，不是现场故障。用户冻结评测Replay0／无Learner不算Online改善。现场所有权归用户；guide只事实摘要，不提交推送guideGit。
+
+
+## 2026-10-06：笔记本旧产物可恢复清理完成
+
+后续按用户要求改为 Windows SendToRecycleBin：仅在完整目录清单与 A6000 迁移收据一致、所有文件逐 SHA 验证且无新增／修改／链接文件后执行。1311 个旧产物（132236382 字节）及临时目录3文件已移入回收站，原路径消失；回收站内1311个文件与归档再次逐SHA核对一致，未清空回收站，可恢复。A6000副本、项目入口与代码未删除。前述永久删除的策略拒绝保留为历史事件，不能据此推断所有清理均被禁止；具体拒绝规则仍未知。
+
+收据 scratch/rl-platform/laptop-artifact-migration-20261006/cleanup-recycle-20261006.json；交付报告及delivery.json已补记当前状态。本批只更新事实文档，无生产模型／Replay／默认配置／现场进程变化。
