@@ -496,3 +496,13 @@ Outputs/preonline-delivery-package-20261005 containsREPORT, manifest/delivery, s
 代码9b7601e73b829fcf0d695a46ae2c15aeca482523提交push，隔离分支串行快进；A6000两目录495通过/61既有warning，Cobot实际Python3.10 CPU专项15通过，630源文件SHA一致。Cobot同步前623文件无冲突，备份旧bootstrap/MIGRATION/release及新增7文件清单保留。没有现场GPU/model加载、服务启停、运动、生产Replay/权重/默认/固定上游修改。原31Stage1资产、5k资产及生产Replay/录制原件身份复核不变；实际web970937/RLT offline/recorder idle，自有CPU任务已退出。
 
 outputs/erlt-reference-review-20261006/保存REPORT、两份实际训练曲线、分路图、实际命令/配置/SHA、原失败、回退和独立现场验收prompt。固定5k仍为基线，没有新Actor通过联合保持或独立自主改善；可准备受控冻结真机验收，直接持续Online能力仍证据不足。本节是事实记录，正式操作流程未改，guide仅事实摘要、不提交guide Git。
+
+## 2026-10-06：异步 Reference 对应修复与 HIL／采样／预算对照
+
+用户授权自动尝试截图中的加速和采样/HIL建议。本批CPU4、独立工作区，原固定5k完整状态与既有缓存数据私有续训18组：保留HIL/rollout-HIL来源改RL/互斥四池各25%各三种子1000Critic/500Actor；同8个历史Online Episode新增119窗口的预算1/2/5各三种子119/238/595Critic。来源重标不改变Critic直接更新，却改变Actor的BC/delta目标；旧6条辅助开发Episode拟合变差。四池相对均匀改善开发拟合，但专家相对退化、原5k夹爪保持仍失败；较低预算减轻部分夹爪退化而有取舍。无独立测试或Actor晋升，生产采样/预算/权重未改。
+
+确定代码错误：异步队列保留旧动作/版本/来源时未保留对应旧Reference，RTC开关均复现。修复完整action/ref/version/source前缀，覆盖实际延迟0/2/4；不能据此归因旧同步Online表现。新增默认关闭async20_no_rtc_no_smoothing并支持显式诊断CLI，default仍faithful20，replan5/delay4，不冒称第8步整chunk预取。真实墙钟/合成80/120/180ms特征延迟原生执行9格各30步，异步约20Hz；无真实模型/机器人动态/任务成功。
+
+代码f5f11f5c32222270cdb3f083012c1a51ec525194已串行提交push，A6000两目录503通过/61既有warning，Cobot实际Python3.10 CPU29通过；630文件旧源无冲突核验后同步4文件，保留runtime/verification/acceleration-hil-ablation-20261006/pre-sync-source.tar.gz。原5k三资产与生产Replay SHA复核不变。现场挂载已恢复、模型目录存在，但网页8015只读查询连接被拒绝；旧PID/旧上线结果不是当前运行证据。没有现场GPU/模型加载/服务启停/运动或生产Replay/default/fixedupstream变化。
+
+outputs/acceleration-hil-ablation-20261006保存REPORT、5图、18组真实状态/曲线/采样身份、完整Episode bootstrap、命令/配置/SHA、失败尝试及独立现场prompt。私有脚本错误数字RL=4在发现后终止自有worker，保留原尝试并改用真实枚举RL=1重跑，未进生产。软件与静态同步已验证；冻结真机与持续Online仍证据不足。本节只记事实，正式RUNBOOK流程未改，guide只追加事实摘要、不提交guide Git。
