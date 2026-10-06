@@ -517,3 +517,7 @@ outputs/acceleration-hil-ablation-20261006保存REPORT、5图、18组真实状�
 A6000 CPU：直接相关88项通过；9个新增回归在基线均失败、修复后通过。全量383通过，19失败与同环境基线374通过/19失败的失败集合完全一致（缺少openpi/lerobot与Stage1 Orbax环境版本不匹配），没有新增失败，不声称全量全绿。证据：scratch/rl-platform/trace-writer-lifecycle-20261006/pytest-{reproduction,terminal-session,baseline,fixed}.txt。
 
 16:14故障轮次metrics记载transitions_written=0，日志Learner disabled，不能将其计作训练样本或已学习轮次。部署同步与实际运行切换另记；本批不补写历史pending标签，也不启动真机Episode。
+
+现场交付：修复4ce0a88已push，锁内确认Frozen runtime退出、录制idle后仅同步4个文件，全清单630文件SHA一致，15个ROS/相机/机械臂/web/Stage1进程身份在同步前后相同。Cobot冻结online Python3.10的14项trace终结测试全部通过。
+
+用户随后自行重新加载Warmup5k（16:25:44，supervisor PID83992）；本会话恢复调用的前置检查发现已有新加载，未发送POST、未停止其进程。16:26:04后只读确认新运行ready/disarmed/policy_paused=true、Session未开始、step0、录制idle、Learner disabled，Actor2500。此为启动及离线收尾回归验收，尚未替用户进行修复后的真机success/failure轮次。没有网页/硬件重启或机器人动作。现场证据runtime/verification/trace-writer-lifecycle-20261006，A6000证据scratch/rl-platform/trace-writer-lifecycle-20261006；历史pending trace未改写。
