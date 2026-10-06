@@ -38,7 +38,7 @@ RLT_CONFIG="$ROOT/configs/rlt/plug_v3_yyshadow/online_rl.yaml"
 [[ "$MODE" == frozen ]] && RLT_CONFIG="$ROOT/configs/rlt/plug_v3_yyshadow/online_rl_frozen.yaml"
 # Optional project-owned experiment; original model registrations stay unchanged.
 EXPERIMENT_RUN=""
-unset COBOT_RLT_EXPERIMENT_PROFILE
+unset COBOT_RLT_EXPERIMENT_PROFILE COBOT_RLT_SUPPORTED_PROFILE
 profile_values=""
 if [[ "$MODE" == online ]]; then
   profile_values=$(PYTHONPATH="$ROOT" /usr/bin/python3 -m integrations.cobot_runtime.experiment_profiles "${COBOT_DEPLOYMENT_MODEL_ID:-}")
@@ -50,6 +50,27 @@ if [[ -n "$profile_values" ]]; then
   RLT_CONFIG="${profile_fields[1]}"
   EXPERIMENT_RUN="${profile_fields[2]}"
   mkdir -p "$EXPERIMENT_RUN/online/metrics"
+fi
+# Optional trusted supported candidate. No legacy defaults are replaced.
+if [[ "$MODE" == online ]]; then
+  supported_values=$(PYTHONPATH="$ROOT" /usr/bin/python3 -m integrations.cobot_runtime.supported_selection "${COBOT_DEPLOYMENT_MODEL_ID:-}")
+  if [[ -n "$supported_values" ]]; then
+    [[ -z "${COBOT_RLT_BRANCH_CONFIG:-}" && -z "${COBOT_RLT_EXPERIMENT_PROFILE:-}" && -z "${COBOT_RLT_ONLINE_SEED:-}" ]] || { echo "Supported candidate cannot inherit another branch/seed/profile" >&2; exit 2; }
+    mapfile -t supported_fields <<< "$supported_values"
+    export COBOT_RLT_SUPPORTED_PROFILE="${supported_fields[0]}"
+    RLT_CONFIG="${supported_fields[1]}"
+    EXPERIMENT_RUN="${supported_fields[2]}"
+    export COBOT_RLT_EXECUTION_PROFILE=async_rtc50
+    export COBOT_RLT_HOLD_RIGHT_GRIPPER=1
+    export COBOT_RLT_REPLAY_ACTION_PRECISION=float32
+    export COBOT_RLT_HIL_SAMPLING=logical20
+    export COBOT_RLT_HIL_TARGET=coordinator_command
+    export COBOT_RLT_RAW_OBSERVATION_CONTRACT=trace
+    export COBOT_RLT_INPUT_AUDIT=strict
+    export COBOT_RLT_DIAGNOSTIC_METRICS=0
+  fi
+else
+  unset COBOT_RLT_SUPPORTED_PROFILE
 fi
 # An explicit fixed-step collection load forks complete learner state. Rebuilds
 # reuse the same branch; the original 5k checkpoint is never a write target.
@@ -238,6 +259,21 @@ export RLT_OUTPUT_DIR="${EXPERIMENT_RUN:-$RUN}/online"
 export COBOT_RLT_LEARNER_STATUS_PATH="$RLT_OUTPUT_DIR/metrics/learner_status.json"
 export COBOT_RLT_REPLAY_URL=http://127.0.0.1:9132
 export COBOT_RLT_ACTOR_URL=http://127.0.0.1:9131
+# Optional candidate ports are distinct from the original coordination ports.
+if [[ -n "${COBOT_RLT_SUPPORTED_PROFILE:-}" ]]; then
+  candidate_urls=$("$ONLINE_PY" - "$RLT_CONFIG" <<'PYCANDIDATEURL'
+import sys,yaml
+runtime=yaml.safe_load(open(sys.argv[1]))['runtime']
+for name in ['replay','actor_service']:
+ value=runtime[name]
+ if value['bind_host']!='127.0.0.1':raise SystemExit('Candidate services must be loopback-only')
+ print('http://127.0.0.1:'+str(value['port']))
+PYCANDIDATEURL
+)
+  mapfile -t candidate_url_fields <<< "$candidate_urls"
+  export COBOT_RLT_REPLAY_URL="${candidate_url_fields[0]}"
+  export COBOT_RLT_ACTOR_URL="${candidate_url_fields[1]}"
+fi
 export COBOT_RLT_CONTROL_HZ=20
 export COBOT_RLT_CHUNK_EXEC_HORIZON=10
 export COBOT_RLT_JOINT_STEP_LIMIT=0.03

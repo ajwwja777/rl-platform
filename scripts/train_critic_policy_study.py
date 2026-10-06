@@ -28,6 +28,8 @@ def main():
     parser.add_argument('--updates', type=int, default=2000)
     parser.add_argument('--seeds', default='41,42,43')
     parser.add_argument('--retention-weight', type=float, default=0.)
+    parser.add_argument('--actor-lr', type=float)
+    parser.add_argument('--held-gripper', action='store_true')
     parser.add_argument('--variants', default='0:0.1,0.3:0.1,0:0,0.3:0')
     args = parser.parse_args()
     if args.output.exists(): parser.error('Use a fresh output directory')
@@ -94,9 +96,15 @@ def main():
     assert all(data['raw_verified'][groups[k]].all() for k in train_keys|dev_keys if k[0])
     payload = pickle.loads(checkpoint.read_bytes())
     config = dict(payload['rl_config'], action_norm_stats_path=str(norm))
+    if args.actor_lr is not None:
+        if args.actor_lr<=0: parser.error('Positive Actor learning rate required')
+        config['actor_lr']=args.actor_lr
     cfg = RLTOnlineRLConfig(**config)
     adapter = ActionRepresentationAdapter.from_config(cfg)
     actor, critic = trainer._make_networks(cfg)
+    if args.held_gripper:
+        from methods.openpi_rlt.experiments.held_gripper import HeldGripperCritic
+        critic = HeldGripperCritic(critic,float(adapter.stats.q01[6]),float(adapter.stats.q99[6]))
     initial = trainer.RLTTrainState(**{k:trainer._tree_to_jax(v) for k,v in payload['state'].items()}, actor_tx=optax.adam(cfg.actor_lr), critic_tx=optax.adam(cfg.critic_lr))
     assert int(initial.global_step) == 5000 and int(initial.actor_version) == 2500
     observed, integrity = reconstruct_observed_returns(data, cfg.gamma)
@@ -173,8 +181,8 @@ def main():
     report = dict(status='running',source_sha256=sources,script_sha256=sha(Path(__file__)),code_head=os.popen('git -C '+str(ROOT)+' rev-parse HEAD').read().strip(),actual_config=config,devices=[str(d) for d in jax.devices()],seeds=args.seeds,updates=args.updates,batch_size=128,baseline=baseline,runs=[],
         train_episodes=[list(k) for k in sorted(train_keys)],dev_episodes=[list(k) for k in sorted(dev_keys)],training_records=len(train),development_records=sum(len(groups[k]) for k in dev_keys),excluded_wrong_prompt=[list(k) for k in sorted(excluded)],
         sampler=dict(strategy='stratified',recent_online_ratio=.4,warmup_demo_ratio=.3,human_intervention_ratio=.2,recent_episode_window=20),
-        retention_weight=args.retention_weight,retention_rows=int(retention.sum()),retention_boundary='Immutable initialActor predictions on old expert/autonomous-success training Episodes only; same dropout and sample RNG. No DEV/old6 teacher data in gradients.',
-        comparison='Matched TD/MC0.3 x current Actor Q0.1/0; same initial full5k state, seed, sampler indices, BC5/delta10, lr1e-4, budget. Q0 retains historical Adam momentum; it disables current Q gradients only.',
+        held_gripper=args.held_gripper,retention_weight=args.retention_weight,retention_rows=int(retention.sum()),retention_boundary='Immutable initialActor predictions on old expert/autonomous-success training Episodes only; same dropout and sample RNG. No DEV/old6 teacher data in gradients.',
+        comparison='Matched opt-in held-gripper/MC/Actor-Q study; same initial full5k state, seed, sampler indices, BC5/delta10, lr1e-4, budget. Q0 retains historical Adam momentum; it disables current Q gradients only.',
         selection='Fixed final2000 budget; intermediate500/1000 are learning-curve diagnostics, not independent selections. No production checkpoint promotion.',
         limitations=['All Warmup including development was seen by initial5k. All evaluation partitions are repeatedly reused development; independent test is absent.','Observed behavior returns include HIL. MC is off-policy observed credit, not autonomous value, corrected rewards, or proof human actions are optimal.','HIL endpoint is an unexecuted hybrid for mixed windows. Pure-HIL recorded chunks are reported separately. Actor replayed now is not the historical proposal.','Targets use verified raw feedback where available, otherwise stored archive actions. Received/executed HIL command optimality is not established.','Window slots can overlap within one Episode; confidence intervals must use complete Episode clusters, never independent windows.','Wrong-prompt3/7 excluded from continuation, but initial5k already saw them. Cached CPU feature study does not validate moved-target visual generalization or real-time execution.'])
     save('study.json',report)
@@ -201,7 +209,7 @@ def main():
             folder=args.output/'research_checkpoints'/('%s_seed%d'%(variant,seed)); folder.mkdir(parents=True)
             path=folder/'state.pkl'
             with path.open('wb') as stream:
-                pickle.dump(dict(research_only=True,initial_sha256=sources[str(checkpoint)],rl_config=dict(config,online_q_weight=qw),experiment=dict(mc_weight=weight,actor_q_weight=qw,retention_weight=args.retention_weight,retention_dimensions=list(range(6)),teacher_checkpoint=str(checkpoint),resume_boundary='Native state is preserved; exact continuation requires the same private MC/active6 retention helper and immutable teacher. No production/native-default resume is certified.'),state={k:trainer._tree_to_numpy(getattr(state,k)) for k in payload['state']}),stream)
+                pickle.dump(dict(research_only=True,initial_sha256=sources[str(checkpoint)],rl_config=dict(config,online_q_weight=qw),experiment=dict(held_gripper=args.held_gripper,mc_weight=weight,actor_q_weight=qw,retention_weight=args.retention_weight,retention_dimensions=list(range(6)),teacher_checkpoint=str(checkpoint),resume_boundary='Native state is preserved; exact continuation requires the same private MC/active6 retention helper and immutable teacher. No production/native-default resume is certified.'),state={k:trainer._tree_to_numpy(getattr(state,k)) for k in payload['state']}),stream)
             report['runs'].append(dict(seed=seed,variant=variant,mc_weight=weight,actor_q_weight=qw,learner_step=int(state.global_step),actor_version=int(state.actor_version),elapsed_sec=time.time()-started,index_sha256=hashlib.sha256(indices.tobytes()).hexdigest(),curve=curve,evaluation=curve[-1]['evaluation'],checkpoint=str(path),checkpoint_sha256=sha(path),critic_draws=int(counts.sum()),actor_draws=int(acounts.sum()),actual_recent_ratio=float(counts[recent].sum()/counts.sum()),actual_online_ratio=float(counts[phase==2].sum()/counts.sum()),actual_warmup_ratio=float(counts[phase==1].sum()/counts.sum()),actual_hil_pool_ratio=float(counts[human_pool].sum()/counts.sum()),per_record_draws_file='indices_seed%d.npy'%seed))
             save('study.json',report)
     assert sources=={p:sha(Path(p)) for p in sources}

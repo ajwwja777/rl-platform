@@ -20,11 +20,16 @@ def main():
     mode.add_argument("--enable", action="store_true")
     mode.add_argument("--disable", action="store_true")
     parser.add_argument("--trace-root", type=Path)
+    parser.add_argument("--model-id", default="plug-v3-warmup-5k")
     parser.add_argument("--check-only", action="store_true")
     parser.add_argument("--status-url", default="http://127.0.0.1:8015/api/deployment/status")
     args = parser.parse_args()
     if args.enable and (args.trace_root is None or not args.trace_root.is_absolute()):
         parser.error("Enabling requires an absolute independent --trace-root")
+    from integrations.cobot_runtime.supported_selection import row_for
+    model = row_for(args.model_id)
+    if model.get("kind") != "rlt" or model.get("mode") != "frozen":
+        parser.error("Diagnostic settings require a registered frozen RLT model")
     with build_opener(ProxyHandler({})).open(args.status_url, timeout=10) as response:
         status = json.load(response)
     # Actual activity, never stale ready_confirmed from an earlier load.
@@ -32,7 +37,7 @@ def main():
         parser.error("Release the model runtime first; active/unknown runtime rejected")
     if status.get("phase") not in {"offline", "released"}:
         parser.error("Deployment phase must be offline/released")
-    value = dict(schema_version=1, enabled=args.enable, model_id="plug-v3-warmup-5k",
+    value = dict(schema_version=1, enabled=args.enable, model_id=args.model_id,
                  trace_root=str(args.trace_root.resolve()) if args.trace_root else None,
                  purpose="diagnostic_development", images_retained=False,
                  learning_allowed=False, replay_allowed=False)

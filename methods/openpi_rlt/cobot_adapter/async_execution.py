@@ -33,6 +33,7 @@ class AsyncExecution:
         self.epoch, self.request_id = 0, 0
         self.future, self.pending, self.plan = None, None, None
         self.anchors = {}
+        self.anchor_inputs = {}
         self.inference_events = []
         self.evidence_lock = threading.Lock()
         self.plan_event_id = 0
@@ -64,6 +65,7 @@ class AsyncExecution:
     def set_episode(self, episode_id):
         self.invalidate()
         self.anchors.clear()
+        self.anchor_inputs.clear()
         with self.evidence_lock:
             self.inference_events.clear()
         for key in ("inference_requests","stale_results","emitted_commands"):
@@ -195,6 +197,8 @@ class AsyncExecution:
             np.full((len(plan.action_chunk),1),plan.source,np.float32)], -1))
         self.plan = plan
         self.anchors[self.env._episode_steps] = plan.start_features
+        from .input_audit import observation_receipt
+        self.anchor_inputs[self.env._episode_steps] = observation_receipt(request)["sha256"]
         self.segment_start = self.env._state(observation).copy()
         self.last_command = self.segment_start.copy()
         self.last_ref = self.segment_start.copy()
@@ -219,7 +223,8 @@ class AsyncExecution:
                                   execution_horizon=self.config.max_delay_steps+1)
         else:
             request.pop('rtc', None)
-        self.pending = (self.epoch, snapshot, self.env._episode_steps)
+        from .input_audit import observation_receipt
+        self.pending = (self.epoch, snapshot, self.env._episode_steps, observation_receipt(request)["sha256"])
         self.future = self.pool.submit(self.diagnostic_plan, request, self.env._episode_steps)
         self.stats['inference_requests'] += 1
 
@@ -232,7 +237,7 @@ class AsyncExecution:
             self.stats['stale_results'] += 1
             return
         plan = future.result()
-        _, snapshot, step = pending
+        _, snapshot, step, input_identity = pending
         actions = np.asarray(plan.action_chunk, np.float32).copy()
         # Actor is downstream of RTC Reference. Preserve the committed prefix
         # after Actor refinement so it cannot undo inpainting's fixed actions.
@@ -260,6 +265,7 @@ class AsyncExecution:
                                                self.config.max_delay_steps, bundle)
         self.plan = plan
         self.anchors[step] = plan.start_features
+        self.anchor_inputs[step] = input_identity
         self.stats['last_actual_delay_steps'] = delay
 
     def wait_until(self, timestamp):

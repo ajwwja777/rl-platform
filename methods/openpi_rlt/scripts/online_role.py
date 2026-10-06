@@ -35,7 +35,8 @@ def main() -> None:
         raise FileNotFoundError(f"invalid fixed upstream root: {upstream_root}")
 
     project_root = Path(__file__).resolve().parents[3]
-    for path in (project_root, runtime_src):
+    client_src = upstream_root / "packages" / "openpi-client" / "src"
+    for path in (project_root, runtime_src, client_src):
         if str(path) not in sys.path:
             sys.path.insert(0, str(path))
 
@@ -52,7 +53,13 @@ def main() -> None:
     sys.argv = [str(runner), *upstream_args]
     try:
         profile = os.environ.get("COBOT_RLT_EXPERIMENT_PROFILE")
-        if profile:
+        supported = os.environ.get("COBOT_RLT_SUPPORTED_PROFILE")
+        if supported and profile:
+            raise ValueError("Choose one candidate learner profile")
+        if supported:
+            from methods.openpi_rlt.experiments.supported_runtime import run_registered
+            run_registered(upstream_root, upstream_args, supported)
+        elif profile:
             from methods.openpi_rlt.experiments.runtime import run_registered
             run_registered(upstream_root, upstream_args, profile)
         else:

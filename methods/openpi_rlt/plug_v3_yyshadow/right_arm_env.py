@@ -29,6 +29,10 @@ def validate_plug_task_environment(environment: Mapping[str, str]) -> None:
 class RightArmPolicyRuntime(Task2PolicyRuntime):
     """Keep the existing takeover reducer while enforcing one 7D command."""
 
+    def __init__(self, *args, hold_gripper=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._hold_right_gripper = bool(hold_gripper)
+
     def control_source(self, policy_source: ControlSource | int) -> ControlSource:
         source = ControlSource(policy_source)
         # Only the right rear arm is an expert for this single-right-arm task.
@@ -52,7 +56,7 @@ class RightArmPolicyRuntime(Task2PolicyRuntime):
             raise
         delta = target - measured
         delta[:6] = np.clip(delta[:6], -self._joint_step_limit, self._joint_step_limit)
-        delta[6] = np.clip(delta[6], -self._gripper_step_limit, self._gripper_step_limit)
+        delta[6] = 0. if self._hold_right_gripper else np.clip(delta[6], -self._gripper_step_limit, self._gripper_step_limit)
         return np.asarray(measured + delta, dtype=np.float32)
 
     @staticmethod
@@ -96,9 +100,11 @@ class RightArmRosTask2IO(RosTask2IO):
 class RightArmCobotOnlineEnv(CobotOnlineEnv):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
+        from integrations.cobot_runtime.supported_selection import hold_gripper
         self._runtime = RightArmPolicyRuntime(
             joint_step_limit=float(kwargs["joint_step_limit"]),
             gripper_step_limit=float(kwargs["gripper_step_limit"]),
+            hold_gripper=hold_gripper(),
         )
 
     @staticmethod

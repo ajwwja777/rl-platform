@@ -65,7 +65,10 @@ def evaluation_trace_writer():
             if value.get("enabled") is True:
                 if value.get("schema_version") != 1:
                     raise ValueError("Unsupported evaluation diagnostic settings schema")
-                if value.get("model_id") != "plug-v3-warmup-5k" or value.get("model_id") != os.environ.get("COBOT_DEPLOYMENT_MODEL_ID"):
+                from .supported_selection import row_for
+                selected = value.get("model_id")
+                model = row_for(selected)
+                if model.get("kind") != "rlt" or model.get("mode") != "frozen" or selected != os.environ.get("COBOT_DEPLOYMENT_MODEL_ID"):
                     raise ValueError("Evaluation diagnostic model does not match selection; disable or correct settings")
                 configured = str(value["trace_root"]).strip()
                 if not configured:

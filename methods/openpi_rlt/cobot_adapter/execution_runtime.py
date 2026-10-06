@@ -71,9 +71,22 @@ def install():
         engine = driver._env._execution
         for step, features in list(engine.anchors.items()):
             if step < len(raw_episode.steps):
-                driver._record_feature_anchor(raw_episode, raw_episode.steps[step].observation_idx, features)
+                from .input_audit import observation_receipt
+                index = raw_episode.steps[step].observation_idx
+                actual = observation_receipt(raw_episode.observations[index])["sha256"]
+                planned = engine.anchor_inputs.get(step)
+                # Same proprio is insufficient: RTC prefix/delay, RGB and prompt
+                # belong to the actual model input too. Unknown/mismatched cached
+                # inputs are recomputed by the native feature provider at finalize.
+                if planned == actual:
+                    driver._record_feature_anchor(raw_episode, index, features)
+                raw_episode.summary.setdefault("async_feature_anchor_receipts", []).append(
+                    dict(step=int(step), observation_index=int(index),
+                         planned_input_sha256=planned, actual_input_sha256=actual,
+                         reused=planned == actual))
                 raw_episode.policy_start_steps.append(step)
                 del engine.anchors[step]
+                engine.anchor_inputs.pop(step, None)
         return result
 
     def close(driver):
