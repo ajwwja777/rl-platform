@@ -42,6 +42,12 @@ class AsyncExecution:
                           rtc_training_data=profile.rtc, smoothing=profile.smoothing_tau_sec > 0)
         self.timeline_origin = None
         self.publication_index = 0
+        self.clock_shift_sec = 0.
+        self.clock_window = None
+        self.clock_window_shift_sec = 0.
+        self.last_publish_started = None
+        self.minimum_publication_time = None
+        self.last_wait_deadline = None
         self.segment_start = self.last_command = self.last_ref = None
         self.segment_ref_start = None
 
@@ -55,6 +61,12 @@ class AsyncExecution:
         self.plan = None
         self.timeline_origin = None
         self.publication_index = 0
+        self.clock_shift_sec = 0.
+        self.clock_window = None
+        self.clock_window_shift_sec = 0.
+        self.last_publish_started = None
+        self.minimum_publication_time = None
+        self.last_wait_deadline = None
         self.segment_ref_start = None
 
     def close(self):
@@ -68,7 +80,9 @@ class AsyncExecution:
         self.anchor_inputs.clear()
         with self.evidence_lock:
             self.inference_events.clear()
-        for key in ("inference_requests","stale_results","emitted_commands"):
+        for key in ("inference_requests","stale_results","emitted_commands",
+                    "deadline_misses","clock_rebases","clock_shift_ms",
+                    "max_deadline_lateness_ms"):
             self.stats[key] = 0
         self.last_policy_source = ControlSource.BASE
         self.backend.episode_id = episode_id
@@ -268,18 +282,56 @@ class AsyncExecution:
         self.anchor_inputs[step] = input_identity
         self.stats['last_actual_delay_steps'] = delay
 
+    def _shift_clock(self, seconds):
+        if seconds <= 1e-9:
+            return
+        # Bound slowdown within each logical C10 chunk, rather than accepting
+        # indefinitely slow hardware. No training-time or logical-step change.
+        window = self.env._episode_steps // self.env._chunk_exec_horizon
+        if window != self.clock_window:
+            self.clock_window = window
+            self.clock_window_shift_sec = 0.
+        self.clock_window_shift_sec += seconds
+        if self.clock_window_shift_sec >= 1/self.config.logical_hz - 1e-9:
+            raise RuntimeError(
+                'Execution clock missed its deadline; no catch-up command burst; '
+                f'cumulative_shift_ms={self.clock_window_shift_sec*1000:.1f}, '
+                f'window_logical_steps={self.env._chunk_exec_horizon}, '
+                f'publish_hz={self.config.publish_hz}, logical_step={self.env._episode_steps}')
+        self.clock_shift_sec += seconds
+        self.stats['clock_rebases'] = self.stats.get('clock_rebases', 0)+1
+        self.stats['clock_shift_ms'] = self.clock_shift_sec*1000
+        self.stats['clock_window_shift_ms'] = self.clock_window_shift_sec*1000
+
     def wait_until(self, timestamp):
-        remaining = timestamp-self.clock()
+        deadline = timestamp+self.clock_shift_sec
+        # A late command must never compress the next physical interval. The
+        # logical boundary itself is not a publication and has no such floor.
+        if self.minimum_publication_time is not None:
+            spacing_shift = max(0., self.minimum_publication_time-deadline)
+            self._shift_clock(spacing_shift)
+            deadline += spacing_shift
+        remaining = deadline-self.clock()
         if remaining > 0:
             self.env._sleep(remaining)
-        elif remaining < -.5/self.config.publish_hz:
-            self.stats['last_deadline_lateness_ms'] = -remaining * 1000
+        # Recheck AFTER sleep too; OS descheduling used to bypass the guard.
+        lateness = max(0., self.clock()-deadline)
+        self.stats['last_deadline_lateness_ms'] = lateness*1000
+        self.stats['max_deadline_lateness_ms'] = max(
+            self.stats.get('max_deadline_lateness_ms', 0.), lateness*1000)
+        if lateness > .5/self.config.publish_hz:
+            self.stats['deadline_misses'] = self.stats.get('deadline_misses', 0)+1
+        if lateness >= 1/self.config.logical_hz - 1e-9:
             raise RuntimeError(
-                f'Execution clock missed its deadline; no catch-up command burst; '
-                f'late_ms={-remaining*1000:.1f}, publish_hz={self.config.publish_hz}, '
+                'Execution clock missed its deadline; no catch-up command burst; '
+                f'late_ms={lateness*1000:.1f}, publish_hz={self.config.publish_hz}, '
                 f'logical_step={self.env._episode_steps}')
+        # Bounded jitter shifts future deadlines. Do not burst delayed targets,
+        # skip logical transitions, consume extra RTC rows, or invent commands.
+        self._shift_clock(lateness)
+        self.last_wait_deadline = deadline+lateness
 
-    def wait_active(self, timestamp, epoch):
+    def wait_active(self, timestamp, epoch, *, publication=False):
         # Pause/HIL invalidates the old timeline. Check authority BEFORE its
         # deadline: an operator interruption is not a publisher overrun.
         def active():
@@ -296,6 +348,9 @@ class AsyncExecution:
             return True
         if not active():
             return False
+        self.minimum_publication_time = (
+            self.last_publish_started+1/self.config.publish_hz
+            if publication and self.last_publish_started is not None else None)
         try:
             self.wait_until(timestamp)
         except RuntimeError:
@@ -304,6 +359,8 @@ class AsyncExecution:
             if not active():
                 return False
             raise
+        finally:
+            self.minimum_publication_time = None
         return active()
 
     def execute_chunk(self, observation=None, policy_planner=None, control_hz=None):
@@ -378,8 +435,10 @@ class AsyncExecution:
                     interval_origin = self.timeline_origin
                     interval_index = self.publication_index
                     for timestamp, alpha in self.events(self.publication_index, 20, self.config.publish_hz):
-                        if not self.wait_active(interval_origin+timestamp, epoch):
+                        if not self.wait_active(interval_origin+timestamp, epoch, publication=True):
                             break
+                        effective_deadline = self.last_wait_deadline
+                        sample_started = float(self.clock())
                         check = self.sample()
                         checked = runtime.observe_mode(check.mode)
                         if check.outcome is not None or check.paused or checked.phase is not EpisodePhase.ROLLOUT:
@@ -388,6 +447,7 @@ class AsyncExecution:
                             break
                         if epoch != self.epoch:
                             break
+                        sample_finished = float(self.clock())
                         requested = self.segment_start + alpha*(target-self.segment_start)
                         filtered = self.filter.apply(requested, env._state(check.observation), 1/self.config.publish_hz)
                         # Gripper is not EMA filtered. Its physical velocity
@@ -397,8 +457,22 @@ class AsyncExecution:
                             self.config.gripper_velocity_limit/self.config.publish_hz)
                         command = runtime.safe_policy_target(filtered, env._state(check.observation))
                         publish_started = float(self.clock())
+                        preparation_lateness = max(0., publish_started-effective_deadline)
+                        # Control sampling/filtering can itself be descheduled.
+                        # Enforce the same bound before any stale command sends.
+                        if preparation_lateness >= 1/self.config.logical_hz - 1e-9:
+                            raise RuntimeError(
+                                'Execution clock missed its deadline; no catch-up command burst; '
+                                f'late_ms={preparation_lateness*1000:.1f}, '
+                                f'publish_hz={self.config.publish_hz}, logical_step={env._episode_steps}; '
+                                'control preparation exceeded budget')
+                        self._shift_clock(preparation_lateness)
+                        self.stats['last_control_sample_ms'] = (sample_finished-sample_started)*1000
+                        self.stats['last_target_prepare_ms'] = (publish_started-sample_finished)*1000
                         accepted = io.publish_policy_action(command)
                         publish_finished = float(self.clock())
+                        self.last_publish_started = publish_started
+                        self.stats["last_publish_duration_ms"] = (publish_finished-publish_started)*1000
                         if accepted is False:
                             io.set_chunk_ready(False)
                             self.invalidate()
@@ -412,9 +486,14 @@ class AsyncExecution:
                         self.last_ref = self.segment_ref_start + alpha*(ref_target-self.segment_ref_start) if hasattr(self,'segment_ref_start') else ref_target.copy()
                         publications.append(dict(timestamp=float(io.ros.Time.now().to_sec()) if hasattr(getattr(io,'ros',None),'Time') else float(check.timestamp),
                                                  monotonic_timestamp=publish_finished, action=command.copy(),
-                                                 scheduled_monotonic=float(interval_origin+timestamp),
+                                                 scheduled_monotonic=float(effective_deadline),
+                                                 nominal_scheduled_monotonic=float(interval_origin+timestamp),
+                                                 clock_shift_sec=float(self.clock_shift_sec),
                                                  publish_started_monotonic=publish_started,
                                                  publish_finished_monotonic=publish_finished,
+                                                 control_sample_ms=(sample_finished-sample_started)*1000,
+                                                 target_prepare_ms=(publish_started-sample_finished)*1000,
+                                                 publish_duration_ms=(publish_finished-publish_started)*1000,
                                                  feedback_received_monotonic=check.received_monotonic,
                                                  feedback_state=env._state(check.observation).copy(),
                                                  execution_epoch=int(epoch),
@@ -488,7 +567,9 @@ class AsyncExecution:
                 if hil_command_receipt is not None:
                     record['action_semantics'] = 'coordinator_command_at_step_start'
                 trace.append(record); rewards.append(reward)
+                record_started = float(self.clock())
                 io.record_raw_step(record)
+                self.stats["last_record_step_ms"] = (self.clock()-record_started)*1000
                 current = next_observation
                 if outcome is not None:
                     break

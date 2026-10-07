@@ -438,3 +438,109 @@ def test_diagnostic_records_queue_proposal_not_filtered_command_and_real_schedul
         assert row["sample_received_monotonic"] >= row["publications"][-1]["publish_finished_monotonic"]
     finally:
         engine.close()
+
+
+@pytest.mark.parametrize("hz", [20, 30, 40, 50])
+def test_small_active_jitter_rebases_without_compressed_publications(monkeypatch, hz):
+    engine, env, io, clock = setup(monkeypatch, hz)
+    original = engine.wait_until
+    stalled = []
+    def jitter(timestamp):
+        if io.published and not stalled:
+            stalled.append(True)
+            clock.value = max(clock.value, timestamp+.011)
+        return original(timestamp)
+    engine.wait_until = jitter
+    try:
+        for _ in range(3):
+            _, rewards, done, info = env.execute_chunk(io.sample().observation)
+            assert not done and len(rewards) == 10
+        times = np.array([t for t, _ in io.published])
+        assert np.diff(times).min() >= 1/hz-1e-9
+        assert len(io.records) == 30
+        assert engine.stats["clock_shift_ms"] >= 11.-1e-6
+        for r in io.records:
+            np.testing.assert_array_equal(r["action"], r["publications"][-1]["action"])
+            assert all(p["publish_started_monotonic"] >= p["scheduled_monotonic"]-1e-9 for p in r["publications"])
+        assert [r["execution_epoch"] for r in io.records[0]["publications"]]
+    finally:
+        engine.close()
+
+
+def test_sleep_overshoot_is_checked_and_large_stall_stops(monkeypatch):
+    engine, env, io, clock = setup(monkeypatch, 50)
+    def stalled_sleep(dt):clock.value += dt+.2
+    env._sleep = stalled_sleep
+    try:
+        with pytest.raises(RuntimeError, match="late_ms=200"):
+            engine.wait_until(.02)
+        assert not io.published
+    finally:engine.close()
+
+
+def test_small_sleep_overshoot_is_rebased_and_not_burst(monkeypatch):
+    engine, env, io, clock = setup(monkeypatch, 50)
+    original = clock.sleep
+    def sleep(dt):
+        original(dt)
+        if not io.published:clock.value += .011
+    env._sleep = sleep
+    try:
+        env.execute_chunk(io.sample().observation)
+        assert np.diff([t for t, _ in io.published]).min() >= .02-1e-9
+        assert engine.stats["deadline_misses"] >= 1
+    finally:engine.close()
+
+
+def test_repeated_jitter_has_bounded_chunk_slowdown(monkeypatch):
+    engine, env, io, clock = setup(monkeypatch, 50)
+    original = engine.wait_until
+    def slow(timestamp):
+        clock.value = max(clock.value, timestamp+engine.clock_shift_sec+.011)
+        return original(timestamp)
+    engine.wait_until = slow
+    try:
+        with pytest.raises(RuntimeError, match="cumulative_shift_ms="):
+            env.execute_chunk(io.sample().observation)
+        assert len(io.records) < 10
+        assert io.pauses[-1]
+        assert np.diff([t for t, _ in io.published]).min() >= .02-1e-9
+    finally:engine.close()
+
+
+def test_control_preparation_stall_stops_before_stale_publication(monkeypatch):
+    engine, env, io, clock = setup(monkeypatch, 50)
+    original = engine.sample
+    def sample():
+        value = original()
+        if engine.minimum_publication_time is None and engine.last_wait_deadline is not None:
+            clock.value += .20
+        return value
+    engine.sample = sample
+    try:
+        with pytest.raises(RuntimeError, match="control preparation exceeded budget"):
+            env.execute_chunk(io.sample().observation)
+        assert not io.published
+        assert io.pauses[-1]
+    finally:engine.close()
+
+
+def test_receipts_split_control_preparation_publish_and_record_cost(monkeypatch):
+    engine, env, io, clock = setup(monkeypatch, 50)
+    original = io.publish_policy_action
+    def publish(action):
+        result = original(action)
+        clock.value += .001
+        return result
+    io.publish_policy_action = publish
+    try:
+        env.execute_chunk(io.sample().observation)
+        assert engine.stats['last_publish_duration_ms'] == pytest.approx(1.)
+        assert engine.stats['last_record_step_ms'] == pytest.approx(0.)
+        for row in io.records:
+            for receipt in row['publications']:
+                assert receipt['control_sample_ms'] >= 0
+                assert receipt['target_prepare_ms'] >= 0
+                assert receipt['publish_duration_ms'] == pytest.approx(1.)
+        assert np.diff([t for t, _ in io.published]).min() >= .02-1e-9
+    finally:engine.close()
