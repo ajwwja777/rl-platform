@@ -576,3 +576,10 @@ Follow-up reused external20 DEV:20Episodes/370windows(5autonomous/6assisted/9fai
 现场四次控制发布超时日志的直接触发为50 Hz下10.1–11.8 ms迟到；四次均关闭Learner，不能据此认定Online训练争用。原时钟只在sleep前检查且半周期迟到即退出。本批改为检查sleep后及发送前准备耗时、有限顺延后续截止时刻，保证不压缩物理发布间隔、不突发补发、不虚构Replay步。单次或每C10累计顺延达到50 ms仍停止；真实200 ms阻塞、暂停/HIL失效处理保留。实际发布时序允许有限漂移，并非硬实时保证。新增控制采样、目标准备、发布与记录耗时，以及nominal/effective时刻证据。
 
 相关完整CPU回归98 passed；补充准备停顿与耗时回执后，时钟专门回归39 passed。源修复5faacee；分析、原日志快照和保护清单在outputs/control-publish-timeout-20261007/。无模型、权重、归一化、生产Replay、训练参数或执行50Hz/RTC/滤波配置变更。真实Learner启用后的运行与持续发布需现场验证；只读现场与源码发布回执另存同目录，不由离线测试替代。
+
+
+### 2026-10-07 现场模块应用与再次超时核对
+
+用户之后启动的是supported-online，但15:46/15:47两次超时仍为旧现场模块295dfc5的10ms守卫（实际12.8/16.5ms）；先前修复处于等待释放，未进入新进程。再次核对七个Native角色及supervisor均退出、模型error且无活动操作/Session；Stage1 PID1763540/start_ticks8312842独立保留。模型操作锁下只替换已退休driver模块到7a46080，对应3766e0b源；不更改仍写入的独立录制、算法、权重或配置。现场实际模块CPU合成39 passed，profile绑定通过，两份新7k Actor和归一化SHA不变；无POST、服务启停、GPU前向或机器人动作。
+
+Learner快照仍7000/Actor3500/Replay2496/pending预算0，未取得新增学习进度。现有“收尾录制并恢复运行进程”可保留未标注记录、不入Replay并保留Stage1重建，需现场用户操作后观察实际新日志；不能把源码同步或CPU测试当作连续真机通过。详见outputs/control-publish-timeout-20261007/recurrent-timeout/REPORT.md和现场回执。
