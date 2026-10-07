@@ -569,3 +569,10 @@ Follow-up reused external20 DEV:20Episodes/370windows(5autonomous/6assisted/9fai
 新增可选冻结plug-v3-supported-7k及staged Online入口，原5k默认不改；UTD1、新入库预算从7000起、候选更新不自动发布。完整state/Adam/target/RNG恢复与原生Actor/冻结32输入CPU一致性通过（最大1.19e-7），Python3.11及冻结3.10的90专项测试通过。主产物outputs/supported-online-20261006/REPORT.md、delivery.json、profile/资产SHA；流程docs/SUPPORTED_ONLINE_DELIVERY.md已先展示拟写内容。
 
 边界：旧6 HIL拟合改善约5.45%，外部20整体Q校准区间跨零；独立TEST/位置泛化/自主Online增益为空；RTC真实Stage1误差与finalization开销未复验。现场只读GET旧5k仍ready，无启停/加载/运动/生产Replay变更，源码已实现不等于现场已切换。初版及_v2包有缺陷，交付仅_v3。
+
+
+## 2026-10-07：发布时钟对小迟到误报与 sleep 过冲漏检修复
+
+现场四次控制发布超时日志的直接触发为50 Hz下10.1–11.8 ms迟到；四次均关闭Learner，不能据此认定Online训练争用。原时钟只在sleep前检查且半周期迟到即退出。本批改为检查sleep后及发送前准备耗时、有限顺延后续截止时刻，保证不压缩物理发布间隔、不突发补发、不虚构Replay步。单次或每C10累计顺延达到50 ms仍停止；真实200 ms阻塞、暂停/HIL失效处理保留。实际发布时序允许有限漂移，并非硬实时保证。新增控制采样、目标准备、发布与记录耗时，以及nominal/effective时刻证据。
+
+相关完整CPU回归98 passed；补充准备停顿与耗时回执后，时钟专门回归39 passed。源修复5faacee；分析、原日志快照和保护清单在outputs/control-publish-timeout-20261007/。无模型、权重、归一化、生产Replay、训练参数或执行50Hz/RTC/滤波配置变更。真实Learner启用后的运行与持续发布需现场验证；只读现场与源码发布回执另存同目录，不由离线测试替代。
