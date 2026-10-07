@@ -610,3 +610,10 @@ A6000独立terminal-exposure分支完成同初7000参数/Adam/target/RNG、同�
 源57b378f在A6000独立分支提交push后，模型操作锁内仅同步Cobot已退出执行器async_execution.py，新SHAb04a782b。修复wait后重复反馈/滤波开销累计：插值/EMA提前，复用最新权限检查反馈，物理限速校验移到发送前；50ms单次/C10累计限制、无突发补发、50Hz/RTC/EMA和算法参数不变。故障日志保留未完成逻辑步已发命令及未知发送状态，不伪造Replay。
 
 新回归在基线4失败/2通过，A6000相关125通过、现场冻结Python3.10实际模块48通过。合成同负载旧40/50Hz早期超时，修复后四频率各120逻辑步通过；不等同现场50Hz或任务验收。同步前后Native已退出、recorder stopped/complete、Stage1 PID2073785/start8759073保持，配置/Actor/norm/Replay/checkpoint SHA一致；未恢复进程、加载模型/运动/GPU/发布权重。下一次由用户按既有入口恢复后验证。完整边界、命令、保护清单与回退原件见docs/audits/2026-10-07-publication-preparation.md及outputs/publication-preparation-20261007/。
+
+
+## 2026-10-07：Online离线恢复与Actor-only采样补证
+
+六臂CPU三配对seed各281Critic/140Actor；只改Actor recent51slots时新单条HIL拟合改善1.0–2.63%，前次Critic采样代价明显缩小，未接入生产或晋升。实际7281原生完整状态8vs4+4恢复逐叶一致，64状态原生推理差1.19e-7，预算0且合成新1/18/39窗只给相应新预算。实际3500/3640在20重复DEV370缓存状态CPU检查两次逐位一致；自主Q1行为回报代理变差、辅助p95微增，不能声称全面更好。18专项测试通过。
+
+served3500/Learner7281/pending3640保持，7项生产资产SHA不变。前次发布器b04a782b仍已安装，20:51运行退出/录制完成/Stage1保留；本批无现场POST、服务、GPU、运动或生产资产写入。允许交接首轮受控Online运行检查，非持续自主改善/自动Actor发布认证。详见docs/audits/2026-10-07-online-admission-closure.md及outputs/online-admission-closure-20261007/（3图、六候选、真实只读状态、指标、操作单、命令SHA）。

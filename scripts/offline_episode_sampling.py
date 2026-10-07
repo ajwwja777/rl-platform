@@ -50,7 +50,7 @@ def read_journal(path):
     return rows
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--assets',type=Path,required=True);parser.add_argument('--input',type=Path,required=True);parser.add_argument('--output',type=Path,required=True);parser.add_argument('--dev',type=Path,required=True);args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument('--assets',type=Path,required=True);parser.add_argument('--input',type=Path,required=True);parser.add_argument('--output',type=Path,required=True);parser.add_argument('--dev',type=Path,required=True);parser.add_argument('--actor-only',action='store_true');args=parser.parse_args()
     args.output = validate_output_path(args.output, args.assets)
     args.output.mkdir(parents=True,exist_ok=True)
     import jax,jax.numpy as jnp
@@ -69,6 +69,9 @@ def main():
     init=trainer.RLTTrainState(**{k:trainer._tree_to_jax(sp[k])for k in ['actor_params','target_actor_params','critic_params','target_critic_params','actor_opt_state','critic_opt_state','rng','global_step','actor_version']},actor_tx=dummy.actor_tx,critic_tx=dummy.critic_tx)
     adapter=ActionRepresentationAdapter.from_config(cfg);critic=HeldGripperCritic(native,float(adapter.stats.q01[6]),float(adapter.stats.q99[6]))
     train=make_retained_train_step(.3,trainer._tree_to_jax(teacher['actor_params']),50.)
+    if args.actor_only:
+        from methods.openpi_rlt.experiments.separate_actor_batch import with_separate_actor_batch
+        train=with_separate_actor_batch(train)
     rows=read_journal(args.assets/'replay/replay_journal.pkl')+read_journal(args.input/'new204-delta.pkl')+read_journal(args.input/'new77-delta.pkl');assert len(rows)==2777
     keys=['z_rl','proprio','ref_chunk','action_chunk','rewards','done','next_z_rl','next_proprio','next_ref_chunk','source_chunk','collection_phase_id','episode_id','step_id','success','source','intervention_flag']
     raw={k:np.stack([r[k]for r in rows])for k in keys};mc,return_reports=reconstruct_observed_returns(raw,.99);assert np.isfinite(mc).all()
@@ -78,7 +81,7 @@ def main():
     data['retention_mask']=np.asarray([k[:2]in retained for k in ids]);lookup={k:i for i,k in enumerate(ids)}
     states={f"{mode}_seed{seed}":init for seed in [41,42,43] for mode in ["window_recent","episode_recent"]}
     rngs={seed:np.random.default_rng(seed) for seed in [41,42,43]}
-    sampled_terminal={name:0 for name in states};sampled_hil={name:0 for name in states};evaluations={name:[] for name in states};sample_indices={name:[] for name in states}
+    sampled_terminal={name:0 for name in states};sampled_hil={name:0 for name in states};evaluations={name:[] for name in states};sample_indices={name:[] for name in states};critic_sample_indices={name:[] for name in states}
     arrivals=[];consumed=0
     for ep in dict.fromkeys(int(r['episode_id']) for r in rows[2496:]):
         count=sum(int(r['episode_id'])==ep for r in rows[2496:])
@@ -109,7 +112,9 @@ def main():
         nxt=forward(amean,state.target_actor_params,next_state=True);nq=forward(qvalue,state.target_critic_params,nxt,next_state=True)
         td=(raw['rewards']*(.99**np.arange(10))).sum(axis=1)+(~raw['done'])*(.99**10)*nq.min(axis=1);target=.7*td+.3*mc
         fit=((pred[...,:6]-bc[...,:6])**2).mean(axis=(1,2));change=((pred[...,:6]-old_pred[...,:6])**2).mean(axis=(1,2))
-        values={'BC6_mse':fit,'Q1_vs_behavior_return_mse':(q[:,0]-mc)**2,'mixed_target_residual_mse':((q-target[:,None])**2).mean(axis=1),'Q1_new_actor_minus_original_same_critic':qp[:,0]-qo[:,0],'actor6_change_mse':change}
+        physical_scale=(np.asarray(adapter.stats.q99[:6])-np.asarray(adapter.stats.q01[:6])+1e-6)/2
+        qref=forward(qvalue,state.critic_params,ref)
+        values={'Q1_behavior_minus_actor':q[:,0]-qp[:,0],'minQ_behavior_minus_actor':q.min(axis=1)-qp.min(axis=1),'Q1_behavior_minus_reference':q[:,0]-qref[:,0],'BC6_abs_p95_mrad':np.quantile(np.abs((pred[...,:6]-bc[...,:6])*physical_scale)*1000,.95,axis=(1,2)),'actor6_change_abs_p99_mrad':np.quantile(np.abs((pred[...,:6]-old_pred[...,:6])*physical_scale)*1000,.99,axis=(1,2)),'BC6_mse':fit,'Q1_vs_behavior_return_mse':(q[:,0]-mc)**2,'mixed_target_residual_mse':((q-target[:,None])**2).mean(axis=1),'Q1_new_actor_minus_original_same_critic':qp[:,0]-qo[:,0],'actor6_change_mse':change}
         result={'step':int(state.global_step),'actor_version':int(state.actor_version),'terminal_failure_q':q[terminal_index].tolist(),'terminal_target':float(target[terminal_index]),'all_failed_terminal_q':{str(int(raw['episode_id'][i])):q[i].tolist() for i in terminals},'groups':{}}
         for g,mask in masks.items():
             result['groups'][g]={k:float(np.mean([v[[i for i in ix if mask[i]]].mean()for ix in epgroups.values()if mask[ix].any()]))for k,v in values.items()}
@@ -135,14 +140,14 @@ def main():
         physical=err*scale;groups={};per_episode=[]
         for ep,ix in dev_eps.items():
             group='failure' if not dev_success[ix[0]] else ('assisted' if dev_assist[ix[0]] else 'autonomous')
-            per_episode.append(dict(phase=ep[0],episode=ep[1],group=group,bc6_mse=float((err[ix]**2).mean()),bc6_rmse_mrad=float(np.sqrt((physical[ix]**2).mean())*1000),bc6_abs_p95_mrad=float(np.quantile(np.abs(physical[ix]),.95)*1000),q1_behavior_mse=float(((q[ix,0]-dev_returns[ix])**2).mean())))
+            per_episode.append(dict(phase=ep[0],episode=ep[1],group=group,bc6_mse=float((err[ix]**2).mean()),bc6_rmse_mrad=float(np.sqrt((physical[ix]**2).mean())*1000),bc6_abs_p95_mrad=float(np.quantile(np.abs(physical[ix]),.95)*1000),q1_behavior_mse=float(((q[ix,0]-dev_returns[ix])**2).mean()),bc6_joint_rmse_mrad=(np.sqrt((physical[ix]**2).mean(axis=(0,1)))*1000).tolist()))
         for group in ['autonomous','assisted','failure']:
             rr=[e for e in per_episode if e['group']==group];groups[group]={key:float(np.mean([x[key] for x in rr])) for key in ['bc6_mse','bc6_rmse_mrad','bc6_abs_p95_mrad','q1_behavior_mse']}
         return dict(groups=groups,episodes=per_episode)
     initial_eval=evaluate(init);(args.output/'initial-evaluation.json').write_text(json.dumps(initial_eval,indent=2))
     def save(name,state):
         path=args.output/name;path.mkdir(exist_ok=True)
-        payload={'rl_config':dataclasses.asdict(cfg),'state':{k:trainer._tree_to_numpy(getattr(state,k))for k in sp},'candidate_profile_sha256':initial.get('candidate_profile_sha256'),'offline_sampling_variant':name,'production_release':False}
+        payload={'rl_config':dataclasses.asdict(cfg),'state':{k:trainer._tree_to_numpy(getattr(state,k))for k in sp},'candidate_profile_sha256':initial.get('candidate_profile_sha256'),'offline_sampling_variant':name,'production_release':False,'actor_only_recent_sampling':args.actor_only}
         f=path/f'step_{int(state.global_step)}.pkl'
         with f.open('wb')as h:pickle.dump(payload,h,pickle.HIGHEST_PROTOCOL)
     available=2496
@@ -157,16 +162,25 @@ def main():
             for mode,selected in paired.items():
                 name=f"{mode}_seed{seed}";state=states[name];assert selected.max()<available
                 sample_indices[name].append(selected.astype(np.int32));sampled_terminal[name]+=int(np.isin(selected,terminals).sum());sampled_hil[name]+=int(((raw['episode_id'][selected]==10009)&human[selected].any(axis=1)).sum())
-                batch={k:jnp.asarray(v[selected]) for k,v in data.items()}
+                critic_selected=paired['window_recent'] if args.actor_only else selected
+                critic_sample_indices[name].append(critic_selected.astype(np.int32))
+                batch={k:jnp.asarray(v[critic_selected]) for k,v in data.items()}
+                if args.actor_only:batch['actor_batch']={k:jnp.asarray(v[selected]) for k,v in data.items()}
                 updated,metrics=train(state,batch,actor=actor,critic=critic,rl_config=cfg,bc_weight=5.,q_weight=.1,delta_weight=10.,use_action_adapter=True,action_q01=jnp.asarray(adapter.stats.q01),action_q99=jnp.asarray(adapter.stats.q99))
                 vals={k:float(v) for k,v in jax.device_get(metrics).items()};assert all(np.isfinite(v) for v in vals.values())
                 assert int(updated.global_step)==7000+n;states[name]=updated
-                log.write(json.dumps({'variant':name,'update_index':n,'terminal_draws_cumulative':sampled_terminal[name],'new_HIL_draws_cumulative':sampled_hil[name],**vals})+'\n')
+                log.write(json.dumps({'variant':name,'update_index':n,'proposed_actor_terminal_draws_cumulative':sampled_terminal[name],'proposed_actor_new_HIL_draws_cumulative':sampled_hil[name],**vals})+'\n')
                 if n in [204,224,242,281]:evaluations[name].append(evaluate(updated))
                 if n==281:save(name,updated)
         if n%40==0 or n==281:
-            log.flush();progress=dict(updates=n,elapsed_sec=time.time()-start,terminal_draws=sampled_terminal,new_HIL_draws=sampled_hil)
+            log.flush();progress=dict(updates=n,elapsed_sec=time.time()-start,proposed_actor_terminal_draws=sampled_terminal,proposed_actor_new_HIL_draws=sampled_hil,draw_count_boundary='Proposals for all Critic updates; Actor applies only even global steps. Actual applied counts are in final comparison.applied_draws.')
             (args.output/'progress.json').write_text(json.dumps(progress,indent=2));print(json.dumps(progress),flush=True)
     np.savez_compressed(args.output/'sample_indices.npz',**{name:np.stack(ix) for name,ix in sample_indices.items()})
-    log.close();result={'elapsed_sec':time.time()-start,'terminal_draws':sampled_terminal,'evaluations':evaluations,'initial':initial_eval,'new_HIL_draws':sampled_hil,'boundary':'Matched controlled resampling, same initial numerical state and actual arrival windows. Only recent selection changes; identical other-pool draws, CPU-only TRAIN and repeated DEV. No TEST or production publication.'};(args.output/'comparison.json').write_text(json.dumps(result,indent=2));print('COMPLETE',flush=True)
+    np.savez_compressed(args.output/'critic_sample_indices.npz',**{name:np.stack(ix) for name,ix in critic_sample_indices.items()})
+    applied_draws={}
+    for name,indices in sample_indices.items():
+        ai=np.stack(indices)[1::2];ci=np.stack(critic_sample_indices[name])
+        hil_mask=(raw['episode_id']==10009)&human.any(axis=1)
+        applied_draws[name]={'actor_draws':int(ai.size),'actor_new_HIL_draws':int(hil_mask[ai].sum()),'critic_draws':int(ci.size),'critic_new_HIL_draws':int(hil_mask[ci].sum())}
+    log.close();result={'applied_draws':applied_draws,'actor_only_recent_sampling':args.actor_only,'elapsed_sec':time.time()-start,'proposed_actor_terminal_draws':sampled_terminal,'evaluations':evaluations,'initial':initial_eval,'proposed_actor_new_HIL_draws':sampled_hil,'boundary':'Matched controlled resampling, same initial numerical state and actual arrival windows. Only recent selection changes (Actor only when actor_only_recent_sampling=true); identical other-pool draws, CPU-only TRAIN and repeated DEV. Target-policy feedback can change later Critic parameters even with identical Critic batches. No TEST or production publication.'};(args.output/'comparison.json').write_text(json.dumps(result,indent=2));print('COMPLETE',flush=True)
 if __name__=='__main__':main()
