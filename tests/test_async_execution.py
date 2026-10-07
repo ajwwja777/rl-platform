@@ -150,8 +150,8 @@ def test_registry_and_explicit_rollback():
         assert profile.publish_hz==hz and profile.logical_hz==20
     with pytest.raises(ValueError):ExecutionProfile(publish_hz=60)
 
-@pytest.mark.parametrize("profile_name", ["async_rtc40", "async20_no_rtc_no_smoothing"])
-def test_actual_envdriver_replay_keeps_emitted_actions_and_rtc_anchors(monkeypatch, profile_name):
+@pytest.mark.parametrize("profile_name", ["async_rtc40", "async_rtc50", "async20_no_rtc_no_smoothing"])
+def test_actual_envdriver_replay_keeps_emitted_actions_and_rtc_anchors(monkeypatch, tmp_path, profile_name):
     from rlt_online_rl.inference import EnvDriver, ActorResponse
     from rlt_online_rl.config import RLTOnlineRLConfig, EnvDriverConfig
     from methods.openpi_rlt.cobot_adapter.execution_runtime import install
@@ -161,9 +161,17 @@ def test_actual_envdriver_replay_keeps_emitted_actions_and_rtc_anchors(monkeypat
     # EnvDriver performs reset/arm itself.
     env._runtime=RightArmPolicyRuntime(joint_step_limit=.03,gripper_step_limit=.004)
     monkeypatch.setenv('COBOT_RLT_EXECUTION_PROFILE',profile_name)
+    monkeypatch.setenv('COBOT_RLT_INPUT_AUDIT','strict')
+    monkeypatch.setenv('COBOT_RLT_RAW_OBSERVATION_CONTRACT','trace')
+    monkeypatch.setenv('COBOT_RLT_INPUT_SNAPSHOT_COUNT','0')
+    from integrations.cobot_runtime.shared_model_env import CollectionTrace
+    from methods.openpi_rlt.cobot_adapter.cobot_ros1 import AtomicEpisodeTraceWriter
+    from methods.openpi_rlt.cobot_adapter.online_runtime import install_bimanual_runtime_patch
+    io._trace_writer=CollectionTrace(AtomicEpisodeTraceWriter(tmp_path/'trace'),SimpleNamespace(collecting=True))
     for key in ('__init__','run_episode','_append_raw_chunk','close'):
         monkeypatch.setattr(EnvDriver,key,getattr(EnvDriver,key))
     monkeypatch.setattr(EnvDriver,'_cobot_execution_installed',False,raising=False)
+    install_bimanual_runtime_patch()
     install()
     class Features:
         def __init__(self):self.seen=[]
@@ -184,6 +192,9 @@ def test_actual_envdriver_replay_keeps_emitted_actions_and_rtc_anchors(monkeypat
     try:
         result=driver.run_episode(11)
         assert result['success']==1 and replay.rows
+        import json
+        receipts=[json.loads(line)for path in (tmp_path/'trace/replay_inputs').glob('*.jsonl')for line in path.read_text().splitlines()]
+        assert len(receipts)==len(replay.rows) and all(r['checks_passed'] for r in receipts)
         assert any('rtc' in obs for obs in features.seen) == profile.rtc
         for transition in replay.rows:
             start=transition.step_id

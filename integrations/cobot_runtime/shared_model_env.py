@@ -87,6 +87,17 @@ class CollectionTrace:
         # episode_use remains latched through the terminal acknowledgement.
         return self.writer if self.lifecycle.collecting else self.evaluation_writer
 
+    @property
+    def _root(self):
+        """Preserve the collection writer contract used by Replay input audit.
+
+        Evaluation has a closed Replay gate and must never route input
+        receipts into the previous collection's evidence directory.
+        """
+        if not self.lifecycle.collecting:
+            raise RuntimeError("Replay input audit requires a collection episode")
+        return self.writer._root
+
     def start_episode(self):
         if self.active_writer is not None:
             self.active_writer.start_episode()

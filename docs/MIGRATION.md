@@ -583,3 +583,12 @@ Follow-up reused external20 DEV:20Episodes/370windows(5autonomous/6assisted/9fai
 用户之后启动的是supported-online，但15:46/15:47两次超时仍为旧现场模块295dfc5的10ms守卫（实际12.8/16.5ms）；先前修复处于等待释放，未进入新进程。再次核对七个Native角色及supervisor均退出、模型error且无活动操作/Session；Stage1 PID1763540/start_ticks8312842独立保留。模型操作锁下只替换已退休driver模块到7a46080，对应3766e0b源；不更改仍写入的独立录制、算法、权重或配置。现场实际模块CPU合成39 passed，profile绑定通过，两份新7k Actor和归一化SHA不变；无POST、服务启停、GPU前向或机器人动作。
 
 Learner快照仍7000/Actor3500/Replay2496/pending预算0，未取得新增学习进度。现有“收尾录制并恢复运行进程”可保留未标注记录、不入Replay并保留Stage1重建，需现场用户操作后观察实际新日志；不能把源码同步或CPU测试当作连续真机通过。详见outputs/control-publish-timeout-20261007/recurrent-timeout/REPORT.md和现场回执。
+
+
+## 2026-10-07：真实 CollectionTrace 与 Replay 输入审计接口修复
+
+用户首次在已应用时钟模块7a46080后完成一轮，16:08:12构建Replay时因CollectionTrace缺少_root退出。模式为supported-online、50Hz/RTC/滤波；用户成功标记与114帧录制已保存，但本轮未提交Replay，Learner7000/Actor3500/Replay2496保持。此前输入审计测试使用带_root的替身，真实包装器的组合路径遗漏。
+
+CollectionTrace补充与底层AtomicEpisodeTraceWriter一致的审计根属性，按本轮锁定采集用途委托；评测仍关闭Replay门且不能把回执写入旧采集根。保留strict检查，不关闭审计或改奖励/学习算法。新增18项真实包装器C10多窗口、成功/失败、RL/HIL、record/strict、快照开关、临时journal/恢复/batch检查；137项相关回归通过。进一步完整EnvDriver组合（实际包装器＋strict审计＋trace观测合同＋RTC40/50/无RTC＋临时CPU两次Learner更新）及相关60项通过，计数重叠不相加。全部合成I/O/临时数据，不代表真机能力。
+
+修复先在独立分支fix/collection-input-audit-20261007提交push，再在确认Native角色全部退出、无操作且录制stopped/committed的模型锁下同步；Stage1保留，不发恢复/加载/运动POST。实际现场源码SHA、CPU回归、资产保护和真实新轮验证边界见outputs/control-publish-timeout-20261007/runtime-exit/；源码应用不等于新增真实经验已采样或学习改善。
