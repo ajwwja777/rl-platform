@@ -6,6 +6,7 @@ unchanged; raw traces retain the complete emitted sub-tick sequence.
 """
 from concurrent.futures import ThreadPoolExecutor, TimeoutError
 import copy
+import json
 from types import SimpleNamespace
 import time
 import threading
@@ -335,7 +336,9 @@ class AsyncExecution:
         # Pause/HIL invalidates the old timeline. Check authority BEFORE its
         # deadline: an operator interruption is not a publisher overrun.
         def active():
+            sample_started = float(self.clock())
             check = self.sample()
+            self.stats['last_control_sample_ms'] = (self.clock()-sample_started)*1000
             state = self.env._runtime.observe_mode(check.mode)
             if state.phase is EpisodePhase.FAULT:
                 raise RuntimeError(state.fault_reason or 'Control coordinator fault')
@@ -345,7 +348,9 @@ class AsyncExecution:
                 if epoch == self.epoch:
                     self.invalidate()
                 return False
-            return True
+            # Return the fresh post-wait feedback to the caller. Sampling it
+            # again after this check used to add work to EVERY publication.
+            return check
         if not active():
             return False
         self.minimum_publication_time = (
@@ -369,11 +374,13 @@ class AsyncExecution:
             raise ValueError('Publication Hz must not replace logical Replay Hz')
         current = self.observation(observation or self.sample().observation)
         trace, rewards, outcome = [], [], None
+        publications, publication_attempt = [], None
         paused_last = False
         if env._shadow_mode:
             raise ValueError('Use the offline execution audit for this profile; live shadow mode is unsupported')
         try:
             while len(trace) < env._chunk_exec_horizon:
+                publications, publication_attempt = [], None
                 sample = self.sample()
                 before = runtime.snapshot()
                 state = runtime.observe_mode(sample.mode)
@@ -435,31 +442,45 @@ class AsyncExecution:
                     interval_origin = self.timeline_origin
                     interval_index = self.publication_index
                     for timestamp, alpha in self.events(self.publication_index, 20, self.config.publish_hz):
-                        if not self.wait_active(interval_origin+timestamp, epoch, publication=True):
-                            break
-                        effective_deadline = self.last_wait_deadline
-                        sample_started = float(self.clock())
-                        check = self.sample()
-                        checked = runtime.observe_mode(check.mode)
-                        if check.outcome is not None or check.paused or checked.phase is not EpisodePhase.ROLLOUT:
-                            io.set_chunk_ready(False)
-                            self.invalidate()
-                            break
-                        if epoch != self.epoch:
-                            break
-                        sample_finished = float(self.clock())
+                        # Interpolation and the causal filter depend on the last
+                        # emitted target, not on a future camera frame. Prepare
+                        # them in idle time; retain fresh feedback/authority and
+                        # the safety clamp immediately before publication.
+                        prepare_started = float(self.clock())
+                        publication_attempt = dict(
+                            nominal_scheduled_monotonic=float(interval_origin+timestamp),
+                            prepare_started_monotonic=prepare_started, published=False,
+                            actor_param_version=int(version), execution_epoch=int(epoch))
                         requested = self.segment_start + alpha*(target-self.segment_start)
-                        filtered = self.filter.apply(requested, env._state(check.observation), 1/self.config.publish_hz)
-                        # Gripper is not EMA filtered. Its physical velocity
-                        # cap is separate and scales with publication period.
+                        filtered = self.filter.apply(requested, self.last_command, 1/self.config.publish_hz)
                         filtered[6] = self.last_command[6] + np.clip(filtered[6]-self.last_command[6],
                             -self.config.gripper_velocity_limit/self.config.publish_hz,
                             self.config.gripper_velocity_limit/self.config.publish_hz)
+                        prepare_finished = float(self.clock())
+                        publication_attempt['target_prepare_ms'] = (prepare_finished-prepare_started)*1000
+                        check = self.wait_active(interval_origin+timestamp, epoch, publication=True)
+                        if not check:
+                            break
+                        effective_deadline = self.last_wait_deadline
+                        publication_attempt['scheduled_monotonic'] = float(effective_deadline)
+                        # wait_active already sampled and validated this state.
+                        # Clamp against that current feedback, not the pre-wait
+                        # filter input. A pause racing after it is rejected by IO.
+                        safety_started = float(self.clock())
                         command = runtime.safe_policy_target(filtered, env._state(check.observation))
+                        limits = np.full(7,self.config.joint_velocity_limit/self.config.publish_hz)
+                        limits[6] = self.config.gripper_velocity_limit/self.config.publish_hz
+                        if np.any(np.abs(command-self.last_command)>limits+1e-6):
+                            raise RuntimeError("Feedback safety clamp would break physical rate limit")
                         publish_started = float(self.clock())
                         preparation_lateness = max(0., publish_started-effective_deadline)
-                        # Control sampling/filtering can itself be descheduled.
-                        # Enforce the same bound before any stale command sends.
+                        publication_attempt.update(
+                            publish_started_monotonic=publish_started,
+                            control_sample_ms=self.stats['last_control_sample_ms'],
+                            safety_check_ms=(publish_started-safety_started)*1000,
+                            post_wait_lateness_ms=preparation_lateness*1000)
+                        # Keep both single-stall and C10 cumulative bounds. Work
+                        # moved before the wait is absorbed, not hidden/forgiven.
                         if preparation_lateness >= 1/self.config.logical_hz - 1e-9:
                             raise RuntimeError(
                                 'Execution clock missed its deadline; no catch-up command burst; '
@@ -467,9 +488,13 @@ class AsyncExecution:
                                 f'publish_hz={self.config.publish_hz}, logical_step={env._episode_steps}; '
                                 'control preparation exceeded budget')
                         self._shift_clock(preparation_lateness)
-                        self.stats['last_control_sample_ms'] = (sample_finished-sample_started)*1000
-                        self.stats['last_target_prepare_ms'] = (publish_started-sample_finished)*1000
+                        self.stats['last_target_prepare_ms'] = publication_attempt['target_prepare_ms']
+                        self.stats['last_safety_check_ms'] = publication_attempt['safety_check_ms']
+                        # If IO raises mid-call, publication status is unknown;
+                        # do not report an unobserved rejection as "not sent".
+                        publication_attempt['published'] = None
                         accepted = io.publish_policy_action(command)
+                        publication_attempt['published'] = accepted is not False
                         publish_finished = float(self.clock())
                         self.last_publish_started = publish_started
                         self.stats["last_publish_duration_ms"] = (publish_finished-publish_started)*1000
@@ -477,10 +502,8 @@ class AsyncExecution:
                             io.set_chunk_ready(False)
                             self.invalidate()
                             break
-                        limits = np.full(7,self.config.joint_velocity_limit/self.config.publish_hz)
-                        limits[6] = self.config.gripper_velocity_limit/self.config.publish_hz
-                        if np.any(np.abs(command-self.last_command)>limits+1e-6):
-                            raise RuntimeError("Feedback safety clamp would break physical rate limit")
+                        publication_attempt['published'] = True
+                        publication_attempt['publish_finished_monotonic'] = publish_finished
                         self.last_command = command.copy()
                         self.filter.previous = command.copy()
                         self.last_ref = self.segment_ref_start + alpha*(ref_target-self.segment_ref_start) if hasattr(self,'segment_ref_start') else ref_target.copy()
@@ -491,8 +514,12 @@ class AsyncExecution:
                                                  clock_shift_sec=float(self.clock_shift_sec),
                                                  publish_started_monotonic=publish_started,
                                                  publish_finished_monotonic=publish_finished,
-                                                 control_sample_ms=(sample_finished-sample_started)*1000,
-                                                 target_prepare_ms=(publish_started-sample_finished)*1000,
+                                                 control_sample_ms=publication_attempt['control_sample_ms'],
+                                                 target_prepare_ms=publication_attempt['target_prepare_ms'],
+                                                 prepare_started_monotonic=prepare_started,
+                                                 prepare_finished_monotonic=prepare_finished,
+                                                 safety_check_ms=publication_attempt['safety_check_ms'],
+                                                 post_wait_lateness_ms=preparation_lateness*1000,
                                                  publish_duration_ms=(publish_finished-publish_started)*1000,
                                                  feedback_received_monotonic=check.received_monotonic,
                                                  feedback_state=env._state(check.observation).copy(),
@@ -601,6 +628,23 @@ class AsyncExecution:
             self.stats["last_error"] = str(exc)
             io.set_chunk_ready(False)
             io.set_policy_paused(True)
+            # Do not fabricate a logical transition for a partial interval.
+            # The owned process log retains physical receipts even when normal
+            # record_raw_step was never reached. Pause takes priority over I/O.
+            fault = dict(event="execution_fault", error=str(exc),
+                episode_id=getattr(self.backend, 'episode_id', None),
+                logical_step=int(env._episode_steps), execution_epoch=int(self.epoch),
+                monotonic_timestamp=float(self.clock()), replay_eligible=False,
+                partial_publications=publications, attempt=publication_attempt,
+                clock_window_shift_ms=self.clock_window_shift_sec*1000,
+                clock_shift_ms=self.clock_shift_sec*1000,
+                completed_logical_rows_in_call=len(trace))
+            try:
+                print('[rlt-execution-fault] '+json.dumps(fault,
+                    default=lambda value: value.tolist() if isinstance(value, np.ndarray) else value.item()),
+                    flush=True)
+            except Exception as log_error:
+                self.stats['fault_log_error'] = str(log_error)
             application = getattr(io, "_session_application", None)
             if application is not None:
                 application._controller.fail("execution_timing_failed: " + str(exc))
