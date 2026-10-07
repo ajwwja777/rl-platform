@@ -601,3 +601,5 @@ A6000独立terminal-exposure分支完成同初7000参数/Adam/target/RNG、同�
 现场当前只读2777窗/208Episode：新增7Episode281窗全部实际采样、Critic281/Actor140更新，保存7281/3640，served3500未变；1次真实HIL18窗中7含human、53实际human步，首18更新Critic25/Actor13个HIL draw。281个strict输入回执与journal序列化数组SHA全部一致；分析只说明TRAIN结构与拟合，不认证位置泛化或自主Online收益。
 
 最新step49累计时钟50.1ms故障时Learner已caught up，122已存物理发布间隔median21.078ms/max31.842ms、发送调用max.539ms；失败partial行缺细分证据，未本批修复或现场恢复。收尾标签→Replay约10.993秒，逐窗构建/输入回执跨度10.632秒；成本仍待细分。用户仅断机械臂电源，任务不发现场POST/动作/GPU前向。事实报告docs/audits/2026-10-07-online-current-data-terminal-exposure.md；完整SHA/配置/命令/4图、比较与可恢复进度outputs/terminal-exposure-20261007/{REPORT.md,PROGRESS.json,launch.json,latest-sampling-and-checkpoints.json}。
+
+补充最终只读2026-10-07T18:39:28.669309+08:00：现场已收尾故障录制，recorder stopped/committed、episode_000010.hdf5、3000frames；本任务没有POST或赋标签。部署仍error/Native进程退出/Stage1保留，累计时钟故障未解决。
