@@ -592,3 +592,12 @@ Learner快照仍7000/Actor3500/Replay2496/pending预算0，未取得新增学习
 CollectionTrace补充与底层AtomicEpisodeTraceWriter一致的审计根属性，按本轮锁定采集用途委托；评测仍关闭Replay门且不能把回执写入旧采集根。保留strict检查，不关闭审计或改奖励/学习算法。新增18项真实包装器C10多窗口、成功/失败、RL/HIL、record/strict、快照开关、临时journal/恢复/batch检查；137项相关回归通过。进一步完整EnvDriver组合（实际包装器＋strict审计＋trace观测合同＋RTC40/50/无RTC＋临时CPU两次Learner更新）及相关60项通过，计数重叠不相加。全部合成I/O/临时数据，不代表真机能力。
 
 修复先在独立分支fix/collection-input-audit-20261007提交push，再在确认Native角色全部退出、无操作且录制stopped/committed的模型锁下同步；Stage1保留，不发恢复/加载/运动POST。实际现场源码SHA、CPU回归、资产保护和真实新轮验证边界见outputs/control-publish-timeout-20261007/runtime-exit/；源码应用不等于新增真实经验已采样或学习改善。
+
+
+## 2026-10-07：现有Online数据、HIL与失败末端采样对照
+
+A6000独立terminal-exposure分支完成同初7000参数/Adam/target/RNG、同实际204batch的3臂CPU对照，只改变新增失败terminal slot配额0/1/4。quota4将该末端Q1压至.044，却增加旧HIL回报代理及mixed-target误差，未晋升；本批无算法/参数/默认/现场Replay或权重变更。新增离线工具输出守卫和7项合同回归在A6000 Python3.11/冻结3.10通过，生产执行模块未修改。
+
+现场当前只读2777窗/208Episode：新增7Episode281窗全部实际采样、Critic281/Actor140更新，保存7281/3640，served3500未变；1次真实HIL18窗中7含human、53实际human步，首18更新Critic25/Actor13个HIL draw。281个strict输入回执与journal序列化数组SHA全部一致；分析只说明TRAIN结构与拟合，不认证位置泛化或自主Online收益。
+
+最新step49累计时钟50.1ms故障时Learner已caught up，122已存物理发布间隔median21.078ms/max31.842ms、发送调用max.539ms；失败partial行缺细分证据，未本批修复或现场恢复。收尾标签→Replay约10.993秒，逐窗构建/输入回执跨度10.632秒；成本仍待细分。用户仅断机械臂电源，任务不发现场POST/动作/GPU前向。事实报告docs/audits/2026-10-07-online-current-data-terminal-exposure.md；完整SHA/配置/命令/4图、比较与可恢复进度outputs/terminal-exposure-20261007/{REPORT.md,PROGRESS.json,launch.json,latest-sampling-and-checkpoints.json}。
