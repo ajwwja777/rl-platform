@@ -603,3 +603,10 @@ A6000独立terminal-exposure分支完成同初7000参数/Adam/target/RNG、同�
 最新step49累计时钟50.1ms故障时Learner已caught up，122已存物理发布间隔median21.078ms/max31.842ms、发送调用max.539ms；失败partial行缺细分证据，未本批修复或现场恢复。收尾标签→Replay约10.993秒，逐窗构建/输入回执跨度10.632秒；成本仍待细分。用户仅断机械臂电源，任务不发现场POST/动作/GPU前向。事实报告docs/audits/2026-10-07-online-current-data-terminal-exposure.md；完整SHA/配置/命令/4图、比较与可恢复进度outputs/terminal-exposure-20261007/{REPORT.md,PROGRESS.json,launch.json,latest-sampling-and-checkpoints.json}。
 
 补充最终只读2026-10-07T18:39:28.669309+08:00：现场已收尾故障录制，recorder stopped/committed、episode_000010.hdf5、3000frames；本任务没有POST或赋标签。部署仍error/Native进程退出/Stage1保留，累计时钟故障未解决。
+
+
+## 2026-10-07：发布准备提前与 partial 故障证据
+
+源57b378f在A6000独立分支提交push后，模型操作锁内仅同步Cobot已退出执行器async_execution.py，新SHAb04a782b。修复wait后重复反馈/滤波开销累计：插值/EMA提前，复用最新权限检查反馈，物理限速校验移到发送前；50ms单次/C10累计限制、无突发补发、50Hz/RTC/EMA和算法参数不变。故障日志保留未完成逻辑步已发命令及未知发送状态，不伪造Replay。
+
+新回归在基线4失败/2通过，A6000相关125通过、现场冻结Python3.10实际模块48通过。合成同负载旧40/50Hz早期超时，修复后四频率各120逻辑步通过；不等同现场50Hz或任务验收。同步前后Native已退出、recorder stopped/complete、Stage1 PID2073785/start8759073保持，配置/Actor/norm/Replay/checkpoint SHA一致；未恢复进程、加载模型/运动/GPU/发布权重。下一次由用户按既有入口恢复后验证。完整边界、命令、保护清单与回退原件见docs/audits/2026-10-07-publication-preparation.md及outputs/publication-preparation-20261007/。
