@@ -617,3 +617,12 @@ A6000独立terminal-exposure分支完成同初7000参数/Adam/target/RNG、同�
 六臂CPU三配对seed各281Critic/140Actor；只改Actor recent51slots时新单条HIL拟合改善1.0–2.63%，前次Critic采样代价明显缩小，未接入生产或晋升。实际7281原生完整状态8vs4+4恢复逐叶一致，64状态原生推理差1.19e-7，预算0且合成新1/18/39窗只给相应新预算。实际3500/3640在20重复DEV370缓存状态CPU检查两次逐位一致；自主Q1行为回报代理变差、辅助p95微增，不能声称全面更好。18专项测试通过。
 
 served3500/Learner7281/pending3640保持，7项生产资产SHA不变。前次发布器b04a782b仍已安装，20:51运行退出/录制完成/Stage1保留；本批无现场POST、服务、GPU、运动或生产资产写入。允许交接首轮受控Online运行检查，非持续自主改善/自动Actor发布认证。详见docs/audits/2026-10-07-online-admission-closure.md及outputs/online-admission-closure-20261007/（3图、六候选、真实只读状态、指标、操作单、命令SHA）。
+
+
+## 2026-10-08：再次超时与trace后台写入
+
+新代码b04a782b实际Episode10011运行476逻辑步/1190物理发布后单次迟到135.2ms退出；Learner始终7281/caught up，不能归因新增训练。最后trace append开始到下一目标prepare154.3ms，缺旧分段证据不能唯一归因磁盘。录制.incomplete明确writer_queue_overflow（523 sampled/267 written），未入Replay。
+
+RLT修复5c46cbb已先A6000提交push，再锁内同步4模块：仅异步执行器启用有界后台数值trace，容量64/最长pending1s，错误/满队列/终止flush失败拒绝Replay，原50ms发布保护不变；补齐fault分段/队列证据。A6000/现场各85CPU测试通过；初次现场3个测试副本路径错误触发自动回退，纠正测试位置后通过。Stage1 PID3419827/start17242517与12保护资产SHA保持，无启停/加载/GPU/运动。
+
+正常Online不放行：HDF5录制队列溢出未修复，根因及新trace补丁真机待验证。详见docs/audits/2026-10-08-recurrent-publication-timeout.md及outputs/recurrent-publication-timeout-20261008的报告、时序图、命令/回执/录制领域交接。未将不完整轮次重标为任务失败/成功。
