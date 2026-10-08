@@ -136,11 +136,29 @@ class AsyncExecution:
                     self.env._io.report_chunk(latency_sec=latency_sec, actor_version=actor_version)
                 finally:
                     self.stats["last_recorder_check_ms"] = (time.monotonic()-started)*1000
+                    self.stats["recorder_check_thread"] = "background"
             self.health_future = self.health_pool.submit(report)
 
     def sample(self):
         io = self.env._io
+        started = float(self.clock())
         sample = io.sample_control(right_arm_only=True) if hasattr(io, "sample_control") else io.sample()
+        elapsed = (self.clock()-started)*1000
+        self.stats['last_observation_sample_ms'] = elapsed
+        self.stats['max_observation_sample_ms'] = max(
+            self.stats.get('max_observation_sample_ms', 0.), elapsed)
+        return self._retain_sample(sample)
+
+    def sample_publication(self):
+        sampler = getattr(self.env._io, "sample_publication_control", None)
+        if sampler is None:
+            # Compatibility with injected I/O; real ROS uses the no-RGB path.
+            self.stats['publication_sample_mode'] = 'full_sample_fallback'
+            return self.sample()
+        self.stats['publication_sample_mode'] = 'feedback_only'
+        return self._retain_sample(sampler(right_arm_only=True))
+
+    def _retain_sample(self, sample):
         # ROS outcome is consumed on read. Internal publication probes must
         # retain it until the logical trace/finalization boundary sees it.
         if sample.outcome is not None:
@@ -340,8 +358,10 @@ class AsyncExecution:
         # deadline: an operator interruption is not a publisher overrun.
         def active():
             sample_started = float(self.clock())
-            check = self.sample()
+            check = self.sample_publication()
             self.stats['last_control_sample_ms'] = (self.clock()-sample_started)*1000
+            self.stats['max_control_sample_ms'] = max(
+                self.stats.get('max_control_sample_ms', 0.), self.stats['last_control_sample_ms'])
             state = self.env._runtime.observe_mode(check.mode)
             if state.phase is EpisodePhase.FAULT:
                 raise RuntimeError(state.fault_reason or 'Control coordinator fault')

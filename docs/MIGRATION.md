@@ -626,3 +626,8 @@ served3500/Learner7281/pending3640保持，7项生产资产SHA不变。前次发
 RLT修复5c46cbb已先A6000提交push，再锁内同步4模块：仅异步执行器启用有界后台数值trace，容量64/最长pending1s，错误/满队列/终止flush失败拒绝Replay，原50ms发布保护不变；补齐fault分段/队列证据。A6000/现场各85CPU测试通过；初次现场3个测试副本路径错误触发自动回退，纠正测试位置后通过。Stage1 PID3419827/start17242517与12保护资产SHA保持，无启停/加载/GPU/运动。
 
 正常Online不放行：HDF5录制队列溢出未修复，根因及新trace补丁真机待验证。详见docs/audits/2026-10-08-recurrent-publication-timeout.md及outputs/recurrent-publication-timeout-20261008的报告、时序图、命令/回执/录制领域交接。未将不完整轮次重标为任务失败/成功。
+
+
+## 2026-10-08：发布前反馈检查移除RGB解码
+
+残余C10累计50.1ms故障为冻结评测路径，33ms录制check实际在后台。确定复现发送前采样遇新相机帧解码3ms造成20/30/40/50Hz累计51ms停止；仅拆分纯反馈权限检查后四频率各120逻辑步通过，原50ms/无突发补发/反馈过期/HIL保护不变。A6000和现场Python3.10各87CPU回归；现场合成采样median .565→.036ms，仅基础设施代理，不等同真实并发验收。主报告docs/audits/2026-10-08-publication-feedback.md，完整命令/图/回退及同步回执outputs/publication-feedback-20261008。新源码下一次模型运行生效；未加载/运动/发布Actor/改Replay，下一步仅1轮受控Online入库/更新验收。

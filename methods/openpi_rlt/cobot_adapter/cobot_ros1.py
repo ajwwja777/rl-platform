@@ -549,7 +549,17 @@ class RosTask2IO:
         except (TypeError, ValueError):
             return time.time()
 
-    def sample_control(self, *, right_arm_only=False, max_age_sec=.2) -> CobotIOSample:
+    def sample_publication_control(self, *, right_arm_only=False, max_age_sec=.2) -> CobotIOSample:
+        """Fresh authority/joints for a physical send, without decoding images.
+
+        Camera presence, age and synchronization are still checked. This sample
+        is not a model/Replay observation; logical sampling retains RGB images.
+        """
+        return self.sample_control(right_arm_only=right_arm_only,
+                                   max_age_sec=max_age_sec, _include_images=False)
+
+    def sample_control(self, *, right_arm_only=False, max_age_sec=.2,
+                       _include_images=True) -> CobotIOSample:
         """Latest age-checked feedback; no wait for a new camera frame.
 
         Opt-in physical publisher only. sample() keeps its synchronized frame
@@ -570,7 +580,7 @@ class RosTask2IO:
             image_key = tuple((id(message), self._stamp(message)) for message in self._images.values())
             left = np.asarray(self._joints["left"].position[:7],np.float32)
             right = np.asarray(self._joints["right"].position[:7],np.float32)
-            if image_key != getattr(self, "_control_image_key", None):
+            if _include_images and image_key != getattr(self, "_control_image_key", None):
                 images = {key:self.bridge.imgmsg_to_cv2(message,"rgb8")
                           for key,message in self._images.items()}
                 self._control_images = build_machine_a_observation(
@@ -579,7 +589,9 @@ class RosTask2IO:
             state = right.copy() if right_arm_only else np.concatenate([left,right])
             if not np.isfinite(state).all() or state.shape != ((7,) if right_arm_only else (14,)):
                 raise RuntimeError("Invalid control joint feedback")
-            observation = dict(images=self._control_images,state=state,prompt=self._prompt)
+            observation = dict(state=state, prompt=self._prompt)
+            if _include_images:
+                observation["images"] = self._control_images
             outcome,self._outcome = self._outcome,None
             return CobotIOSample(observation=observation,mode=self._mode,outcome=outcome,
                                  paused=self._paused,timestamp=float(max(stamps)),
