@@ -89,10 +89,15 @@ class CobotOnlineEnv:
         return self._runtime.snapshot().phase.value
 
     def replay_commit_allowed(self) -> bool:
-        return (
+        allowed = (
             not self._shadow_mode
             and self._last_outcome in (EpisodeOutcome.SUCCESS, EpisodeOutcome.FAILURE)
         )
+        if allowed:
+            flush = getattr(self._io, "flush_raw_trace", None)
+            if flush is not None:
+                flush()
+        return allowed
 
     def persist_upstream_raw_episode(self) -> bool:
         """Task5 HDF5 plus the compact atomic trace are the Cobot raw sources."""

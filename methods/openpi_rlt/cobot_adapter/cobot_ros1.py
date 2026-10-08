@@ -642,6 +642,28 @@ class RosTask2IO:
             self._publishers["right"].publish(self._joint_message(target[7:]))
             return True
 
+    def enable_async_trace(self) -> None:
+        from .queued_trace import QueuedEpisodeTraceWriter
+        if not isinstance(self._trace_writer, QueuedEpisodeTraceWriter):
+            self._trace_writer = QueuedEpisodeTraceWriter(self._trace_writer)
+
+    def _active_trace_writer(self):
+        return getattr(self._trace_writer, "active_writer", self._trace_writer)
+
+    def check_trace_health(self) -> None:
+        check = getattr(self._active_trace_writer(), "check_health", None)
+        if check is not None:
+            check()
+
+    def trace_diagnostics(self):
+        diagnostic = getattr(self._active_trace_writer(), "diagnostics", None)
+        return diagnostic() if diagnostic is not None else {}
+
+    def flush_raw_trace(self, timeout=5.0) -> None:
+        flush = getattr(self._active_trace_writer(), "flush", None)
+        if flush is not None:
+            flush(timeout=timeout)
+
     def record_raw_step(self, record: dict[str, Any]) -> None:
         payload = dict(record)
         payload.setdefault("replay_episode_id", self._trace_replay_episode_id)

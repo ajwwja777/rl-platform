@@ -19,6 +19,9 @@ from .execution_profiles import load_shared
 class AsyncExecution:
     def __init__(self, env, name, profile, clock=time.monotonic):
         self.env, self.name, self.config, self.clock = env, name, profile, clock
+        enable_trace = getattr(env._io, "enable_async_trace", None)
+        if enable_trace is not None:
+            enable_trace()
         Queue, self.events, Filter = load_shared()
         self.queue = Queue()
         self.filter = Filter(profile.smoothing_tau_sec, profile.joint_velocity_limit)
@@ -381,7 +384,13 @@ class AsyncExecution:
         try:
             while len(trace) < env._chunk_exec_horizon:
                 publications, publication_attempt = [], None
+                loop_started = float(self.clock())
+                self.stats['loop_started_monotonic'] = loop_started
+                health = getattr(io, 'check_trace_health', None)
+                if health is not None:
+                    health()
                 sample = self.sample()
+                self.stats['last_loop_sample_ms'] = (self.clock()-loop_started)*1000
                 before = runtime.snapshot()
                 state = runtime.observe_mode(sample.mode)
                 if state.phase is EpisodePhase.FAULT:
@@ -426,8 +435,10 @@ class AsyncExecution:
                         current = sample.observation
                         if not self.fresh_plan(current):
                             continue
+                    acceptance_started = float(self.clock())
                     self.check_report()
                     self.accept_result()
+                    self.stats['last_plan_accept_ms'] = (self.clock()-acceptance_started)*1000
                     # Start of one logical20 segment. Queue consumption, model
                     # delay and Replay step IDs all use this clock, never pub Hz.
                     current = self.observation(current)
@@ -601,7 +612,9 @@ class AsyncExecution:
                 if outcome is not None:
                     break
                 if runtime.snapshot().phase is EpisodePhase.ROLLOUT and not after.paused and self.plan is not None:
+                    request_started = float(self.clock())
                     self.request_next(current)
+                    self.stats['last_request_submit_ms'] = (self.clock()-request_started)*1000
             if outcome is not None:
                 env._last_outcome = outcome
                 io.set_chunk_ready(False)
@@ -638,7 +651,16 @@ class AsyncExecution:
                 partial_publications=publications, attempt=publication_attempt,
                 clock_window_shift_ms=self.clock_window_shift_sec*1000,
                 clock_shift_ms=self.clock_shift_sec*1000,
-                completed_logical_rows_in_call=len(trace))
+                completed_logical_rows_in_call=len(trace), execution_stats=dict(self.stats),
+                trace_storage=getattr(io, 'trace_diagnostics', lambda: {})())
+            # Flush only AFTER revoking publication. An unwritable trace stays
+            # incomplete and must never be admitted to Replay.
+            flush = getattr(io, 'flush_raw_trace', None)
+            if flush is not None:
+                try:
+                    flush(timeout=2.0)
+                except Exception as flush_error:
+                    fault['trace_flush_error'] = str(flush_error)
             try:
                 print('[rlt-execution-fault] '+json.dumps(fault,
                     default=lambda value: value.tolist() if isinstance(value, np.ndarray) else value.item()),
