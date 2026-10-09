@@ -642,3 +642,10 @@ RLT修复5c46cbb已先A6000提交push，再锁内同步4模块：仅异步执行
 本地入口已写明根层 AGENTS.md、必需文件同名子目录、上传材料 uploads 的约定。清理命令被执行工具自动审批拒绝（blocked by policy，具体规则未提供），未执行删除，原目录仍在；归档完成不等于本地整理完成。逐项身份、去向、校验和拒绝回执保存在私有 scratch/rl-platform/laptop-layout-20261009/，不将机器清理明细纳入 Git。
 
 本批仅目录整理与文档，不连接 Cobot，不修改训练资产、Replay、默认配置或现场服务，不加载模型或运动。guide 仅更新摘要，不提交或推送 guide Git。
+
+
+## 2026-10-09：笔记本可恢复清理完成
+
+用户后续明确选择可恢复的 Windows 回收站。重新读取最新 guide，复核本地与最新 A6000 归档收据：无新增或变更、无遗漏需补迁移；全部需保留内容在 A6000 再次通过大小/SHA256 校验。三个旧目录已通过 SendToRecycleBin 移入回收站，回收后的内容逐文件校验一致；未清空回收站，未采用永久删除。此前策略拒绝为历史尝试，本次可恢复清理成功。
+
+本地 rl-platform 最终仅保留 AGENTS.md，无本地运行需求或上传材料，未创建空 uploads/ 或同名子目录。入口已更新；逐项归档、回收位置及最终结构证据保存在私有 scratch/rl-platform/laptop-layout-20261009/ 的 recycle-preflight.json、recycle-receipt.json 和 local-final-state.json。此记录仅确认目录整改，不涉及训练资产、Replay、现场连接、服务或机器人。guide 摘要同步更新，不提交其 Git。
