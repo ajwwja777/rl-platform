@@ -633,3 +633,12 @@ RLT修复5c46cbb已先A6000提交push，再锁内同步4模块：仅异步执行
 残余C10累计50.1ms故障为冻结评测路径，33ms录制check实际在后台。确定复现发送前采样遇新相机帧解码3ms造成20/30/40/50Hz累计51ms停止；仅拆分纯反馈权限检查后四频率各120逻辑步通过，原50ms/无突发补发/反馈过期/HIL保护不变。A6000和现场Python3.10各87CPU回归；现场合成采样median .565→.036ms，仅基础设施代理，不等同真实并发验收。主报告docs/audits/2026-10-08-publication-feedback.md，完整命令/图/回退及同步回执outputs/publication-feedback-20261008。新源码下一次模型运行生效；未加载/运动/发布Actor/改Replay，下一步仅1轮受控Online入库/更新验收。
 
 现场同步回执：源58bdc765865c8e67d88d6417a0cd64df13ccfa54已push，在模型offline/录制idle/无operation的模型锁下同步async_execution.py与cobot_ros1.py，逐SHA与已测隔离候选一致；7项执行Actor/pending Actor/Learner/Replay/配置/归一化/profile SHA均不变。未重启/加载，下一次RLT进程生效。当前handover_mode=fault，未在本任务诊断其硬件成因，设备正常前不运动；允许的下一步仅设备就绪后的1轮受控Online验收。回退原件在Cobot runtime/verification/publication-feedback-20261008/before，完整回执见输出field-sync.json。
+
+
+## 2026-10-09：笔记本目录核对与补归档（本地清理未完成）
+
+按最新 guide 核对本地遗留审计脚本、论文图及预览缓存，逐项比较 10 月 6 日收据和实际 A6000 内容；未将旧 outputs 收据套用于其他目录。需保留内容已复用或补存 A6000，并逐文件核验大小/SHA256；历史脚本只静态解析，不覆盖当前业务代码、不执行训练或诊断。无本地必需运行文件或本批上传材料，因此未创建空同名子目录或 uploads。
+
+本地入口已写明根层 AGENTS.md、必需文件同名子目录、上传材料 uploads 的约定。清理命令被执行工具自动审批拒绝（blocked by policy，具体规则未提供），未执行删除，原目录仍在；归档完成不等于本地整理完成。逐项身份、去向、校验和拒绝回执保存在私有 scratch/rl-platform/laptop-layout-20261009/，不将机器清理明细纳入 Git。
+
+本批仅目录整理与文档，不连接 Cobot，不修改训练资产、Replay、默认配置或现场服务，不加载模型或运动。guide 仅更新摘要，不提交或推送 guide Git。
