@@ -649,3 +649,12 @@ RLT修复5c46cbb已先A6000提交push，再锁内同步4模块：仅异步执行
 用户后续明确选择可恢复的 Windows 回收站。重新读取最新 guide，复核本地与最新 A6000 归档收据：无新增或变更、无遗漏需补迁移；全部需保留内容在 A6000 再次通过大小/SHA256 校验。三个旧目录已通过 SendToRecycleBin 移入回收站，回收后的内容逐文件校验一致；未清空回收站，未采用永久删除。此前策略拒绝为历史尝试，本次可恢复清理成功。
 
 本地 rl-platform 最终仅保留 AGENTS.md，无本地运行需求或上传材料，未创建空 uploads/ 或同名子目录。入口已更新；逐项归档、回收位置及最终结构证据保存在私有 scratch/rl-platform/laptop-layout-20261009/ 的 recycle-preflight.json、recycle-receipt.json 和 local-final-state.json。此记录仅确认目录整改，不涉及训练资产、Replay、现场连接、服务或机器人。guide 摘要同步更新，不提交其 Git。
+
+
+## 2026-10-10：HIL8 / bounded-target 分批Online候选
+
+用户授权逐项诊断与自主离线实验；A6000隔离分支完成15单因素、9后续（其中3臂误带HIL8已标明）、6修正对照，三个采样种子。新HIL并非统一低于Actor的Q；基础混合批次拟合未改善，Actor额外8近期HIL槽使TRAIN拟合改善5.32–6.48%，旧重复DEV在预设容差内。接管截断、Critic末端quota2/1有保持副作用，未采用。失败终点Q仍偏高，独立TEST/OOD/自主持续收益不足。
+
+源码6e828bb已先提交push后现场模型锁内同步9运行文件；两可选入口plug-v3-hil8-7281和plug-v3-hil8-online已在网页API可见/available。静态seed与独立runtime位于Cobot `/home/agilex/jiaan/data/rlt/plug_insertion/history/candidates/supported_hil8_clip{,_runtime}_20261010`；初始7281/3640/2777，50步保存、staged不自动晋升。原7k/5k/默认未替换，7旧资产SHA与现场服务身份保持，无服务启停/现场Stage1加载/GPU/运动。
+
+38个A6000专项、22个现场CPU专项通过；原生149状态叶/双采样RNG/8批身份8vs4+4逐位相同，32输入原生导出最大差1.19e-7，历史预算不重复。隔离测试root错误与首次目录刷新等待不足的回退已记录。报告5图/命令/全部身份/未通过项/现场操作单：outputs/online-credit-repair-20261010；正式记录docs/audits/2026-10-10-online-credit-repair.md。可交接受控分批Online，非全面Critic正确或成功率认证。Guide仅事实摘要，不提交推送。

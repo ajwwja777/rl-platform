@@ -49,6 +49,14 @@ def run(root):
             for head in [0,1]:ax.plot([x["step"]for x in series],[x["all_failed_terminal_q"][ep][head]for x in series],style,color=["#2878b5","#e58b2a"][head],marker="o",label=f"{name} Q{head+1}")
         ax.axhline(0,color="black",lw=1);ax.set(title="TRAIN failure Episode "+ep,xlabel="Critic update",ylabel="Terminal Q (target = 0)");ax.tick_params(axis='x',labelrotation=30)
     axes[0].legend(fontsize=7);fig.suptitle("Residual high terminal Q is NOT solved; later arrivals are diagnostic probes before admission");fig.savefig(out/"03_failed_terminal_q.png",dpi=160);plt.close(fig)
+    fig,axes=plt.subplots(1,2,figsize=(10,3.8),constrained_layout=True)
+    for ax,g,title in zip(axes,['new_HIL_TRAIN','old_HIL_windows_excluding_experts_TRAIN'],['New HIL TRAIN: one Episode','Old HIL TRAIN (experts excluded)']):
+        for offset,(name,dashes) in enumerate([('baseline','--'),('hil8_clip','-')]):
+            for head,key in enumerate(['Q1_behavior_minus_actor','minQ_behavior_minus_actor','Q1_behavior_minus_reference']):
+                values=[follow['evaluations'][name+'_seed'+str(seed)][-1]['groups'][g][key]for seed in seeds]
+                ax.scatter(np.full(3,head)+(offset-.5)*.15,values,label=name if head==0 else None,alpha=.8)
+        ax.axhline(0,color='gray');ax.set_xticks(range(3));ax.set_xticklabels(['Q1: HIL-Actor','minQ: HIL-Actor','Q1: HIL-Reference'],rotation=10,fontsize=8);ax.set(title=title,ylabel='Same-state paired Q difference');ax.legend(fontsize=8)
+    fig.suptitle('Q1 is Actor guidance; minQ is TD bootstrap. Three seeds are not independent task trials.');fig.savefig(out/'05_paired_hil_q.png',dpi=160);plt.close(fig)
     # Decode actual draws using the exact private journal ordering from the study.
     project=root.parents[1];asset=project/"models/rlt/plug_v3_yyshadow/history/candidates/supported_hil8_clip_20261010/replay/replay_journal.pkl"
     rows=[]
@@ -85,6 +93,6 @@ def run(root):
     axes[1].set(ylabel='Window/draw proportion (%)',title='TRAIN composition; not fixed success:failure quota');axes[1].tick_params(axis='x',labelrotation=12);axes[1].legend(fontsize=7)
     fig.suptitle('Source labels retained; overlaps resolved by Episode outcome for this plot');fig.savefig(out/'04_actual_sampling.png',dpi=160);plt.close(fig)
     (root/'analysis.json').write_text(json.dumps(dict(contrasts=summary,paired_episode_bootstrap=ci,actual_sampling=sampling,independent_TEST=None,invalid_arm_excluded='followup critic_terminal1 actually combined HIL8; use terminal1-corrected only'),indent=2))
-    print(json.dumps(dict(figures=4,summary_rows=len(summary),sampling_rows=len(sampling),bootstrap_unit='whole Episode',independent_test=False)))
+    print(json.dumps(dict(figures=5,summary_rows=len(summary),sampling_rows=len(sampling),bootstrap_unit='whole Episode',independent_test=False)))
 if __name__=='__main__':
     p=argparse.ArgumentParser();p.add_argument('output',type=Path);a=p.parse_args();run(a.output)

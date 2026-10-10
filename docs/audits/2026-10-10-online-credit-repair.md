@@ -10,6 +10,8 @@
 
 证据不足：三个新失败 Episode 的终点 Q1/Q2 仍明显大于目标0；没有独立 TEST、目标位置 OOD、自主持续增益或闭环动作优劣认证。不能用训练集拟合、Actor Q、TD loss、末段 AUC 放行自动晋升。历史 HIL 是执行过的行为动作，不是每个状态的最优反事实动作。
 
+本次更明确的定位：新HIL人工窗在匹配baseline末状态，Q1(HIL)-Q1(Actor)=+0.1127，minQ差=+0.1046，当前并非统一的“人工动作Q低于Actor”。但新HIL拟合较7000反而略差（MSE .11729→.11814），加Actor名额后降至.11185。支持“Actor混合批次中纠正曝光不足/其他梯度竞争”的局部诊断；不能把一条HIL推广为所有状态。同一新失败终点的训练目标确为0而预测仍正，说明该处残差未拟合消除，不能一概归因其目标被标成成功。见图5和comparison.json；同状态Actor是各checkpoint重算提议，不冒充当时介入前已执行动作。
+
 ## 身份、训练与实际比例
 
 - 基线代码 `dc548958a53f19ac3941cb21692f3470c4b61b09`；固定 upstream 不改。新代码与 Git 发布版本见同目录 delivery.json / source-release.json。
@@ -44,9 +46,9 @@
 
 预注册见 EXPERIMENT_PLAN.json / FOLLOWUP_PLAN.json；原始15臂、组合9臂及修正6臂分别在 single-factor、followup、terminal1-corrected。followup中标为critic_terminal1的3臂曾误启用HIL8，已保留失败记录并明确排除单因素结论，重跑真实quota1；见followup-correction.json。三seed baseline与先前研究149状态叶逐位复现，见baseline-reproduction.json。
 
-A6000 CPU172–175、CUDA_VISIBLE_DEVICES为空、JAX_PLATFORMS=cpu。原生命令/启动参数见launch*.json与原始日志；脚本`scripts/offline_credit_repair.py`、`prepare_hil8_candidate.py`、`validate_hil8_worker.py`、`report_credit_repair.py`入Git。运行环境在scratch/rl-platform/runtime-restore-verification/envs/online。4图重生成命令：`python3 scripts/report_credit_repair.py outputs/online-credit-repair-20261010`（系统matplotlib3.1.2；训练环境不安装新包）。
+A6000 CPU172–175、CUDA_VISIBLE_DEVICES为空、JAX_PLATFORMS=cpu。原生命令/启动参数见launch*.json与原始日志；脚本`scripts/offline_credit_repair.py`、`prepare_hil8_candidate.py`、`validate_hil8_worker.py`、`report_credit_repair.py`入Git。运行环境在scratch/rl-platform/runtime-restore-verification/envs/online。5图重生成命令：`python3 scripts/report_credit_repair.py outputs/online-credit-repair-20261010`（系统matplotlib3.1.2；训练环境不安装新包）。
 
-图1为各单因素和组合，图2为20DEV分关节及Episode bootstrap，图3明确显示未解决的失败终点Q，图4显示真实离线Actor/Critic抽样构成。bootstrap以完整Episode为单位；仅1新HILEpisode不报置信区间，三个seed范围不是泛化置信区间。图中早期checkpoint在未来才入库的Episode上仅作固定诊断探针，不参与当时训练或作为独立测试。
+图1为各单因素和组合，图2为20DEV分关节及Episode bootstrap，图3明确显示未解决的失败终点Q，图4显示真实离线Actor/Critic抽样构成，图5区分Actor的Q1与TD的minQ配对偏好。bootstrap以完整Episode为单位；仅1新HILEpisode不报置信区间，三个seed范围不是泛化置信区间。图中早期checkpoint在未来才入库的Episode上仅作固定诊断探针，不参与当时训练或作为独立测试。
 
 ## 可选交付与操作边界
 
@@ -62,3 +64,13 @@ A6000 CPU172–175、CUDA_VISIBLE_DEVICES为空、JAX_PLATFORMS=cpu。原生命�
 5. 录制/trace不完整、身份或预算不一致、非有限值、持续物理异常、旧DEV超过上述容差，停止该批学习/拒绝发布；保留候选及原因，使用旧模型入口回退。单次失败不等于软件故障，低TD loss也不等于通过。
 
 正常持续Online自主收益目前仍“证据不足”；本交付达到的是离线软件一致性和受控分批学习候选条件。独立真机结果只能由真实闭环轮次补证。
+
+## 最终安装回执
+
+已验证：源码 `6e828bb96a866cefb108f8e33f0fc58c4fab1d05` 已先A6000提交push，再在Cobot模型操作锁内同步9个运行文件。Cobot真实Python3.10 CPU22专项通过；独立副本8更新、32输入原生Actor一致性1.19e-7、预算停止通过。A6000专项共38独立用例通过；原生8 vs 4+4逐位恢复通过。第一次现场测试因pytest向上发现旧项目root而导入旧代码，显式指定隔离root后通过；首次安装因未等网页30秒目录刷新自动回退源码，复验原文件与候选SHA后完成安装。失败尝试及回退均保留，不隐去。
+
+网页只读API已显示两个新增入口available=true，Online项training_enabled=true、冻结项false。Cobot静态候选目录 `/home/agilex/jiaan/data/rlt/plug_insertion/history/candidates/supported_hil8_clip_20261010`；独立Online目录 `/home/agilex/jiaan/data/rlt/plug_insertion/history/candidates/supported_hil8_clip_runtime_20261010`。初始Replay2777、Learner7281、Actor3640，新预算0，旧数据不重复训练。模型入口已安装，不等于现场已加载或已获得新成功率。
+
+7项旧Replay/权重/配置/profile SHA保持，已有服务PID/start_ticks保持；未启停服务、未加载现场Stage1、无GPU或机器人动作。CPU测试只在隔离副本构造本地Learner/Actor对象，不开RPC。完整回执在输出根 `field-install.json`、`field-checks.json`、`native-validation/verification.json`。不可变profile中的native_resume=pending是打包时快照，以上后续实际验证回执为准，不为改标签重写checkpoint契约。
+
+可进入第一轮受控分批Online；自主持续增益仍证据不足。新方案与旧pending3640的数字版本相同，因此归档、比较、恢复必须带候选ID和SHA。按轮晋升需外部检查，默认不会把pending_actor覆盖到served Actor。保存策略是每50更新加正常flush；突然断电未落盘的更新允许回退到最后完整checkpoint，其日志不能算仍保留的学习。
