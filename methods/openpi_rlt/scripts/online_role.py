@@ -57,8 +57,8 @@ def main() -> None:
         if supported and profile:
             raise ValueError("Choose one candidate learner profile")
         if supported:
-            from methods.openpi_rlt.experiments.supported_runtime import run_registered
-            run_registered(upstream_root, upstream_args, supported)
+            from methods.openpi_rlt.experiments.supported_dispatch import runtime_for
+            runtime_for(supported).run_registered(upstream_root, upstream_args, supported)
         elif profile:
             from methods.openpi_rlt.experiments.runtime import run_registered
             run_registered(upstream_root, upstream_args, profile)

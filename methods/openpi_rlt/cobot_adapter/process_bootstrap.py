@@ -15,8 +15,9 @@ def initialize_process(config_path: str | None = None) -> None:
     from .online_runtime import install_bimanual_runtime_patch
     install_bimanual_runtime_patch()
     if os.environ.get("COBOT_RLT_SUPPORTED_PROFILE"):
-        from methods.openpi_rlt.experiments.supported_runtime import install_environment_floor
-        install_environment_floor(os.environ["COBOT_RLT_SUPPORTED_PROFILE"])
+        from methods.openpi_rlt.experiments.supported_dispatch import runtime_for
+        profile = os.environ["COBOT_RLT_SUPPORTED_PROFILE"]
+        runtime_for(profile).install_environment_floor(profile)
     if os.environ.get("COBOT_RLT_DIAGNOSTIC_METRICS") == "1":
         from rlt_online_rl import trainer
         from .diagnostic_metrics import install_diagnostic_metrics_patch
