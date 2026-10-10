@@ -54,7 +54,7 @@ def run(root):
         for offset,(name,dashes) in enumerate([('baseline','--'),('hil8_clip','-')]):
             for head,key in enumerate(['Q1_behavior_minus_actor','minQ_behavior_minus_actor','Q1_behavior_minus_reference']):
                 values=[follow['evaluations'][name+'_seed'+str(seed)][-1]['groups'][g][key]for seed in seeds]
-                ax.scatter(np.full(3,head)+(offset-.5)*.15,values,label=name if head==0 else None,alpha=.8)
+                ax.scatter(np.full(3,head)+(offset-.5)*.15,values,label=name if head==0 else None,color=['#2878b5','#d54f42'][offset],alpha=.8)
         ax.axhline(0,color='gray');ax.set_xticks(range(3));ax.set_xticklabels(['Q1: HIL-Actor','minQ: HIL-Actor','Q1: HIL-Reference'],rotation=10,fontsize=8);ax.set(title=title,ylabel='Same-state paired Q difference');ax.legend(fontsize=8)
     fig.suptitle('Q1 is Actor guidance; minQ is TD bootstrap. Three seeds are not independent task trials.');fig.savefig(out/'05_paired_hil_q.png',dpi=160);plt.close(fig)
     # Decode actual draws using the exact private journal ordering from the study.
