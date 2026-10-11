@@ -53,3 +53,14 @@ A6000产物根：`/data/LFT-W02_data/jiaan/jiaan/projects/rl-platform/outputs/ch
 `runtime.json`当前只读快照；`extract_commands.py`通过A6000转发Cobot Python读取29条完整trace；`commands.json`数值证据及原trace SHA（无图像/权重）；`compare_filters.py`重放；`filter-comparison.json`每Episode统计；`comparison-summary.json`聚合；`filter-curves.json`曲线；`plot_comparison.py`生成comparison.png/jpg。
 
 命令：A6000 `python3 outputs/chunk-continuity-20261011/compare_filters.py` 和 `plot_comparison.py`；CPU测试在本任务worktree用`PYTHONPATH=.:third_party/openpi-rlt/rlt_online_rl/src JAX_PLATFORMS=cpu CUDA_VISIBLE_DEVICES='' /data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/runtime-restore-verification/envs/online/bin/python -m pytest -q` 后接tests日志列出的测试文件。共享VLA源码只读，现有docs/MIGRATION.md未提交改动保持。
+
+
+## 已验证：现场交付
+
+代码079372b与目录兼容修订ddf43aa均先在A6000提交/push，再于模型操作锁内同步7个RLT源码/registry文件。逐SHA一致，现场CPU验证模型入口/权重SHA/两级滤波/限速/reset/独立目录通过；只读launch CLI输出新专用两条目录。HTTP模型列表实际返回新候选、available=true、smoothing_order=2、tau=.12、RTC=true/publish50。首次HTTP检查在30秒目录缓存刷新前未见新项，随后自动刷新已确认可见，无网页重启。
+
+7个既有进程PID/start_ticks、Actor/归一化/旧Replay以及共享VLA滤波源码SHA保持。当前运行依然旧plug-v3-hil8-explore，用户需手动释放旧运行并加载新候选；本任务没有加载模型/启停服务/运动/训练或占用GPU。
+
+同步预检查曾因现场exploration_collection.py保留旧的固定目录launcher、与主仓库未启用f39745c目录选择草稿不一致而停止，尚未写任何文件；核对差异后保留现场模型自动匹配目录行为，提交ddf43aa后才同步。不是覆盖未知现场改动。备份`/home/agilex/jiaan/project/rl-platform/outputs/chunk-continuity-20261011/field-install/before`；回执field-install.json、catalog-verification.json、field-launch-check.json。回退日常只需选旧模型入口；代码备份用于完整撤销候选安装。
+
+结论：软件和开环命令平滑验证已通过；可以交给用户做受控冻结rollout对照。大幅往返闭环消除、插入性能不降、成功率提升仍证据不足。没有将本候选扩展到其他项目。
