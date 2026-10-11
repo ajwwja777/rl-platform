@@ -1,10 +1,10 @@
 # 项目入口
 
-先读 `/data/LFT-W02_data/jiaan/jiaan/agent-guide/AGENTS.md`，再读本项目 [README.md](README.md) 与 [迁移记录](docs/MIGRATION.md)。按用户当前任务执行，保留已有成果和其他对话的改动。
+先读 `/data/LFT-W02_data/jiaan/jiaan/agent-guide/AGENTS.md`，再读本项目 [README.md](README.md) 与 [进度与经验](docs/README.md) 和 [迁移记录](docs/architecture/MIGRATION.md)。按用户当前任务执行，保留已有成果和其他对话的改动。
 
 项目：rl-platform。目标：参考 FluxVLA 的模块化方式组织配置、数据／Replay、采样、学习、模型发布与评测；先接入 RLT，再按现有进度接入 EXPO-FT。
 
-当前已开始业务迁移，以 docs/MIGRATION.md 的具体验收／切换记录为准；不得把目录存在或源码 clone 视为运行验证。跨项目问题按项目说明交给对应领域，证据与进展写回所属项目。
+当前已开始业务迁移，以 docs/architecture/MIGRATION.md 的具体验收／切换记录为准；不得把目录存在或源码 clone 视为运行验证。跨项目问题按项目说明交给对应领域，证据与进展写回所属项目。
 
 ## 模型权重存放
 
@@ -20,10 +20,10 @@
 这是长期项目入口，不再处于“仅初始化”阶段。先读最新记录并核对代码/运行状态；历史旧路径、PID 和未完成描述不能当作当前事实。
 
 - 负责：RLT / EXPO-FT 方法、Replay、采样、训练、Actor 发布、Session 与 RLT 在线执行；可分调研、代码/数据诊断、实时部署、异步加速专题。
-- 深入阅读：README.md、docs/RUNBOOK.md、docs/EXPERIMENTS_20260930.md、docs/ANALYSIS.md、docs/MIGRATION.md。
+- 深入阅读：docs/README.md → 对应模块 README → 本任务 TASK/ANALYSIS/RESULT；操作见 docs/execution/RUNBOOK.md，迁移见 docs/architecture/MIGRATION.md。
 - 实现入口：methods/openpi_rlt/cobot_adapter/、methods/openpi_rlt/experiments/、configs/deployment_models.json、integrations/cobot_runtime/；固定上游 third_party/openpi-rlt/。
-- 当前事实：MC30 与 async_rtc20/30/40/50 为可选候选。2026-09-30 修复暂停旧时钟误报及录制 HTTP 占用推理预算，保留 Stage1 的现场重建通过；连续真机 50 Hz 与成功率仍待验收。
-- 下一步：定位抖动、真实 deadline 分布和 Learner 争用；区分推理/发布/录制延迟。MC30、采样/奖励、RTC、频率分别做可回退对照，注明是否继续学习。真实 Replay 不作离线实验输出，EXPO-FT 保留独立算法和环境。
+- 当前事实与待办统一维护在 docs/README.md；模块 README 记录职责、稳定认识及任务入口。接管时按证据日期和实际状态核对，不沿用旧摘要。
+- 研究与执行分开验证；可选方案须有独立输出与回退。具体下一步维护在对应 TASK.md；不自动执行历史待办。
 - 边界：共用 RTC/滤波交 VLA；页面恢复交 web；录制/mask 交 dagger；硬件交 control。RLT 不反向 import web Python，录制通过 HTTP。
 
 用户会在同一项目开多个终端/对话并 fork。fork 不隔离工作树、GPU、端口、模型、Replay 或机器人。
@@ -37,3 +37,17 @@
 7. A6000 开发验证、所属仓库提交 push 后按清单校验同步 Cobot；区分源码已同步与运行已切换。结果写所属项目及 guide/projects/rl-platform/README.md 事实摘要；不改 guide 治理、不提交/推送 guide Git。
 
 主仓库 /data/LFT-W02_data/jiaan/jiaan/projects/rl-platform；现场副本 /home/agilex/jiaan/project/rl-platform。数据/权重通常引用 Getea1/jiaan/{data,model}，实际登记配置优先（如 NVMe Stage1 路径）；不擅自搬资产。
+
+## 按模块组织文档与自主推进（2026-10-11）
+
+用户已确认本框架。代码、配置、资产和 outputs 布局不变；文档在 docs/{architecture,stage1,warmup,online,execution}/ 内按实际职责组织。docs/README.md 是唯一全项目进度与关键经验总览；各模块 README 保存本模块职责、现状、可复用经验和任务链接。旧路径兼容页不再添加正文。
+
+- 问题归主要模块的 tasks/YYYY-MM-DD-问题名称/；跨模块只设一个主任务，其他模块引用。小任务只需 TASK.md，复杂后再拆 ANALYSIS.md 和 RESULT.md，不建立空模板目录或全局任务池。
+- TASK 写问题、验收标准、允许/禁止范围、资源预算、停止条件、基线/证据入口、负责人/worktree、状态和唯一下一步。恢复对话先读任务进度，再核对实际 Git/产物；不要重复已完成实验。
+- 自主推进：核对事实 → 提出可证伪假设 → 选择信息价值高的最小验证 → 隔离修改/实验 → 检查回归和副作用 → 达标交付或明确失败/证据不足。已授权且必要的步骤自行推进；受阻记录缺口并继续独立工作，不越过资源、生产发布和现场运动边界。
+- ANALYSIS 记录数据身份、代码/配置、命令、产物、对照及验证边界，区分事实/假设。RESULT 记录修改、验证结果、使用/回退和未解决问题；不能把测试通过、文件存在或代理指标改善当作模型能力通过。
+- RLT 结论用已验证/失败/证据不足；数据划分区分 TRAIN、重复选型 DEV、独立 TEST，自主/辅助成功分开，按完整 Episode 计算不确定性。夹爪/左臂固定的任务不以非活动维预测误差声称物理退化。Q 范围按实际 reward/discount 推导。
+- 任意 agent 均可维护所属任务；各自登记 coordination、独立 worktree，公共入口与模块摘要合并时重查 diff，串行合并/push。不得把其他 agent 未合并草稿的假设升级为正式结论，不替其关闭任务。
+- 完成后将有依据的“现象 → 原因/边界 → 解决办法 → 证据”简写到模块 README；仅关键跨模块经验进入 docs/README.md。guide/projects/rl-platform/README.md 只同步摘要和入口，guide Git 不在本项目提交/推送。
+
+通用范本：`/data/LFT-W02_data/jiaan/jiaan/agent-guide/pipelines/project/DOCUMENTATION.md`。本次整理记录：docs/architecture/tasks/2026-10-11-documentation-framework/TASK.md。
