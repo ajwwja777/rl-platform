@@ -1,5 +1,7 @@
 # RL 平台：当前进度与关键经验
 
+最新实际核对（2026-10-11 夜）：[第三批探索数据](online/tasks/2026-10-11-exploration-collection/BATCH3.md)累计29完整Episode（11自主成功/2辅助成功/16失败），1068条Replay与strict回执逐数组一致；固定Actor3640、训练batch0。用户中途移动插孔，前后结果不可直接归因。含HIL窗口仅19条/1.78%，下一步为匹配离线纠正BC与加Q诊断；尚未执行新训练。缓存新运行56hits/62requests，构建9.017秒。
+
 2026-10-11 晚：[探索采集收尾/目录/末端往返](online/tasks/2026-10-11-exploration-collection/FINISH_AND_MOTION.md)：已定位test历史竞态与269/564重复特征引用，修复CPU验证通过；新计划Reference在末端每.25s交替跳变，纯Stage1/RTC/探索归因仍需单因素证据。
 
 更新：2026-10-11。本次为文档框架整理，技术状态引用已有证据，不代表重新查询现场、复跑实验或得到新的成功率。
@@ -18,7 +20,7 @@ Online 新经验能否改善自主能力仍是主要问题。最近正式交付�
 
 文档整理本身的进度/验收：[任务](architecture/tasks/2026-10-11-documentation-framework/TASK.md)。另一对话研究草稿保持未合并，入口在 Online 模块；不将草稿主张升级为事实。
 
-当前执行交付：[固定 HIL8 探索采集](online/tasks/2026-10-11-exploration-collection/RESULT.md)。A6000 101项/现场52项 CPU 合约与回归通过，新入口已同步且网页可见；固定权重、Learner关闭、独立数据目录。用户已采11个完整Episode（6失败5自主成功、无HIL；新增4轮同位置均成功），探索/Actor身份有实际trace；模型目录自动匹配已同步现场，77项前端回归通过，实际history可读11条。通用HDF5 action存在双臂联合有效性限制，右臂coordinator字段与独立Replay须分开核对。[保存位置纠错](online/tasks/2026-10-11-exploration-collection/STORAGE.md)。Online收益仍未证实。
+当前执行交付：[固定 HIL8 探索采集](online/tasks/2026-10-11-exploration-collection/RESULT.md)。A6000 101项/现场52项 CPU 合约与回归通过，新入口已同步且网页可见；固定权重、Learner关闭、独立数据目录。历史第二批：用户已采11个完整Episode（6失败5自主成功、无HIL；新增4轮同位置均成功），探索/Actor身份有实际trace；模型目录自动匹配已同步现场，77项前端回归通过，实际history可读11条。通用HDF5 action存在双臂联合有效性限制，右臂coordinator字段与独立Replay须分开核对。[保存位置纠错](online/tasks/2026-10-11-exploration-collection/STORAGE.md)。Online收益仍未证实。
 
 ## 关键经验
 
