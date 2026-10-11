@@ -586,7 +586,11 @@
       "execution_profile": "async_rtc50",
       "publish_hz": 50,
       "hold_right_gripper": true,
-      "exploration_collection": true
+      "exploration_collection": true,
+      "data_directories": {
+        "collection": "{DATA}/datasets/plug_insertion/recordings/rl-platform/rlt/exploration-hil8-7281-v1"
+      },
+      "collection_directory_policy": "model"
     }
   ]
 }
