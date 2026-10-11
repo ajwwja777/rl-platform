@@ -115,4 +115,6 @@ if __name__ == "__main__":
     elif selected():
         validate_launch(args.value)
         print(locations()["run"])
-        print(recording_root("online"))
+        # Managed collection entries advertise their own directory at launch.
+        # This matches the installed model-storage behavior, not an old test selection.
+        print(locations()["recording"])
