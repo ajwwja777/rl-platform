@@ -25,7 +25,7 @@ HIL 标签必须保留；删标签不会消除人工救回的 credit 路径。Ac
 
 ## 任务
 
-- [2026-10-11 固定 HIL8 探索采集](tasks/2026-10-11-exploration-collection/TASK.md)：101 项 CPU 检查通过；独立采集入口，禁用 Learner，现场同步以 RESULT 回执为准；不等于自主能力通过。
+- [2026-10-11 固定 HIL8 探索采集](tasks/2026-10-11-exploration-collection/TASK.md)：A6000 101项/现场52项 CPU 检查通过；新入口已同步，网页可见；独立采集、禁用 Learner；不等于自主能力通过。
 
 日期任务保留当时证据；归档不是重新验收。新任务按问题建立，跨模块只存一份正文。
 

@@ -1,6 +1,8 @@
 # 固定 HIL8 探索采集交付
 
-状态：A6000 CPU 验证通过，待现场限范围同步回执；不是持续 Online 学习放行。
+状态：已交付可选探索采集入口；等待用户加载并进行首批采集。不是持续 Online 学习放行。
+
+代码提交 `121f0f8b0d69f067a28d201b58831e0db6e8edce` 已合入 A6000 main 并推送。Cobot 8 文件逐 SHA 同步，现场 CPU 检查 52 项通过，实际配置原生解析通过；网页 `/api/collection/model` 已显示新入口 available=true、training_enabled=false。11 个受保护资产 SHA 与监测服务 PID/start ticks 未变。安装不启动服务或加载模型。回执：`outputs/exploration-collection-20261011/field-install.json`。
 
 ## 做了什么
 
@@ -13,7 +15,8 @@
 ## 证据与边界
 
 - 已验证：A6000 101 项相关 CPU 检查通过；最后附加代码身份后 11 项专项复核通过。包括新探索 native EnvDriver→真实 Replay 转换，并以极小随机网络检查原生 Replay schema 可用于 CPU train_step（非生产权重训练）。
-- 已验证：既有 model registry 每一旧行完全保持；现场预检源码与基线 c731184 一致，预检部署 offline/无Session。不代表同步后的运行状态。
+- 已验证：既有 model registry 每一旧行完全保持；现场预检源码与基线 c731184 一致，同步前后部署 offline/无Session、录制 idle。该时点状态不替代日后实际状态查询。
+- 失败（已解决）：现场隔离测试首次 2 项配置相对路径错误、50 项通过。修正安装测试目录的 configs 只读链接后 52 项全通过，生产实现未因此改动。初次失败和复测日志均保留。
 - 证据不足：新探索入口尚无真实加载/真机采集数据，未证明自主成功率提升；没有独立 TEST。单元测试及重叠窗口不能当 Episode 成功率样本。
 - 既有问题：AWBC W2 的重复 DEV 保持尚不稳定，本次不发布其权重；本次固定模型采集用于获得不同动作与结果证据，再离线检查 Critic 动作偏好和单因素训练候选。
 
