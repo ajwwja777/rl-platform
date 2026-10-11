@@ -25,7 +25,7 @@ initializeCaptureProfile 初始化普通 test 目录，未等待 refreshConsole 
 
 修复 replay_feature_cache.py：仅已登记 plug-v3-hil8-explore、trace合同、on-demand收尾启用；单轮内按整个观测内容（全部键、RGB、state dtype/shape/value、prompt、RTC prefix）缓存本轮新计算输出，深拷贝防别名污染。仍保留原索引、窗口、奖励、动作、精度及strict输入审计；不跨轮缓存、不复用附近姿态或未经指纹核对的live anchor。固定Stage1使用key42是适用前提，不推广至随机模型。COBOT_RLT_REPLAY_EXACT_CACHE=0可关闭；其他模型及dense批处理路径保持原行为。
 
-已验证：53项相关CPU检查通过，包含真实原生C10+CollectionTrace、RL/HIL、成功/失败、输出逐数组一致，重复输入调用4→3；输入任一关键字段变化均不命中，异常恢复provider，跨轮不共享缓存。日志新增 COBOT_REPLAY_BUILD 的请求数/命中数/哈希、前向及总构建时间。
+已验证：53项相关CPU检查通过，包含真实原生C10+CollectionTrace、RL/HIL、成功/失败、输出逐数组一致，重复输入调用4→3；输入任一关键字段变化均不命中，异常恢复Replay查找方法，live feature provider从不替换，跨轮不共享缓存。日志新增 COBOT_REPLAY_BUILD 的请求数/命中数/哈希、前向及总构建时间。
 
 证据不足：没有本批真实GPU测速，不承诺20秒降到1秒；理论减少的是约一半重复引用，不等同整体时延严格减半。当前在内存中的旧EnvDriver需下一次用户重载后才使用补丁。
 
@@ -49,3 +49,11 @@ A6000 /data/LFT-W02_data/jiaan/jiaan/projects/rl-platform/outputs/exploration-co
 - baseline-web-tests.txt、web-tests.txt、python-tests.txt：基线失败与修复回归；现场同步/资产与PID收据单独保存，不以源码同步冒充运行生效。
 
 命令：通过A6000 ssh agilex@10.7.165.64，用Cobot web/.venv/bin/python执行只读HDF5分析；A6000 python3 plot_motion.py。前端 NODE_PATH=/home/LFT-W02/.hermes/hermes-agent/node_modules /home/LFT-W02/bin/node --test tests/*.test.js；Python使用scratch/rl-platform/runtime-restore-verification/envs/online/bin/python -m pytest，PYTHONPATH指向隔离RLT及固定上游、JAX_PLATFORMS=cpu、CUDA_VISIBLE_DEVICES为空。完整执行文件保存在同输出目录。
+
+## 已验证：同步与HTTP交付
+
+RLT5517f257、webc2c93d5b先A6000提交并push main；6个源码/静态文件在现场 waiting_scene、policy_paused、recorder stopped、无模型operation的操作锁内同步，逐SHA一致。5个进程PID/start ticks与Actor、norm、registry、Replay SHA保持；现场CPU精确缓存/输出隔离/RTC变化不命中验证通过。四个网页资源HTTP内容与安装文件一致，实际combined history接口返回专用目录27条记录（该查询时点；后续可继续增长），不是test47条。未调用加载、启停、运动或GPU推理。
+
+网页刷新即读取新JS/CSS；缓存需下一次用户重载当前模型运行进程，不能将磁盘同步当作旧进程已应用。停止旧进程/加载模型仍由现场用户掌握，本任务未代操作。回退原文件备份 Cobot /home/agilex/jiaan/project/cobot-web/runtime/verification/episode-finish-history-20261011/before/；缓存也可用COBOT_RLT_REPLAY_EXACT_CACHE=0关闭。修复前后真实耗时及末端动作改善均仍待验证。
+
+现场收据：field-sync.json、http-verification.json；时延/重复引用图finish-cost.png；没有后修复GPU实测柱图。
