@@ -353,7 +353,8 @@ def install_bimanual_runtime_patch() -> None:
                         "replay_transition_count": 0,
                         "replay_skipped_reason": "cobot_episode_not_eligible",
                     }
-            return original_build_episode_replay(driver, raw_episode)
+            from .replay_feature_cache import build
+            return build(driver, raw_episode, original_build_episode_replay)
 
         _build_episode_replay_with_gate._cobot_replay_gate = True
         inference.EnvDriver._build_episode_replay = _build_episode_replay_with_gate
