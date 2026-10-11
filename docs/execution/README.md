@@ -26,6 +26,8 @@
 
 ## 任务
 
+- [2026-10-11-chunk-continuity](tasks/2026-10-11-chunk-continuity/TASK.md)：实际RTC/50Hz/EMA已启用；RLT专用两级滤波候选离线降低命令加速度，但增加滞后，真机待验收。
+
 日期任务保留当时证据；归档不是重新验收。新任务按问题建立，跨模块只存一份正文。
 
 - [2026-10-08-recurrent-publication-timeout](tasks/2026-10-08-recurrent-publication-timeout/TASK.md)

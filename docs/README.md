@@ -1,5 +1,7 @@
 # RL 平台：当前进度与关键经验
 
+最新优先项（2026-10-11）：用户要求先修执行平顺性，离线BC/Q训练暂缓。[RLT平滑候选](execution/tasks/2026-10-11-chunk-continuity/TASK.md)在相同历史目标复放中命令加速度RMS中位下降47%，目标跟随误差增加，未证明消除大幅往返或提高成功率；新可选入口使用同Actor3640/RTC50Hz/探索，关闭Learner、独立数据，旧入口保持。现场交付状态见RESULT。
+
 最新实际核对（2026-10-11 夜）：[第三批探索数据](online/tasks/2026-10-11-exploration-collection/BATCH3.md)累计29完整Episode（11自主成功/2辅助成功/16失败），1068条Replay与strict回执逐数组一致；固定Actor3640、训练batch0。用户中途移动插孔，前后结果不可直接归因。含HIL窗口仅19条/1.78%，下一步为匹配离线纠正BC与加Q诊断；尚未执行新训练。缓存新运行56hits/62requests，构建9.017秒。
 
 2026-10-11 晚：[探索采集收尾/目录/末端往返](online/tasks/2026-10-11-exploration-collection/FINISH_AND_MOTION.md)：已定位test历史竞态与269/564重复特征引用，修复CPU验证通过；新计划Reference在末端每.25s交替跳变，纯Stage1/RTC/探索归因仍需单因素证据。

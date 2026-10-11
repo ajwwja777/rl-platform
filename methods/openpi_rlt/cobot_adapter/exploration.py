@@ -73,6 +73,8 @@ def attach(engine, driver):
     engine.exploration_collecting = lambda: lifecycle.collecting
     code_files = [Path(__file__), Path(__file__).with_name("async_execution.py"),
                   Path(__file__).with_name("execution_runtime.py")]
+    if engine.config.smoothing_order == 2:
+        code_files.append(Path(__file__).with_name("cascade_filter.py"))
     engine.exploration_identity = dict(model_id=os.environ["COBOT_DEPLOYMENT_MODEL_ID"],
                                       code_sha256={p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in code_files},
                                       actor_sha256=ACTOR_SHA256, stats_sha256=STATS_SHA256,

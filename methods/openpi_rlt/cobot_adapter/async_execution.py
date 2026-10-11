@@ -24,6 +24,9 @@ class AsyncExecution:
             enable_trace()
         Queue, self.events, Filter = load_shared()
         self.queue = Queue()
+        if profile.smoothing_order == 2:
+            from .cascade_filter import CascadedJointFilter
+            Filter = CascadedJointFilter
         self.filter = Filter(profile.smoothing_tau_sec, profile.joint_velocity_limit)
         self.pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix='rlt-rtc-plan')
         self.health_pool = ThreadPoolExecutor(max_workers=1, thread_name_prefix='rlt-recorder-check')
@@ -46,7 +49,8 @@ class AsyncExecution:
         self.plan_event_id = 0
         self.stats = dict(profile=name, logical_hz=20, publish_hz=profile.publish_hz,
                           inference_requests=0, stale_results=0, emitted_commands=0,
-                          rtc_training_data=profile.rtc, smoothing=profile.smoothing_tau_sec > 0)
+                          rtc_training_data=profile.rtc, smoothing=profile.smoothing_tau_sec > 0,
+                          smoothing_order=profile.smoothing_order, smoothing_tau_sec=profile.smoothing_tau_sec)
         self.timeline_origin = None
         self.publication_index = 0
         self.clock_shift_sec = 0.
@@ -644,6 +648,7 @@ class AsyncExecution:
                     execution_settings=dict(logical_hz=self.config.logical_hz,
                         publish_hz=self.config.publish_hz, rtc=self.config.rtc,
                         smoothing_tau_sec=self.config.smoothing_tau_sec,
+                        smoothing_order=self.config.smoothing_order,
                         joint_velocity_limit=self.config.joint_velocity_limit,
                         gripper_velocity_limit=self.config.gripper_velocity_limit,
                         replan_after_steps=self.config.replan_after_steps,

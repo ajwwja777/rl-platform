@@ -5,19 +5,21 @@ import os
 from pathlib import Path
 
 MODEL_ID = "plug-v3-hil8-explore"
+SMOOTH_MODEL_ID = "plug-v3-hil8-explore-smooth"
 ACTOR_SHA256 = "020a84d83a2d9211689e6756a834109fd515a145effe7f8cbe1a21b62fc0ebf5"
 STATS_SHA256 = "4583a59496d4c459a155c960adf4baac6af0ccbd536a2168914a28809f45366c"
 
 
 def selected(environ=None):
     env = os.environ if environ is None else environ
-    return env.get("COBOT_DEPLOYMENT_MODEL_ID") == MODEL_ID
+    return env.get("COBOT_DEPLOYMENT_MODEL_ID") in (MODEL_ID, SMOOTH_MODEL_ID)
 
 
 def locations():
     from .paths import RLT, DATA
-    return dict(run=RLT / "outputs/exploration-collection/hil8-7281-v1",
-                recording=DATA / "datasets/plug_insertion/recordings/rl-platform/rlt/exploration-hil8-7281-v1")
+    suffix = "hil8-7281-smooth-v1" if os.environ.get("COBOT_DEPLOYMENT_MODEL_ID") == SMOOTH_MODEL_ID else "hil8-7281-v1"
+    return dict(run=RLT / ("outputs/exploration-collection/"+suffix),
+                recording=DATA / ("datasets/plug_insertion/recordings/rl-platform/rlt/exploration-"+suffix))
 
 
 
@@ -52,8 +54,9 @@ def validate_launch(mode, environ=None):
         raise ValueError("Exploration collection cannot inherit a training branch")
     from methods.openpi_rlt.cobot_adapter.execution_profiles import selected_profile
     profile = selected_profile(environ=env)
-    if profile is None or profile[1].publish_hz != 50 or not profile[1].rtc or profile[1].smoothing_tau_sec != .08:
-        raise ValueError("Exploration collection requires 50 Hz, RTC and existing EMA")
+    smooth = env.get("COBOT_DEPLOYMENT_MODEL_ID") == SMOOTH_MODEL_ID
+    if profile is None or profile[1].publish_hz != 50 or not profile[1].rtc or profile[1].smoothing_tau_sec != (.12 if smooth else .08) or profile[1].smoothing_order != (2 if smooth else 1):
+        raise ValueError("Exploration collection requires 50 Hz, RTC and the selected entry filter")
     snapshot = Path(env["COBOT_EVAL_SNAPSHOT"])
     verify_assets(snapshot, snapshot.parent.parent / "action_norm_stats.json")
 

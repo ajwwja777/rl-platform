@@ -591,6 +591,56 @@
         "collection": "{DATA}/datasets/plug_insertion/recordings/rl-platform/rlt/exploration-hil8-7281-v1"
       },
       "collection_directory_policy": "model"
+    },
+    {
+      "id": "plug-v3-hil8-explore-smooth",
+      "label": "插孔 · HIL8 平滑试验（固定权重／不训练）",
+      "kind": "rlt",
+      "mode": "frozen",
+      "checkpoint": "/home/agilex/jiaan/data/rlt/plug_insertion/history/candidates/supported_hil8_clip_20261010/actor_snapshot/actor_snapshot.pkl",
+      "base_checkpoint": "{BASE_CHECKPOINT}",
+      "step": 7281,
+      "actor_version": 3640,
+      "prompt": "Insert the held plug into the socket.",
+      "home_pose": "plug2",
+      "control_hz": 20,
+      "validation": "RLT-only two-pole filter candidate; same Actor/RTC/exploration; offline command replay only, robot acceptance pending",
+      "deterministic": true,
+      "checkpoint_type": "inference_weights",
+      "resumable_training": false,
+      "task": "plug_insertion",
+      "integration_level": "preserved_runtime",
+      "capabilities": {
+        "load": true,
+        "ready": true,
+        "start": true,
+        "pause": true,
+        "resume": true,
+        "stop": true,
+        "unload": true,
+        "logs": true,
+        "pid": true,
+        "capture": true,
+        "hil": true,
+        "evaluate": true,
+        "train": false
+      },
+      "io_contract": "rlt-right-arm-v3",
+      "stage1_step": 4999,
+      "learner_step": 7281,
+      "code_version_source": "Git revision + configs/assets manifests",
+      "training_method": "frozen-hil8-exploration-collection",
+      "online_seed_available": false,
+      "adapter_id": "plug-v3-warmup-5k",
+      "custom": true,
+      "execution_profile": "async_rtc50",
+      "publish_hz": 50,
+      "hold_right_gripper": true,
+      "exploration_collection": true,
+      "data_directories": {
+        "collection": "{DATA}/datasets/plug_insertion/recordings/rl-platform/rlt/exploration-hil8-7281-smooth-v1"
+      },
+      "collection_directory_policy": "model"
     }
   ]
 }

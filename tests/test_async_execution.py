@@ -150,17 +150,18 @@ def test_registry_and_explicit_rollback():
         assert profile.publish_hz==hz and profile.logical_hz==20
     with pytest.raises(ValueError):ExecutionProfile(publish_hz=60)
 
-@pytest.mark.parametrize("profile_name,explore", [("async_rtc40",False), ("async_rtc50",False), ("async20_no_rtc_no_smoothing",False), ("async_rtc50",True)])
+@pytest.mark.parametrize("profile_name,explore", [("async_rtc40",False), ("async_rtc50",False), ("async20_no_rtc_no_smoothing",False), ("async_rtc50",True), ("smooth_candidate",True)])
 def test_actual_envdriver_replay_keeps_emitted_actions_and_rtc_anchors(monkeypatch, tmp_path, profile_name, explore):
     from rlt_online_rl.inference import EnvDriver, ActorResponse
     from rlt_online_rl.config import RLTOnlineRLConfig, EnvDriverConfig
     from methods.openpi_rlt.cobot_adapter.execution_runtime import install
     from methods.openpi_rlt.plug_v3_yyshadow.right_arm_env import RightArmPolicyRuntime
-    _, profile = selected_profile(environ={'COBOT_RLT_EXECUTION_PROFILE': profile_name})
+    _, profile = selected_profile(environ={'COBOT_RLT_EXECUTION_PROFILE': 'async_rtc50' if profile_name == 'smooth_candidate' else profile_name,
+        'COBOT_DEPLOYMENT_MODEL_ID': 'plug-v3-hil8-explore-smooth' if profile_name == 'smooth_candidate' else ''})
     engine,env,io,clock=setup(monkeypatch,state_at=lambda t:('policy',False,'success' if t>=.8 else None), profile=profile)
     # EnvDriver performs reset/arm itself.
     env._runtime=RightArmPolicyRuntime(joint_step_limit=.03,gripper_step_limit=.004)
-    monkeypatch.setenv('COBOT_RLT_EXECUTION_PROFILE',profile_name)
+    monkeypatch.setenv('COBOT_RLT_EXECUTION_PROFILE','async_rtc50' if profile_name == 'smooth_candidate' else profile_name)
     monkeypatch.setenv('COBOT_RLT_INPUT_AUDIT','strict')
     monkeypatch.setenv('COBOT_RLT_RAW_OBSERVATION_CONTRACT','trace')
     monkeypatch.setenv('COBOT_RLT_INPUT_SNAPSHOT_COUNT','0')

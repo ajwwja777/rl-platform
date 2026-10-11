@@ -14,7 +14,8 @@ from .input_audit import conditional_input_receipt
 
 
 def enabled(driver):
-    return (os.environ.get("COBOT_DEPLOYMENT_MODEL_ID") == "plug-v3-hil8-explore"
+    from integrations.cobot_runtime.exploration_collection import selected
+    return (selected()
             and os.environ.get("COBOT_RLT_RAW_OBSERVATION_CONTRACT") == "trace"
             and os.environ.get("COBOT_RLT_REPLAY_EXACT_CACHE", "1") == "1"
             and getattr(driver._env, "cobot_task2_contract", False)
