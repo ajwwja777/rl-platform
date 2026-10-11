@@ -102,6 +102,16 @@ PYSEEDPOLICY
   RLT_CONFIG="$COBOT_RLT_BRANCH_CONFIG"
   EXPERIMENT_RUN="$COBOT_RLT_BRANCH_RUN"
 fi
+# This opt-in entry never creates a learner or uses the existing Replay.
+collection_values=$(PYTHONPATH="$ROOT" "$ONLINE_PY" -m integrations.cobot_runtime.exploration_collection launch "$MODE")
+COLLECTION_RUN=""
+if [[ -n "$collection_values" ]]; then
+  mapfile -t collection_fields <<< "$collection_values"
+  COLLECTION_RUN="${collection_fields[0]}"
+  export COBOT_RLT_HOLD_RIGHT_GRIPPER=1 COBOT_RLT_REPLAY_ACTION_PRECISION=float32
+  export COBOT_RLT_HIL_SAMPLING=logical20 COBOT_RLT_RAW_OBSERVATION_CONTRACT=trace
+  export COBOT_RLT_INPUT_AUDIT=strict
+fi
 # Separate physical publication from the fixed logical Actor/Replay clock.
 execution_values=$(PYTHONPATH="$ROOT" /usr/bin/python3 -m methods.openpi_rlt.cobot_adapter.execution_profiles)
 stage1_rtc_args=()
@@ -308,6 +318,17 @@ if [[ "${COBOT_RLT_SHARED_MODEL:-0}" == 1 ]]; then
   export COBOT_RLT_TRACE_DIR="$COBOT_RLT_TRACE_ROOT/$MODE"
   ENV_FACTORY=integrations.cobot_runtime.shared_model_env:create_shared_env
 fi
+
+if [[ -n "$COLLECTION_RUN" ]]; then
+  export RLT_DISABLE_LEARNER=1 COBOT_RLT_DISABLE_PHASE_CONTROLLER=1
+  export RLT_OUTPUT_DIR="$COLLECTION_RUN/online"
+  export COBOT_RLT_LEARNER_STATUS_PATH="$RLT_OUTPUT_DIR/metrics/learner_status.json"
+  export COBOT_RLT_TRACE_DIR="$COLLECTION_RUN/traces"
+  export COBOT_RLT_TASK5_DATA_ROOT="${collection_fields[1]}"
+  export COBOT_RLT_CHECKPOINT_ID="$COBOT_DEPLOYMENT_MODEL_ID"
+  mkdir -p "$RLT_OUTPUT_DIR/metrics" "$COLLECTION_RUN/replay" "$COBOT_RLT_TRACE_DIR"
+fi
+"$ONLINE_PY" -m integrations.cobot_runtime.exploration_collection validate "$RLT_CONFIG"
 
 echo "RLT $MODE 已启动；操作页沿用 http://127.0.0.1:8015/。Ctrl-C 停止本次 Session，Stage-1 模型保留。"
 # Upstream resolves artifact paths relative to the process working directory,

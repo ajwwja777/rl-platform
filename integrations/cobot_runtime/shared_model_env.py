@@ -124,12 +124,14 @@ def create_shared_env():
     from methods.openpi_rlt.plug_v3_yyshadow.right_arm_env import create_right_arm_online_env
     from .profile_storage import selected_root
 
+    from .exploration_collection import selected, locations
+    collection_root = (lambda phase: locations()["recording"]) if selected() else selected_root
     original = task5_client.Task5Client
     phase = os.environ.get("COBOT_RLT_COLLECTION_PHASE", "online")
 
     def lifecycle(*args, **kwargs):
         return SharedEpisodeLifecycle(original(*args, **kwargs),
-                                      root_for_phase=selected_root, phase=phase)
+                                      root_for_phase=collection_root, phase=phase)
 
     task5_client.Task5Client = lifecycle
     try:
@@ -186,6 +188,8 @@ def prepare_config(mode, snapshot, target):
     if not journal.is_absolute():
         journal = (source.parent / journal).resolve()
     config["runtime"]["replay"]["journal_path"] = str(journal)
+    from .exploration_collection import configure
+    config = configure(config, mode)
     target.write_text(yaml.safe_dump(config, sort_keys=False))
 
 

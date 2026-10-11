@@ -150,8 +150,8 @@ def test_registry_and_explicit_rollback():
         assert profile.publish_hz==hz and profile.logical_hz==20
     with pytest.raises(ValueError):ExecutionProfile(publish_hz=60)
 
-@pytest.mark.parametrize("profile_name", ["async_rtc40", "async_rtc50", "async20_no_rtc_no_smoothing"])
-def test_actual_envdriver_replay_keeps_emitted_actions_and_rtc_anchors(monkeypatch, tmp_path, profile_name):
+@pytest.mark.parametrize("profile_name,explore", [("async_rtc40",False), ("async_rtc50",False), ("async20_no_rtc_no_smoothing",False), ("async_rtc50",True)])
+def test_actual_envdriver_replay_keeps_emitted_actions_and_rtc_anchors(monkeypatch, tmp_path, profile_name, explore):
     from rlt_online_rl.inference import EnvDriver, ActorResponse
     from rlt_online_rl.config import RLTOnlineRLConfig, EnvDriverConfig
     from methods.openpi_rlt.cobot_adapter.execution_runtime import install
@@ -181,17 +181,26 @@ def test_actual_envdriver_replay_keeps_emitted_actions_and_rtc_anchors(monkeypat
                         ref_chunk=np.full((10,7),.02,np.float32),rtc_used='rtc' in obs)
     class Actor:
         def infer(self, request):
-            return ActorResponse(np.full((10,7),.04,np.float32),3500,request.request_id)
+            return ActorResponse(np.full((10,7),.04,np.float32),3640 if explore else 3500,request.request_id)
     class Replay:
         def __init__(self):self.rows=[]
         def add_transitions(self, rows):self.rows.extend(rows)
+    if explore:
+        env._collection_phase='online'
+        monkeypatch.setenv('COBOT_RLT_DISABLE_PHASE_CONTROLLER','1')
     features=Features();replay=Replay()
     driver=EnvDriver(env,features,Actor(),replay,RLTOnlineRLConfig(),
                      EnvDriverConfig(control_frequency_hz=20,step_trace_stride=1))
+    if explore:
+        from methods.openpi_rlt.cobot_adapter.exploration import ChunkExploration, ExplorationConfig
+        engine.explorer=ChunkExploration(ExplorationConfig(seed=19),np.zeros(7),np.full(7,.02))
+        engine.exploration_collecting=lambda:True
     monkeypatch.setattr(driver,'_persist_raw_episode',lambda *args,**kwargs:None)
     try:
         result=driver.run_episode(11)
         assert result['success']==1 and replay.rows
+        if explore:
+            assert all(row['exploration'] for row in io.records)
         import json
         receipts=[json.loads(line)for path in (tmp_path/'trace/replay_inputs').glob('*.jsonl')for line in path.read_text().splitlines()]
         assert len(receipts)==len(replay.rows) and all(r['checks_passed'] for r in receipts)

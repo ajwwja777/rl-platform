@@ -10,6 +10,9 @@ import os
 
 
 def initialize_process(config_path: str | None = None) -> None:
+    if config_path is not None:
+        from integrations.cobot_runtime.exploration_collection import validate_runtime
+        validate_runtime(config_path)
     from .replay_precision import install_action_precision_patch
     install_action_precision_patch()
     from .online_runtime import install_bimanual_runtime_patch

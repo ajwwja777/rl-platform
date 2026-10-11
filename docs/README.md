@@ -16,6 +16,8 @@ Online 新经验能否改善自主能力仍是主要问题。最近正式交付�
 
 文档整理本身的进度/验收：[任务](architecture/tasks/2026-10-11-documentation-framework/TASK.md)。另一对话研究草稿保持未合并，入口在 Online 模块；不将草稿主张升级为事实。
 
+当前执行交付：[固定 HIL8 探索采集](online/tasks/2026-10-11-exploration-collection/RESULT.md)。101 项 CPU 合约/回归通过，固定权重且禁用 Learner，独立数据目录；现场状态见任务回执，不能推断 Online 收益。
+
 ## 关键经验
 
 - 先闭合数据身份、真实训练输入、更新和 served 权重，再讨论能力；配置值、文件存在、测试通过不是当前运行证据。[来源](online/tasks/2026-10-10-online-credit-repair/TASK.md)

@@ -31,6 +31,9 @@ class AsyncExecution:
         self.health_lock = threading.RLock()
         self.health_started = None
         self.health_identity = None
+        self.explorer = None
+        self.exploration_collecting = lambda: False
+        self.exploration_identity = {}
         self.backend = None
         self.terminal_outcome = None
         self.last_policy_source = ControlSource.BASE
@@ -187,6 +190,19 @@ class AsyncExecution:
         epoch = self.epoch
         episode_id = getattr(self.backend, "episode_id", None)
         plan = self.backend.plan(observation, logical_step)
+        exploration = None
+        if self.explorer is not None:
+            actions = plan.action_chunk
+            if self.exploration_collecting():
+                if int(plan.source) != int(ControlSource.RL) or plan.actor_param_version != 3640:
+                    raise RuntimeError(f'Exploration collection requires the pinned HIL8 Actor; source={plan.source}, version={plan.actor_param_version}')
+                actions, exploration = self.explorer.apply(actions, context=(episode_id, epoch))
+                exploration.update(request_id=event_id, execution_epoch=epoch, episode_id=episode_id,
+                                   actor_target_before_exploration=np.asarray(plan.action_chunk).copy(),
+                                   **self.exploration_identity)
+            plan = SimpleNamespace(action_chunk=actions, ref_chunk=plan.ref_chunk, source=plan.source,
+                start_features=plan.start_features, actor_param_version=plan.actor_param_version,
+                exploration=exploration, plan_event_id=event_id)
         event = dict(request_id=event_id, logical_step=int(logical_step),
                      execution_epoch=int(epoch), episode_id=episode_id,
                      request_started_monotonic=started,
@@ -195,9 +211,30 @@ class AsyncExecution:
                      actor_param_version=int(plan.actor_param_version),
                      rtc_requested="rtc" in observation,
                      semantics="request and completed plan; not proof of queue acceptance")
+        if exploration is not None:
+            event["exploration"] = exploration
         with self.evidence_lock:
             self.inference_events.append(event)
         return plan
+
+    def plan_bundle(self, plan, actions=None):
+        actions = plan.action_chunk if actions is None else actions
+        columns = [actions, plan.ref_chunk,
+                   np.full((len(actions), 1), plan.actor_param_version, np.float32),
+                   np.full((len(actions), 1), plan.source, np.float32)]
+        if self.explorer is not None:
+            receipt = plan.exploration
+            if plan.plan_event_id >= 2**24:
+                raise RuntimeError('Exploration request identity exceeds exact float32 queue encoding')
+            provenance = [plan.plan_event_id, *(receipt['offset_rad'] if receipt else [0.]*6), int(receipt is not None)]
+            columns.append(np.tile(np.asarray(provenance, np.float32), (len(actions), 1)))
+        return np.concatenate(columns, -1)
+
+    def exploration_receipt(self, bundle):
+        if self.explorer is None or not bool(bundle[23]):
+            return None
+        return dict(request_id=int(bundle[16]), offset_rad=bundle[17:23].copy(),
+                    seed=str(self.explorer.seed), **self.exploration_identity)
 
     def take_inference_events(self):
         with self.evidence_lock:
@@ -228,9 +265,7 @@ class AsyncExecution:
         if epoch != self.epoch or sample.paused or sample.outcome is not None or state.phase is not EpisodePhase.ROLLOUT:
             self.invalidate()
             return False
-        self.queue.initialize(np.concatenate([plan.action_chunk, plan.ref_chunk,
-            np.full((len(plan.action_chunk),1),plan.actor_param_version,np.float32),
-            np.full((len(plan.action_chunk),1),plan.source,np.float32)], -1))
+        self.queue.initialize(self.plan_bundle(plan))
         self.plan = plan
         self.anchors[self.env._episode_steps] = plan.start_features
         from .input_audit import observation_receipt
@@ -279,9 +314,7 @@ class AsyncExecution:
         # after Actor refinement so it cannot undo inpainting's fixed actions.
         n = min(self.config.max_delay_steps, len(snapshot.previous_actions))
         actions[:n] = snapshot.previous_actions[:n, :7]
-        bundle = np.concatenate([actions, plan.ref_chunk,
-            np.full((len(actions),1),plan.actor_param_version,np.float32),
-            np.full((len(actions),1),plan.source,np.float32)], -1)
+        bundle = self.plan_bundle(plan, actions)
         # Keep the reference belonging to each committed old action too.
         # Mixing a new reference with an old action changes Replay/BC provenance.
         bundle[:n] = snapshot.previous_actions[:n]
@@ -433,6 +466,7 @@ class AsyncExecution:
                 paused_last = False
                 hil_command_receipt = None
                 logical_proposal = logical_reference = None
+                exploration_receipt = None
                 if state.phase is EpisodePhase.HIL:
                     if self.plan is not None:
                         io.set_chunk_ready(False)
@@ -466,6 +500,7 @@ class AsyncExecution:
                     target, ref_target = target_bundle[:7], target_bundle[7:14]
                     logical_proposal, logical_reference = target.copy(), ref_target.copy()
                     version, source = int(target_bundle[14]), ControlSource(int(target_bundle[15]))
+                    exploration_receipt = self.exploration_receipt(target_bundle)
                     self.last_policy_source = source
                     # This request starts at the NEXT logical boundary, below.
                     publications = []
@@ -481,7 +516,8 @@ class AsyncExecution:
                         publication_attempt = dict(
                             nominal_scheduled_monotonic=float(interval_origin+timestamp),
                             prepare_started_monotonic=prepare_started, published=False,
-                            actor_param_version=int(version), execution_epoch=int(epoch))
+                            actor_param_version=int(version), execution_epoch=int(epoch),
+                            exploration=exploration_receipt)
                         requested = self.segment_start + alpha*(target-self.segment_start)
                         filtered = self.filter.apply(requested, self.last_command, 1/self.config.publish_hz)
                         filtered[6] = self.last_command[6] + np.clip(filtered[6]-self.last_command[6],
@@ -554,7 +590,7 @@ class AsyncExecution:
                                                  publish_duration_ms=(publish_finished-publish_started)*1000,
                                                  feedback_received_monotonic=check.received_monotonic,
                                                  feedback_state=env._state(check.observation).copy(),
-                                                 execution_epoch=int(epoch),
+                                                 execution_epoch=int(epoch), exploration=exploration_receipt,
                                                  ref_action=self.last_ref.copy(), actor_param_version=int(version)))
                         self.stats['emitted_commands'] += 1
                     # A partial segment can end on pause/HIL. Never wait on
@@ -620,6 +656,9 @@ class AsyncExecution:
                     planned_action=logical_proposal, logical_ref_action=logical_reference,
                     proposal_semantics="queued logical Actor target before interpolation/filter/clamp; no fresh HIL counterfactual" if logical_proposal is not None else "not_recorded_during_HIL",
                     inference_events=self.take_inference_events())
+                if self.explorer is not None:
+                    record["exploration"] = exploration_receipt
+                    record["exploration_collection_identity"] = self.exploration_identity
                 record['hil_target_mode'] = env._hil_target
                 record['hil_command_receipt'] = hil_command_receipt
                 if hil_command_receipt is not None:
