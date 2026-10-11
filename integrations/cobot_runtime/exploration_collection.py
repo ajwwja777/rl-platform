@@ -20,6 +20,20 @@ def locations():
                 recording=DATA / "datasets/plug_insertion/recordings/rl-platform/rlt/exploration-hil8-7281-v1")
 
 
+
+def recording_root(phase):
+    """Honor the web selection at each Episode; private path is only a fallback.
+
+    Recording location and Replay journal isolation are independent contracts.
+    Never override an operator-selected directory to enforce Replay isolation.
+    """
+    from .profile_storage import settings, selected_root, validate_root
+    choices = settings()
+    if choices.get("selected") or (choices.get("current") or {}).get(phase):
+        return selected_root(phase)
+    return validate_root(locations()["recording"])
+
+
 def verify_assets(snapshot, stats):
     for name, path, expected in (("Actor", snapshot, ACTOR_SHA256), ("normalization", stats, STATS_SHA256)):
         digest = hashlib.sha256(Path(path).read_bytes()).hexdigest()
@@ -98,4 +112,4 @@ if __name__ == "__main__":
     elif selected():
         validate_launch(args.value)
         print(locations()["run"])
-        print(locations()["recording"])
+        print(recording_root("online"))

@@ -124,8 +124,8 @@ def create_shared_env():
     from methods.openpi_rlt.plug_v3_yyshadow.right_arm_env import create_right_arm_online_env
     from .profile_storage import selected_root
 
-    from .exploration_collection import selected, locations
-    collection_root = (lambda phase: locations()["recording"]) if selected() else selected_root
+    from .exploration_collection import selected, recording_root
+    collection_root = recording_root if selected() else selected_root
     original = task5_client.Task5Client
     phase = os.environ.get("COBOT_RLT_COLLECTION_PHASE", "online")
 
