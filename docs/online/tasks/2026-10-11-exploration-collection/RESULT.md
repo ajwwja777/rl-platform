@@ -1,5 +1,8 @@
 # 固定 HIL8 探索采集交付
 
+最新补充（2026-10-11）：7轮真实采集已核对；模型自动匹配保存目录与历史显示已同步现场。网页刷新即可，无需释放或重载。详见[保存位置闭环](STORAGE.md)和[7轮数据分析/下一步](ANALYSIS.md)。本入口仍固定Actor3640、不训练；7轮6失败1自主成功，不代表Online收益。
+
+
 状态：已交付可选探索采集入口；等待用户加载并进行首批采集。不是持续 Online 学习放行。
 
 代码提交 `121f0f8b0d69f067a28d201b58831e0db6e8edce` 已合入 A6000 main 并推送。Cobot 8 文件逐 SHA 同步，现场 CPU 检查 52 项通过，实际配置原生解析通过；网页 `/api/collection/model` 已显示新入口 available=true、training_enabled=false。11 个受保护资产 SHA 与监测服务 PID/start ticks 未变。安装不启动服务或加载模型。回执：`outputs/exploration-collection-20261011/field-install.json`。

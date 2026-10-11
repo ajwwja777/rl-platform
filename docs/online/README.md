@@ -76,3 +76,6 @@ HIL 标签必须保留；删标签不会消除人工救回的 credit 路径。Ac
 - [supported-online-20261006](../../outputs/supported-online-20261006/REPORT.md)
 - [supported-online-field-delivery-20261006](../../outputs/supported-online-field-delivery-20261006/REPORT.md)
 - [terminal-exposure-20261007](../../outputs/terminal-exposure-20261007/REPORT.md)
+
+
+2026-10-11 采集经验：[固定探索7轮核对](tasks/2026-10-11-exploration-collection/ANALYSIS.md)。模型专用目录必须同时登记网页选择、实际录制与历史显示；已同步自动匹配，77项前端/15项RLT CPU回归通过。单臂任务的通用双臂HDF5 action可能全NaN，应读取右臂coordinator字段及单臂valid_mask，不跨缺口拼接，也不能据此推断独立Replay无效。Learner禁用时Replay增长不代表发生学习。

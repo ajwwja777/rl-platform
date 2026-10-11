@@ -1,6 +1,6 @@
 # 2026-10-11 网页保存目录与探索录制不一致
 
-状态：已定位，A6000修复/15项CPU验证完成；现场模型仍加载，未同步到活动运行实例，未重启服务或搬数据。
+状态：首轮问题已闭环。用户随后选择“模型自动匹配目录”方案，7bd6cda/2936dad已提交推送并同步静态前端和registry；7条历史记录可通过实际网页API读取。下文首批3轮及f39745c为历史过程，最新见末节及ANALYSIS.md。
 
 ## 已验证事实
 
@@ -31,3 +31,13 @@ HDF5以只读模式打开检查属性及所有dataset形状，未复制图像或
 现场状态：核对时ready、session_active=true、recorder stopped/complete；没有停止、释放、重新加载或运动，没有改写原始录制/Replay/网页选择。修复不能声称当前进程已生效；等待用户结束Session并释放模型后，限范围同步两个模块，再由用户重新加载验证下一轮实际路径。
 
 证据：A6000 `/data/LFT-W02_data/jiaan/jiaan/projects/rl-platform/outputs/exploration-collection-20261011/storage-audit/`：field-storage.json、episode-completion.json、hdf5-metadata.json、history-api.json、storage-tests.txt。
+
+## 后续闭环：模型自动匹配专用目录
+
+用户新增4轮后改用优先方案：registry明确`data_directories.collection`和`collection_directory_policy=model`，网页在选择/重新打开该模型时自动匹配专用目录，锁定误导性的自选框；成功回执后刷新同一路径的历史记录。活动Episode不切目录；目录请求失败阻止开始，显示错误，不无限重试；普通模型自选目录保持。兼容迟到的旧刷新响应，避免再次切回test。
+
+77项前端回归通过；A6000提交/推送后持模型操作锁同步4个静态/registry文件并逐SHA核验。实际GET目录与Session录制根一致，history返回7条complete；model catalog已显示新目录策略，两个JS实际HTTP200且SHA一致。不重启网页或模型；监测PID/start_ticks、Actor与独立Replay均未变。不搬旧数据，也不把新录制复制进test。
+
+现场刷新网页即使用新前端；当前Python仍是原探索固定目录实现，与网页专用目录一致，未声称热加载旧f39745c修复。回退：恢复2936dad父提交的3个静态文件和7bd6cda父提交的registry，刷新页面；录制/Replay/权重不删不回滚。恢复旧UI会重新失去自动匹配，需手工选真实路径。
+
+完整数据/边界/下一步：[ANALYSIS.md](ANALYSIS.md)。

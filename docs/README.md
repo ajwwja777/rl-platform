@@ -16,7 +16,7 @@ Online 新经验能否改善自主能力仍是主要问题。最近正式交付�
 
 文档整理本身的进度/验收：[任务](architecture/tasks/2026-10-11-documentation-framework/TASK.md)。另一对话研究草稿保持未合并，入口在 Online 模块；不将草稿主张升级为事实。
 
-当前执行交付：[固定 HIL8 探索采集](online/tasks/2026-10-11-exploration-collection/RESULT.md)。A6000 101项/现场52项 CPU 合约与回归通过，新入口已同步且网页可见；固定权重、Learner关闭、独立数据目录。用户已采3个完整Episode，探索/Actor身份有实际trace；发现固定录制目录覆盖网页选择，A6000修复15项检查通过，活动现场尚待空闲同步。[保存位置纠错](online/tasks/2026-10-11-exploration-collection/STORAGE.md)。Online收益仍未证实。
+当前执行交付：[固定 HIL8 探索采集](online/tasks/2026-10-11-exploration-collection/RESULT.md)。A6000 101项/现场52项 CPU 合约与回归通过，新入口已同步且网页可见；固定权重、Learner关闭、独立数据目录。用户已采7个完整Episode（6失败1自主成功、无HIL），探索/Actor身份有实际trace；模型目录自动匹配已同步现场，77项前端回归通过，实际history可读7条。通用HDF5 action存在双臂联合有效性限制，右臂coordinator字段与独立Replay须分开核对。[保存位置纠错](online/tasks/2026-10-11-exploration-collection/STORAGE.md)。Online收益仍未证实。
 
 ## 关键经验
 
