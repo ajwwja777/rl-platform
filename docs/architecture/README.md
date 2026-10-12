@@ -50,3 +50,5 @@
 - [rlt](../../outputs/rlt)（目录）
 - [storage](../../outputs/storage)（目录）
 - [verification](../../outputs/verification)（目录）
+
+- [2026-10-12 RLT忠实复现核对](tasks/2026-10-12-rlt-reproduction-audit/TASK.md)：作者基线、当前候选、已启用/未启用改动及资料来源。
