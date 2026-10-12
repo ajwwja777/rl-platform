@@ -1,6 +1,6 @@
 # Online 学习效果与候选证据接续
 
-状态：待继续。2026-10-11 仅整理已有证据与下一步，未开展新训练、发布或真机轮次。现场操作归用户；本文件不创建部署授权。
+状态：2026-10-12 已开始用户确认的原配方/HIL8匹配学习对照；完成首批资产身份与新数据拆分，尚未开始训练。历史记录保留。现场操作归用户；本文件不创建部署授权。
 
 ## 问题与验收
 
@@ -37,3 +37,31 @@
 ## 2026-10-11 执行接续
 
 探索原型缺少部署/冻结模式/动作来源合约的问题已由[固定HIL8探索采集任务](../2026-10-11-exploration-collection/TASK.md)实现并同步。新入口 `plug-v3-hil8-explore` 固定权重、Learner关闭；当前唯一现场下一步为用户采3–5个完整Episode，先核对探索与实际动作证据。W2保持问题及持续自主收益仍待后续离线对照，不能把采集入口交付当学习放行。
+
+## 2026-10-12：原配方与HIL8匹配对照，第1步
+
+用户确认主线：固定基线 → 同起点/同新数据比较原配方与HIL8 → 依据结果做必要单因素实验 → 有证据的候选再交用户受控Online。该比较不是完整复现原实验：固定预算后原UTD5不在本轮复现范围，不能把多因素配方差异归因到某一项。暂停新增平滑/Stage1改造，不覆盖其他对话工作。
+
+执行工作区：`/data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/matched-learning-20261012/rl-platform`，分支`experiment/matched-learning-20261012`，代码基线542f560（已包含其他对话的目录接口修改，未改动其工作树）。本阶段只读Cobot、A6000 CPU解包/hash，不加载网络、不训练/GPU、不动现场服务/机器人/生产Replay。
+
+### 已验证
+
+- 共同起点选原5k完整checkpoint：`models/rlt/plug_v3_yyshadow/warmup-5000/checkpoints/step_5000.pkl`，SHA `be50b6cf0586864d89173a6456128bffa8b37621a6fda500f5be287223050f33`；实际state含Actor/Critic、target、两组优化器、RNG，步数5000/Actor2500。恢复逐叶/首步一致性尚待训练入口校验。
+- 原5k与HIL8 action_norm_stats数值完全一致；文件SHA不同仅格式及provenance元数据，不应误报归一化改变。
+- 现场探索Replay未新增：29完整Episode、1068条，SHA `919ff1adb31b6fcae0f3b3380ca80dc2e881b7f2501566d7042237674d0dcad8`；1068唯一Episode/step和strict回执数组一致。10,373,484字节数值快照已取到A6000独立输出并复核SHA；未复制视频/Stage1或修改原件。
+- 在训练前按完整Episode分层并用固定hash顺序划分：23 TRAIN/846条（9自主成功、1辅助成功、13失败），6 DEV/222条（2自主成功、1辅助成功、3失败）。两条HIL分开；但该29条历史上已被分析，DEV不是独立TEST；一条训练HIL仅支持局部诊断。native DEV ID为2/5/15/17/23/25，录制ID不能直接当native ID。
+- 拟定两个配方各846次Critic/423次Actor更新、batch128、配对seed41/42/43；从同一5k完整state开始。原配方使用原生TD/原采样与lr；HIL8使用当前MC/clip/teacher/分层/HIL8/lr。保留不更新的step0作为参照。实际入口逐项配置序列化及首步一致性尚待验证。
+
+### 发现的接入风险及边界
+
+新buffer的native ID为2–39，旧HIL8池中Online ID到10010；现有采样器按max ID近20范围及floor10000识别近期HIL。直接拼接时新数据不会进入近期/HIL8额外槽，且原始ID36/38/39与旧数据重复（这里只说明裸ID重复，不冒称完整phase/ID键碰撞）。实验manifest已记录独立来源namespace及10011起的新ID映射，后续仅在派生实验输入应用并验证采样回执。不是已证明的历史Online生产故障，不改生产Replay。
+
+当前拟共用旧池为HIL8归档2777条/208 Episode；不能拿其原来已通过筛选的历史结论替代本轮DEV身份核对。旧DEV清单连接/排除、初始checkpoint已见数据边界仍待逐项确认。新数据的TRAIN/DEV划分已固定，不因训练结果重分。
+
+现场最新只读GET session返回HTTP409；collection/model报告runtime_process_exited、ROS shut down while waiting for object reset，recorder stopped/complete、handover fault。记录事实，不在本离线任务诊断或恢复硬件；此前paused状态不是当前状态。接口错误已隔离，不妨碍独立Replay只读核验。
+
+### 当前唯一下一步
+
+完成旧DEV身份/泄漏清单与派生数据映射，搭建并验证两个训练配方的原生入口及step0一致性，先检查真实batch曝光，再按固定预算开始A6000 CPU匹配训练。CPU亲和性/可用资源与具体命令在启动前登记；不占现场GPU。此次没有新权重，也没有Online放行结论。
+
+证据根：`/data/LFT-W02_data/jiaan/jiaan/projects/rl-platform/outputs/matched-learning-20261012/`。comparison-manifest.json、asset-identities.json、normalization-check.json、state-and-episode-check.json、check_replay.json、snapshot.json及freeze_manifest.py分别记录划分/计划、SHA、数值、实际state、Replay逐数组检查、现场只读事实及固定划分脚本。原始29条的结果/位置/HIL语义边界沿用BATCH3，不重新声称独立成功检测。

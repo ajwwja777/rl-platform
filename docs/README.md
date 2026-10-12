@@ -1,6 +1,8 @@
 # RL 平台：当前进度与关键经验
 
-2026-10-12最新用户优先项：[忠实复现差异核对](architecture/tasks/2026-10-12-rlt-reproduction-audit/TASK.md)。当前HIL8/Supported是RLT衍生候选；网络保持但MC30/teacher/LR/HIL采样/预算/执行均有差异。std.002、BC5/Q.1/delta10来自原插孔任务配置，非全部后加。现场只读explore/Actor3640/learner关闭。暂停新防抖/训练改动，先向用户明确基线与候选边界。
+2026-10-12当前主线：[原配方/HIL8匹配学习对照](online/tasks/2026-10-11-online-learning-evidence/TASK.md)。用户已确认开始；原5k完整state与归一化核验、29Ep/1068条探索快照和23TRAIN/6DEV拆分完成。两组同起点/预算，先验证真实batch与旧DEV隔离再训练。新旧Episode编号需仅在实验副本映射，避免近期采样失效；没有新训练或现场更改。
+
+上一项（已完成）：[忠实复现差异核对](architecture/tasks/2026-10-12-rlt-reproduction-audit/TASK.md)。当前HIL8/Supported是RLT衍生候选；网络保持但MC30/teacher/LR/HIL采样/预算/执行均有差异。std.002、BC5/Q.1/delta10来自原插孔任务配置，非全部后加。现场只读explore/Actor3640/learner关闭。暂停新防抖/训练改动，先向用户明确基线与候选边界。
 
 上一项（2026-10-12，当前暂停实施）：用户要求从最终输出与训练动作一致性重新设计平顺执行，不继续叠加EMA。[动作契约与训练RTC核对](execution/tasks/2026-10-11-chunk-continuity/ACTION_CONTRACT.md)确认当前20Hz逻辑action只取每段最后50Hz命令；读取原RLT/训练RTC/XR-1/Real-Time EXPO原文和源码，提出前缀条件/延迟一致性及低频探索方向，尚未实施新训练或现场切换。
 
