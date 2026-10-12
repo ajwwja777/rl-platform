@@ -6,18 +6,21 @@ from pathlib import Path
 
 MODEL_ID = "plug-v3-hil8-explore"
 SMOOTH_MODEL_ID = "plug-v3-hil8-explore-smooth"
+CONSTANT_MODEL_ID = "plug-v3-hil8-explore-constant"
 ACTOR_SHA256 = "020a84d83a2d9211689e6756a834109fd515a145effe7f8cbe1a21b62fc0ebf5"
 STATS_SHA256 = "4583a59496d4c459a155c960adf4baac6af0ccbd536a2168914a28809f45366c"
 
 
 def selected(environ=None):
     env = os.environ if environ is None else environ
-    return env.get("COBOT_DEPLOYMENT_MODEL_ID") in (MODEL_ID, SMOOTH_MODEL_ID)
+    return env.get("COBOT_DEPLOYMENT_MODEL_ID") in (MODEL_ID, SMOOTH_MODEL_ID, CONSTANT_MODEL_ID)
 
 
 def locations():
     from .paths import RLT, DATA
     suffix = "hil8-7281-smooth-v1" if os.environ.get("COBOT_DEPLOYMENT_MODEL_ID") == SMOOTH_MODEL_ID else "hil8-7281-v1"
+    if os.environ.get("COBOT_DEPLOYMENT_MODEL_ID") == CONSTANT_MODEL_ID:
+        suffix = "hil8-7281-constant-v1"
     return dict(run=RLT / ("outputs/exploration-collection/"+suffix),
                 recording=DATA / ("datasets/plug_insertion/recordings/rl-platform/rlt/exploration-"+suffix))
 

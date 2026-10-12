@@ -200,7 +200,7 @@ class AsyncExecution:
             if self.exploration_collecting():
                 if int(plan.source) != int(ControlSource.RL) or plan.actor_param_version != 3640:
                     raise RuntimeError(f'Exploration collection requires the pinned HIL8 Actor; source={plan.source}, version={plan.actor_param_version}')
-                actions, exploration = self.explorer.apply(actions, context=(episode_id, epoch))
+                actions, exploration = self.explorer.apply(actions, context=(episode_id, epoch), time_sec=started, period_sec=1./self.config.logical_hz)
                 exploration.update(request_id=event_id, execution_epoch=epoch, episode_id=episode_id,
                                    actor_target_before_exploration=np.asarray(plan.action_chunk).copy(),
                                    **self.exploration_identity)
@@ -231,7 +231,13 @@ class AsyncExecution:
             if plan.plan_event_id >= 2**24:
                 raise RuntimeError('Exploration request identity exceeds exact float32 queue encoding')
             provenance = [plan.plan_event_id, *(receipt['offset_rad'] if receipt else [0.]*6), int(receipt is not None)]
-            columns.append(np.tile(np.asarray(provenance, np.float32), (len(actions), 1)))
+            evidence = np.tile(np.asarray(provenance, np.float32), (len(actions), 1))
+            if receipt and 'offset_chunk_rad' in receipt:
+                offsets = np.asarray(receipt['offset_chunk_rad'], np.float32)
+                if offsets.shape != (len(actions), 6):
+                    raise ValueError('Exploration per-row provenance shape mismatch')
+                evidence[:,1:7] = offsets
+            columns.append(evidence)
         return np.concatenate(columns, -1)
 
     def exploration_receipt(self, bundle):
