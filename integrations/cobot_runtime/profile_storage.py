@@ -27,7 +27,9 @@ def validate_root(value):
     path=Path(migrated_data_path(value)).expanduser()
     if not path.is_absolute(): raise ValueError("RLT data root must be absolute")
     resolved=path.resolve(strict=False)
-    allowed_roots = (ALLOWED.resolve(strict=False), LEGACY_BASE.resolve(strict=False))
+    additional = json.loads(os.environ.get("COBOT_ADDITIONAL_DATA_ROOTS", "[]"))
+    allowed_roots = [ALLOWED.resolve(strict=False), LEGACY_BASE.resolve(strict=False)]
+    allowed_roots.extend(Path(item).expanduser().resolve(strict=False) for item in additional if Path(item).is_absolute())
     if not any(resolved == allowed or allowed in resolved.parents for allowed in allowed_roots):
         raise ValueError("RLT data root must stay inside " + str(ALLOWED))
     if path.exists() and path.is_symlink(): raise ValueError("RLT data root cannot be a symlink")
