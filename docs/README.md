@@ -1,6 +1,8 @@
 # RL 平台：当前进度与关键经验
 
-最新优先项（2026-10-11）：用户要求先修执行平顺性，离线BC/Q训练暂缓。[RLT平滑候选](execution/tasks/2026-10-11-chunk-continuity/TASK.md)在相同历史目标复放中命令加速度RMS中位下降47%，目标跟随误差增加，未证明消除大幅往返或提高成功率；新可选入口使用同Actor3640/RTC50Hz/探索，关闭Learner、独立数据，旧入口保持。现场交付状态见RESULT。
+最新优先项（2026-10-12）：用户要求从最终输出与训练动作一致性重新设计平顺执行，不继续叠加EMA。[动作契约与训练RTC核对](execution/tasks/2026-10-11-chunk-continuity/ACTION_CONTRACT.md)确认当前20Hz逻辑action只取每段最后50Hz命令；读取原RLT/训练RTC/XR-1/Real-Time EXPO原文和源码，提出前缀条件/延迟一致性及低频探索方向，尚未实施新训练或现场切换。
+
+历史优先项（2026-10-11）：用户要求先修执行平顺性，离线BC/Q训练暂缓。[RLT平滑候选](execution/tasks/2026-10-11-chunk-continuity/TASK.md)在相同历史目标复放中命令加速度RMS中位下降47%，目标跟随误差增加，未证明消除大幅往返或提高成功率；新可选入口使用同Actor3640/RTC50Hz/探索，关闭Learner、独立数据，旧入口保持。现场交付状态见RESULT。
 
 最新实际核对（2026-10-11 夜）：[第三批探索数据](online/tasks/2026-10-11-exploration-collection/BATCH3.md)累计29完整Episode（11自主成功/2辅助成功/16失败），1068条Replay与strict回执逐数组一致；固定Actor3640、训练batch0。用户中途移动插孔，前后结果不可直接归因。含HIL窗口仅19条/1.78%，下一步为匹配离线纠正BC与加Q诊断；尚未执行新训练。缓存新运行56hits/62requests，构建9.017秒。
 
