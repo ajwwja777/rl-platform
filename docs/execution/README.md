@@ -80,3 +80,8 @@
 - [recurrent-publication-timeout-20261008](../../outputs/recurrent-publication-timeout-20261008/REPORT.md)
 - [startup-optimization-20260929](../../outputs/startup-optimization-20260929)（目录）
 - [web-deployment-handoff-20261006](../../outputs/web-deployment-handoff-20261006)（目录）
+
+
+## 2026-10-12 自选录制目录的校验范围
+
+网页已允许 Getea1 盘下自选，但 RLT 原校验只认识主 DATA／legacy 根；profile_storage 现消费同一 COBOT_ADDITIONAL_DATA_ROOTS，保留绝对路径、别名迁移和符号链接边界。仅存储契约变更，模型固定探索目录与默认根不变。已提交／同步，正式网页重载后 xiqing HTTP browse/prepare、新子目录创建和现场 RLT CPU 校验通过，无模型／硬件启停、录制或资产修改。详情：[任务与证据](tasks/2026-10-12-custom-recording-roots/TASK.md)。
