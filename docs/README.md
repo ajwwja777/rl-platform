@@ -1,5 +1,7 @@
 # RL 平台：当前进度与关键经验
 
+最新结论（2026-10-12）：[匹配学习结果](online/tasks/2026-10-11-online-learning-evidence/RESULT.md)已完成独立journal命名空间修复、2配方×3seed×846次CPU更新及86项回归/精确恢复/导出。真实Actor新数据占比原13.3%/HIL8 29.6%；HIL8新HIL TRAIN/DEV拟合−2.29%/−1.44%、旧DEV保持较好，但新HIL各仅一集，不支持自主Online增益或自动发布。新权重未上机。[低频探索候选](execution/tasks/2026-10-11-chunk-continuity/LOW_FREQUENCY.md)已安装/网页可见，固定Actor3640、Learner关闭；开环命令加速度−9.9%，真机抖动仍待验收。以下旧日期内容是历史状态，以此段和对应TASK最新节接续。
+
 2026-10-12当前主线：[原配方/HIL8匹配学习对照](online/tasks/2026-10-11-online-learning-evidence/TASK.md)。用户已确认开始；原5k完整state与归一化核验、29Ep/1068条探索快照和23TRAIN/6DEV拆分完成。两组同起点/预算，先验证真实batch与旧DEV隔离再训练。新旧Episode编号需仅在实验副本映射，避免近期采样失效；没有新训练或现场更改。
 
 上一项（已完成）：[忠实复现差异核对](architecture/tasks/2026-10-12-rlt-reproduction-audit/TASK.md)。当前HIL8/Supported是RLT衍生候选；网络保持但MC30/teacher/LR/HIL采样/预算/执行均有差异。std.002、BC5/Q.1/delta10来自原插孔任务配置，非全部后加。现场只读explore/Actor3640/learner关闭。暂停新防抖/训练改动，先向用户明确基线与候选边界。
@@ -43,3 +45,5 @@ Online 新经验能否改善自主能力仍是主要问题。最近正式交付�
 从模块 README 找任务，再读 TASK.md 的范围、验收、进度和下一步；复杂任务再读 ANALYSIS.md/RESULT.md。已验证/失败/证据不足必须有证据入口。具体任务进度只在 TASK 维护，模块记录稳定认识，这里只汇总关键变化。
 
 代码导航见 [项目 README](../README.md)，现场操作见 [执行手册](execution/RUNBOOK.md)，历史批次见 [迁移记录](architecture/MIGRATION.md)。旧路径页仅供兼容；新增正文写对应模块。outputs 中原始报告、图、日志和 manifest 不移动，各模块列出所属入口。
+
+新增经验：合并独立Replay不能把源内Episode小号当全局新旧顺序；先建立带源身份的时间有序映射，再检查实际Actor/Critic批次和DEV零抽样。最终buffer比例不能代替逐集到达过程的训练比例。[证据](online/tasks/2026-10-11-online-learning-evidence/RESULT.md)

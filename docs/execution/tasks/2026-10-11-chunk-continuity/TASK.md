@@ -1,6 +1,6 @@
 # RLT chunk衔接与命令平滑
 
-状态：A6000候选实现及离线验证完成，现场7文件安装/CPU校验和HTTP目录可见性已通过；收据见RESULT后续段。真机平顺性、接触性能与成功率待用户验收，不宣称已修好大幅抽插。
+状态：2026-10-12 低频探索候选已实现、CPU验证、提交push并安装；正式网页可见。下一步验收LOW_FREQUENCY，不再优先叠加两级EMA。真机平顺性、接触性能与成功率仍证据不足。
 
 授权与范围：用户明确优先执行基建，先在RL项目实施，autoresearch并交给用户rollout。固定Actor/Reference/RTC/50Hz/探索分布，不训练、不自动运动；共用VLA仅只读，不改其他模型或生产默认、权重、Replay。可选新入口采用独立录制和Replay。
 
@@ -18,3 +18,10 @@
 ## 2026-10-12 用户调整优先级：动作一致性与生成连续性
 
 两级EMA候选保留历史安装/回退证据，但不再作为优先验收方案。只读核对发现20Hz逻辑action仅代表每段最后50Hz命令；5327逻辑步对应13291发布，中间7964条仍在trace但未逐条进入训练action。详见[ACTION_CONTRACT](ACTION_CONTRACT.md)：原RLT、Training-time RTC、XR-1和Real-Time EXPO-FT原文/代码核对，以及探索时间结构的证据边界。下一步是明确最终动作/时间契约与前缀条件训练的最小隔离方案；本次没有改代码/现场或训练。
+
+
+## 2026-10-12 低频探索交付
+
+最新[交付与验收](LOW_FREQUENCY.md)：0b9dd4a新增episode_constant，探索幅度/RTC50Hz/单级EMA/Actor3640不变；每Episode一个偏移并1秒平滑进入，Learner关闭。29历史Episode开环命令加速度RMS中位−9.86%，末3秒命令路程−19.40%，不能证明闭环抽插已消除。四源码/登记文件现场SHA及CPU检查、正式网页可见通过，没有加载/运动/服务启停。
+
+唯一现场下一步：用户固定位置交替验收旧探索与新低频探索，实际发布/Replay身份核对后决定保留；新入口plug-v3-hil8-explore-constant。算法匹配结果另见[Online RESULT](../../../online/tasks/2026-10-11-online-learning-evidence/RESULT.md)，二者不混作成功率证据。

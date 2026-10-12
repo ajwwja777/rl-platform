@@ -85,3 +85,8 @@
 ## 2026-10-12 自选录制目录的校验范围
 
 网页已允许 Getea1 盘下自选，但 RLT 原校验只认识主 DATA／legacy 根；profile_storage 现消费同一 COBOT_ADDITIONAL_DATA_ROOTS，保留绝对路径、别名迁移和符号链接边界。仅存储契约变更，模型固定探索目录与默认根不变。已提交／同步，正式网页重载后 xiqing HTTP browse/prepare、新子目录创建和现场 RLT CPU 校验通过，无模型／硬件启停、录制或资产修改。详情：[任务与证据](tasks/2026-10-12-custom-recording-roots/TASK.md)。
+
+
+## 2026-10-12 实践更新
+
+探索的时间变化与滤波分开验收：新episode_constant候选固定每集偏移并平滑进入，不叠加EMA；开环改善不代表接触成功。已安装且网页可见，使用/停止/回退见[低频探索](tasks/2026-10-11-chunk-continuity/LOW_FREQUENCY.md)。

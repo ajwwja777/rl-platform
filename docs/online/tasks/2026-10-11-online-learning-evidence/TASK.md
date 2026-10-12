@@ -1,6 +1,6 @@
 # Online 学习效果与候选证据接续
 
-状态：2026-10-12 已开始用户确认的原配方/HIL8匹配学习对照；完成首批资产身份与新数据拆分，尚未开始训练。历史记录保留。现场操作归用户；本文件不创建部署授权。
+状态：2026-10-12 命名空间导入修复、两配方×三种子匹配CPU训练、实际采样与恢复/导出验证已完成。新研究权重未发布，自主Online收益仍证据不足；最新结论见RESULT，后文按日期保留历史。
 
 ## 问题与验收
 
@@ -65,3 +65,10 @@
 完成旧DEV身份/泄漏清单与派生数据映射，搭建并验证两个训练配方的原生入口及step0一致性，先检查真实batch曝光，再按固定预算开始A6000 CPU匹配训练。CPU亲和性/可用资源与具体命令在启动前登记；不占现场GPU。此次没有新权重，也没有Online放行结论。
 
 证据根：`/data/LFT-W02_data/jiaan/jiaan/projects/rl-platform/outputs/matched-learning-20261012/`。comparison-manifest.json、asset-identities.json、normalization-check.json、state-and-episode-check.json、check_replay.json、snapshot.json及freeze_manifest.py分别记录划分/计划、SHA、数值、实际state、Replay逐数组检查、现场只读事实及固定划分脚本。原始29条的结果/位置/HIL语义边界沿用BATCH3，不重新声称独立成功检测。
+
+
+## 2026-10-12 本轮完成与接续
+
+[完整结果](RESULT.md)：新近期/HIL专用池从错误裸拼的0/0恢复到565/10；真实Actor新数据占比原13.265%/HIL8 29.619%。同起点846次更新×3seed，HIL8新HIL TRAIN/DEV MAE平均−2.29%/−1.44%，旧DEV人工MAE基本不变；原配方保持变差。两条HIL的Q1相对Actor偏好均在三个种子转正，但不能证明自主价值。86CPU回归及精确恢复/导出通过。代码fab2cc0/0b9dd4a已push；全部产物outputs/matched-learning-20261012，未修改生产Replay/权重或使用GPU。
+
+下一步：算法只改teacher50→5的匹配诊断，固定采样/MC/LR/预算/数据；尚未启动。现场仅验收[固定Actor低频探索](../../../execution/tasks/2026-10-11-chunk-continuity/LOW_FREQUENCY.md)，新入口已安装/网页可见、Learner关闭，用户负责加载与运动。本轮研究权重不自动晋升，不称可持续Online学习已通过。
