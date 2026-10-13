@@ -45,3 +45,11 @@ Web正式8015重载（旧PID795010退出），EXPO登记available，输入/输�
 网页使用：刷新正式8015，在场景plug_left_2cam → EXPO → rtc-sft → 2000选择模型。模型已加载且暂停，可按现有部署/采集/HIL/标签/归位按钮操作；本批只有左臂和两腕，默认动作时基10Hz。归位按用户选定的左臂/位姿，不自动套用旧右臂位置。可用HIL控制和采集不代表在线学习，train=false。
 
 唯一下一步：现场用户短轮验证Start/Pause/HIL交还/终止/归位，再验收成功率与实际deadline；不自动开始动作。
+
+## 2026-10-13 原生10Hz选项兼容补充
+
+用户询问Hz/RTC/滤波选择是否可用。发现旧前端仅提供20/30/40/50，下拉框无法显示EXPO默认10；单独切RTC/滤波时payload保持10，被Web通用校验拒绝。修复RL afaed39（完整commit以Git为准）及Web a8d7a8c：EXPO显示10/20/30/40/50并接受原生10独立开关；其他模型仍保留原频率契约。训练时RTC权重保持，部署RTC=true调用原生前缀/异步路径，false走delay0同步路径；滤波是可选EMA，Hz只改发布插值，不改训练10Hz。
+
+15执行行为、45Web相关（1既有跳过）、9前端用例通过。先commit/push再3文件现场SHA同步，实际Web环境10Hz开关解析通过；仅重载idle网页，原EXPO PID2057530与执行10Hz/RTCtrue/滤波false保留。用户此前已运行并暂停，发布累计765；本次前后计数同为765，未产生新动作、录制或模型加载。JS正式HTTP SHA匹配。证据scratch/rl-platform/expo-web-20261013/{rl-native10,web-native10,ui-native10}-tests.txt及field-evidence/native10-field-delivery.json。
+
+EXPO界面开关变更需释放后重新加载，不热切换当前运行模型；默认Hz不覆盖/RTC开/滤波关作为基线。真机执行/成功率不由该UI修复认证。
