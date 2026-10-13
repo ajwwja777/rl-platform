@@ -49,3 +49,8 @@ Cobot备份：`/home/agilex/jiaan/project/rl-platform/outputs/matched-learning-2
 用户截图揭示此前只核验API可见遗漏了前端去重：新旧探索共用checkpoint、training_method、frozen模式，model_picker.weightKey将候选合并。已将constant候选方法身份独立为 `frozen-hil8-exploration-constant`；同一真实model_picker.js在JSDOM中通过“方法切换→版本选项→选中ID/提示”验证。未修改web代码、模型、训练参数或执行参数。之前的“网页可见”应限为API登记可见，不能作为此前下拉框可选证据。
 
 实际方法下拉名称：`frozen-hil8-exploration-constant`；版本／模式：`7281 · 冻结 · Actor 3640`；选中提示含 `plug-v3-hil8-explore-constant` 和“低频探索候选”。旧 `frozen-hil8-exploration-collection` 保持。产物 `outputs/exploration-picker-20261013/`。
+
+
+## 2026-10-13 现场反馈的验证边界纠正
+
+用户反馈抖动可接受、移动插孔约12/15成功。但只读核查session-use=evaluation、38底层记录均Replay写入0、private trace为空；该路由按设计不施加探索。找到两条完整网页成功记录，无法还原口述全部轮次。因此不能把这次反馈当作episode_constant探索已生效或改善抖动的证据；也不能把其余底层success0记成任务失败。详见[续训任务的现场核对](../../../online/tasks/2026-10-11-online-learning-evidence/TEACHER_CONTINUATION.md)。不改标签、不回填Replay、不自动重启或采集。

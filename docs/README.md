@@ -1,5 +1,7 @@
 # RL 平台：当前进度与关键经验
 
+最新（2026-10-13）：[teacher续训对照](online/tasks/2026-10-11-online-learning-evidence/TEACHER_CONTINUATION.md)从HIL8 7281完整state、同teacher/数据/batch做50 vs5，6组CPU完成；teacher5新HIL DEV较50改善1.61%，旧DEV均值/尾部在工程筛选内，尚无独立自主收益。现场保持Actor3640；当前constant新运行处于evaluation路由，探索/Replay关闭，不能将口述12/15当完整训练数据或低频探索生效证明。
+
 最新结论（2026-10-12）：[匹配学习结果](online/tasks/2026-10-11-online-learning-evidence/RESULT.md)已完成独立journal命名空间修复、2配方×3seed×846次CPU更新及86项回归/精确恢复/导出。真实Actor新数据占比原13.3%/HIL8 29.6%；HIL8新HIL TRAIN/DEV拟合−2.29%/−1.44%、旧DEV保持较好，但新HIL各仅一集，不支持自主Online增益或自动发布。新权重未上机。[低频探索候选](execution/tasks/2026-10-11-chunk-continuity/LOW_FREQUENCY.md)已安装/网页可见，固定Actor3640、Learner关闭；开环命令加速度−9.9%，真机抖动仍待验收。以下旧日期内容是历史状态，以此段和对应TASK最新节接续。
 
 2026-10-12当前主线：[原配方/HIL8匹配学习对照](online/tasks/2026-10-11-online-learning-evidence/TASK.md)。用户已确认开始；原5k完整state与归一化核验、29Ep/1068条探索快照和23TRAIN/6DEV拆分完成。两组同起点/预算，先验证真实batch与旧DEV隔离再训练。新旧Episode编号需仅在实验副本映射，避免近期采样失效；没有新训练或现场更改。
