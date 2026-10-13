@@ -1,6 +1,6 @@
 # Online 学习效果与候选证据接续
 
-状态：2026-10-12 命名空间导入修复、两配方×三种子匹配CPU训练、实际采样与恢复/导出验证已完成。新研究权重未发布，自主Online收益仍证据不足；最新结论见RESULT，后文按日期保留历史。
+状态：2026-10-13 从当前HIL8 7281的teacher50/5单因素续训已完成，见TEACHER_CONTINUATION。teacher5通过离线工程筛选，未发布；新现场评测未形成采集Replay，自主收益与低频探索实效仍需区分。后文按日期保留历史。
 
 ## 问题与验收
 
@@ -72,3 +72,10 @@
 [完整结果](RESULT.md)：新近期/HIL专用池从错误裸拼的0/0恢复到565/10；真实Actor新数据占比原13.265%/HIL8 29.619%。同起点846次更新×3seed，HIL8新HIL TRAIN/DEV MAE平均−2.29%/−1.44%，旧DEV人工MAE基本不变；原配方保持变差。两条HIL的Q1相对Actor偏好均在三个种子转正，但不能证明自主价值。86CPU回归及精确恢复/导出通过。代码fab2cc0/0b9dd4a已push；全部产物outputs/matched-learning-20261012，未修改生产Replay/权重或使用GPU。
 
 下一步：算法只改teacher50→5的匹配诊断，固定采样/MC/LR/预算/数据；尚未启动。现场仅验收[固定Actor低频探索](../../../execution/tasks/2026-10-11-chunk-continuity/LOW_FREQUENCY.md)，新入口已安装/网页可见、Learner关闭，用户负责加载与运动。本轮研究权重不自动晋升，不称可持续Online学习已通过。
+
+
+## 2026-10-13 从当前7281的teacher单因素续训完成
+
+用户批准当前7281完整state起点、固定teacher文件，仅50→5。6组×846 CPU更新完成，Actor4063；两组真实batch逐数组一致、DEV0抽样，16采样/导入测试和149叶精确恢复/导出通过。teacher5新HIL DEV相对teacher50再改善1.61%，旧DEV人工均值相对7281+0.23%、p95+0.28%；通过预登记工程筛选，但新HIL各一集，不能认证自主Online收益。
+
+[完整结果与新记录缺口](TEACHER_CONTINUATION.md)。现场新constant路由实际为evaluation，private Replay0；找到2个完整成功结果，口述约12/15未逐轮闭合，不能声称低频探索已在那些评测中启用。当前Actor3640/现场资产未变。下一步先闭合1集固定权重collection的真实trace/Replay，teacher5候选另作打包/冻结验收，不自动Online。所有产物outputs/teacher-continuation-20261013。
