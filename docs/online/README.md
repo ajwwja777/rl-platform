@@ -91,3 +91,7 @@ xiqing 原生 RealTimeEXPOFTLearner 在 Cobot4090 完整推理通过；batch2/UT
 
 
 2026-10-13：[handoff验证与teacher5候选](tasks/2026-10-11-online-learning-evidence/REVIEW_VALIDATION.md)。旧回报分析错误已修复；clip10/min-Q未通过增益筛选、AWBC有保持代价；8127/4063原生候选软件验证通过，现场未注册。实际动作价值和自主收益不能由状态AUC/拟合误差替代。
+
+## 2026-10-13 EXPO Web 在线学习
+
+原生完整更新因显存不足失败后，单卡适配通过 buffer donation、未参与损失的目标 Actor CPU EMA 与分块保存，完成 batch4 连续更新、检查点恢复、模拟 rollout/HIL 回合和恢复续训。原生损失/可训练范围保留；回合内固定策略，回合结束标注后同步更新，未知/放弃不入 Replay。现场切换状态及边界见 [交付记录](tasks/2026-10-13-expo-online/RESULT.md)。真实成功率未验收。

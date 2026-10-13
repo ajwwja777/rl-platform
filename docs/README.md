@@ -59,3 +59,7 @@ Online 新经验能否改善自主能力仍是主要问题。最近正式交付�
 Cobot4090 原生完整 EXPO 推理通过，完整更新 batch2/UTD1 两种分配器均 OOM；原 SFT2000 已恢复暂停，尚未启用在线学习。[配置、峰值与证据](online/tasks/2026-10-13-expo-online/TASK.md)。
 
 新增经验：重叠窗口的折扣回报按原始step_id计算；不能把接管前观察回报置零后仍称原目标校准。候选按训练源码SHA锁定时，新实验应隔离模块，避免无意破坏旧候选加载；工具合并必须核对实际各臂LR/delta元数据。[证据](online/tasks/2026-10-11-online-learning-evidence/REVIEW_VALIDATION.md)
+
+## 2026-10-13 EXPO 单卡 Online 接入
+
+新增独立 EXPO Online 网页选项，Cobot 单张4090上串行 rollout/HIL 与原生学习，完整更新/保存/恢复及合成回合续训通过。未改原固定SFT模型或RLT默认，尚不代表真机效果提升。详细状态、路径和验证边界：[EXPO Online 交付](online/tasks/2026-10-13-expo-online/RESULT.md)。
