@@ -1,5 +1,7 @@
 # RL 平台：当前进度与关键经验
 
+最新（2026-10-13）：[online-review核验与候选](online/tasks/2026-10-11-online-learning-evidence/REVIEW_VALIDATION.md)完成旧review回报口径修复、9组CPU对照和原生包验证。clip10从未触发、min-Q无新纠正收益，旧AWBC有保持代价；保留teacher5，8127/Actor4063包已准备但未现场登记/同步。独立自主收益仍证据不足；旧评估口径不能再作为Q高估根因证据。
+
 最新（2026-10-13）：[teacher续训对照](online/tasks/2026-10-11-online-learning-evidence/TEACHER_CONTINUATION.md)从HIL8 7281完整state、同teacher/数据/batch做50 vs5，6组CPU完成；teacher5新HIL DEV较50改善1.61%，旧DEV均值/尾部在工程筛选内，尚无独立自主收益。现场保持Actor3640；当前constant新运行处于evaluation路由，探索/Replay关闭，不能将口述12/15当完整训练数据或低频探索生效证明。
 
 最新结论（2026-10-12）：[匹配学习结果](online/tasks/2026-10-11-online-learning-evidence/RESULT.md)已完成独立journal命名空间修复、2配方×3seed×846次CPU更新及86项回归/精确恢复/导出。真实Actor新数据占比原13.3%/HIL8 29.6%；HIL8新HIL TRAIN/DEV拟合−2.29%/−1.44%、旧DEV保持较好，但新HIL各仅一集，不支持自主Online增益或自动发布。新权重未上机。[低频探索候选](execution/tasks/2026-10-11-chunk-continuity/LOW_FREQUENCY.md)已安装/网页可见，固定Actor3640、Learner关闭；开环命令加速度−9.9%，真机抖动仍待验收。以下旧日期内容是历史状态，以此段和对应TASK最新节接续。
@@ -55,3 +57,5 @@ Online 新经验能否改善自主能力仍是主要问题。最近正式交付�
 ## 2026-10-13 EXPO 单卡同步验证
 
 Cobot4090 原生完整 EXPO 推理通过，完整更新 batch2/UTD1 两种分配器均 OOM；原 SFT2000 已恢复暂停，尚未启用在线学习。[配置、峰值与证据](online/tasks/2026-10-13-expo-online/TASK.md)。
+
+新增经验：重叠窗口的折扣回报按原始step_id计算；不能把接管前观察回报置零后仍称原目标校准。候选按训练源码SHA锁定时，新实验应隔离模块，避免无意破坏旧候选加载；工具合并必须核对实际各臂LR/delta元数据。[证据](online/tasks/2026-10-11-online-learning-evidence/REVIEW_VALIDATION.md)

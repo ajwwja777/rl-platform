@@ -79,3 +79,8 @@
 用户批准当前7281完整state起点、固定teacher文件，仅50→5。6组×846 CPU更新完成，Actor4063；两组真实batch逐数组一致、DEV0抽样，16采样/导入测试和149叶精确恢复/导出通过。teacher5新HIL DEV相对teacher50再改善1.61%，旧DEV人工均值相对7281+0.23%、p95+0.28%；通过预登记工程筛选，但新HIL各一集，不能认证自主Online收益。
 
 [完整结果与新记录缺口](TEACHER_CONTINUATION.md)。现场新constant路由实际为evaluation，private Replay0；找到2个完整成功结果，口述约12/15未逐轮闭合，不能声称低频探索已在那些评测中启用。当前Actor3640/现场资产未变。下一步先闭合1集固定权重collection的真实trace/Replay，teacher5候选另作打包/冻结验收，不自动Online。所有产物outputs/teacher-continuation-20261013。
+
+
+## 2026-10-13 online-review核验完成
+
+[REVIEW_VALIDATION](REVIEW_VALIDATION.md)：修复旧review回报时基/接管前置零与历史实验配置记录，完成teacher5/clip10/min-Q三臂三seed单因素对照及旧AWBC保持复核。选择teacher5；clip10无触发、min-Q无新增纠正收益，AWBC保持不合格。8127/Actor4063独立包通过原生CPU加载/预算/恢复/导出；未登记或同步现场，未动生产Replay/默认。唯一下一步是按已有发布流程准备本包受控分批Online，先确认采集路由与首集真实入库；不重复旧实验。
