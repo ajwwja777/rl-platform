@@ -29,7 +29,8 @@ def save(p,obj):
 def arrays(rows):return {k:np.stack([r[k] for r in rows]) for k in FIELDS}
 
 def main():
-    ap=argparse.ArgumentParser();ap.add_argument('--assets',type=Path,required=True);ap.add_argument('--output',type=Path,required=True);ap.add_argument('--preflight-only',action='store_true');ap.add_argument('--prepared',type=Path);a=ap.parse_args()
+    ap=argparse.ArgumentParser();ap.add_argument('--study',choices=['teacher','critic'],default='teacher');ap.add_argument('--assets',type=Path,required=True);ap.add_argument('--output',type=Path,required=True);ap.add_argument('--preflight-only',action='store_true');ap.add_argument('--prepared',type=Path);a=ap.parse_args()
+    arms=({'teacher50':dict(teacher=50.,clip=None,minq=False),'teacher5':dict(teacher=5.,clip=None,minq=False)} if a.study=='teacher' else {'teacher5':dict(teacher=5.,clip=None,minq=False),'clip10':dict(teacher=5.,clip=10.,minq=False),'minq':dict(teacher=5.,clip=None,minq=True)})
     p=a.assets;out=a.output;out.mkdir(exist_ok=False,parents=True)
     inputs=p/'outputs/matched-learning-20261012';manifest=json.loads((inputs/'comparison-manifest.json').read_text())
     base=p/'models/rlt/plug_v3_yyshadow';package=base/'history/candidates/supported_hil8_clip_20261010'
@@ -82,7 +83,7 @@ def main():
             ss=dict(base_rng=np.random.default_rng(seed).bit_generator.state,actor_rng=np.random.default_rng(seed+100000).bit_generator.state,global_step=7281)
             hs=SupportedSampler(ix,adapter,state=ss)
             native=ReplayBuffer(ntrain,seed=seed,sample_strategy='uniform')
-            schedule={name:[[],[]] for name in ['teacher50','teacher5']};admitted=len(old)
+            schedule={name:[[],[]] for name in arms};admitted=len(old)
             for ids in arrival:
                 with journal.open('ab') as f:
                     for i in ids:pickle.dump(records[i],f,pickle.HIGHEST_PROTOCOL)
@@ -91,7 +92,7 @@ def main():
                     ni=native._sample_uniform_indices(128)
                     # Native draws are unused; both arms consume identical SupportedSampler receipts.
                     hs.sample_batch(128);rc=hs.last_receipt
-                    for arm in ['teacher50','teacher5']:
+                    for arm in arms:
                         schedule[arm][0].append([lookup[tuple(k)] for k in rc['critic_identities']])
                         schedule[arm][1].append([lookup[tuple(k)] for k in rc['actor_identities']])
             for arm,(ci,ai) in schedule.items():
@@ -108,15 +109,18 @@ def main():
         previous=json.loads((a.prepared/'input-check.json').read_text())
         assert previous['source_sha256']==protected,'Prepared inputs changed'
         sampling=json.loads((a.prepared/'sampling.json').read_text())
+        if a.study=='critic':
+            sampling=[dict(v,arm=arm) for v in sampling if v['arm']=='teacher5' for arm in arms]
         for seed in manifest['training_budget']['paired_seeds']:
-            for arm in ['teacher50','teacher5']:
-                name='%s_seed%d_batches.npz'%(arm,seed);v=np.load(a.prepared/name)
+            for arm in arms:
+                name='%s_seed%d_batches.npz'%(arm,seed);source_name='%s_seed%d_batches.npz'%('teacher5' if a.study=='critic' else arm,seed);v=np.load(a.prepared/source_name)
                 np.testing.assert_array_equal(v['identities'],np.array(keys,dtype=np.int64))
                 np.testing.assert_array_equal(v['splits'],split)
                 schedules[(seed,arm)]=(v['critic'],v['actor'])
-                shutil.copyfile(a.prepared/name,out/name)
+                shutil.copyfile(a.prepared/source_name,out/name)
     for seed in [41,42,43]:
-        for x,y in zip(schedules[(seed,'teacher50')],schedules[(seed,'teacher5')]):np.testing.assert_array_equal(x,y)
+        for arm in arms:
+            for x,y in zip(schedules[(seed,arm)],schedules[(seed,'teacher5')]):np.testing.assert_array_equal(x,y)
     save(out/'sampling.json',sampling)
     # Credit validity is checked for all admitted TRAIN rows before any gradient.
     alljournal=out/'training.pkl'
@@ -174,10 +178,10 @@ def main():
             result.append(item)
         return result
     baseline=evaluate(initial,'baseline');save(out/'baseline.json',baseline)
-    report=dict(status='running',code_sha=sha(Path(__file__)),sources=protected,devices=[str(d) for d in jax.devices()],baseline=baseline,sampling=sampling,runs=[],initial_global_step=7281,teacher_sha256=sha(paths['teacher']),single_factor='retention_weight 50 versus 5; same packaged teacher',limits=['Paired single-factor continuation; not a closed-loop online success test','All DEV previously inspected; no independent TEST','Only one new HIL Episode in TRAIN and one in DEV','Q comparisons are current reconstructed alternatives, not observed counterfactual success','Evaluation TD/mixed target uses a fixed diagnostic RNG; actual training losses are in metrics logs'])
+    report=dict(status='running',code_sha=sha(Path(__file__)),sources=protected,devices=[str(d) for d in jax.devices()],baseline=baseline,sampling=sampling,runs=[],initial_global_step=7281,teacher_sha256=sha(paths['teacher']),single_factor=('retention_weight 50 versus 5; same packaged teacher' if a.study=='teacher' else 'teacher5 baseline versus critic clip10 OR Actor min-Q'),arms=arms,limits=['Paired single-factor continuation; not a closed-loop online success test','All DEV previously inspected; no independent TEST','Only one new HIL Episode in TRAIN and one in DEV','Q comparisons are current reconstructed alternatives, not observed counterfactual success','Evaluation TD/mixed target uses a fixed diagnostic RNG; actual training losses are in metrics logs'])
     save(out/'study.json',report)
     for seed in [41,42,43]:
-      for arm in ['teacher50','teacher5']:
+      for arm in arms:
         conf=dict(cfgdict);conf.update(actor_lr=1e-5)
         cfg=RLTOnlineRLConfig(**conf);critic=HeldGripperCritic(plaincritic,float(adapter.stats.q01[6]),float(adapter.stats.q99[6]))
         state=initial.replace(actor_tx=optax.adam(cfg.actor_lr),rng=jax.random.PRNGKey(seed))
@@ -185,10 +189,14 @@ def main():
             if k=='rng':continue
             for x,y in zip(jax.tree_util.tree_leaves(getattr(state,k)),jax.tree_util.tree_leaves(getattr(initial,k))):np.testing.assert_array_equal(x,y)
         np.testing.assert_array_equal(np.asarray(predict(state.actor_params)),np.asarray(predict(initial.actor_params)))
-        coefficient=50. if arm=='teacher50' else 5.
-        run=with_separate_actor_batch(make_retained_train_step(.3,teacher,coefficient,target_policy='clip'))
+        coefficient=arms[arm]['teacher']
+        from methods.openpi_rlt.experiments.actor_q_reduction import with_actor_min_q
+        from methods.openpi_rlt.experiments.critic_stability import with_critic_gradient_diagnostics
+        core=make_retained_train_step(.3,teacher,coefficient,target_policy='clip')
+        if a.study=='critic':core=with_critic_gradient_diagnostics(core,arms[arm]['clip'])
+        run=with_separate_actor_batch(with_actor_min_q(core,arms[arm]['minq']))
         ci,ai=schedules[(seed,arm)];curve=[];start=time.time();metrics_path=out/('%s_seed%d_metrics.jsonl'%(arm,seed))
-        save(out/('%s_seed%d_config.json'%(arm,seed)),dict(rl_config=conf,retention_weight=coefficient,teacher_sha256=sha(paths['teacher']),initial_checkpoint_sha256=sha(paths['initial']),sampler_seed=seed,paired_training_rng_seed=seed))
+        save(out/('%s_seed%d_config.json'%(arm,seed)),dict(rl_config=conf,retention_weight=coefficient,experimental_options=arms[arm],teacher_sha256=sha(paths['teacher']),initial_checkpoint_sha256=sha(paths['initial']),sampler_seed=seed,paired_training_rng_seed=seed))
         for step,(c,aidx) in enumerate(zip(ci,ai),1):
             batch={k:v[c] for k,v in bb.items()}
             batch['actor_batch']={k:v[aidx] for k,v in bb.items()}
@@ -199,7 +207,7 @@ def main():
             if step in [212,423,634,846]:
                 name='%s_seed%d_u%d'%(arm,seed,step);ev=evaluate(state,name)
                 curve.append(dict(update=step,evaluation=ev))
-                with (out/(name+'.pkl')).open('xb') as f:pickle.dump(dict(research_only=True,rl_config=conf,state={k:trainer._tree_to_numpy(getattr(state,k)) for k in payload['state']},sampling_schedule=str(out/('%s_seed%d_batches.npz'%(arm,seed))),next_schedule_index=step,arm=arm,seed=seed,initial_checkpoint_sha256=protected[str(paths['initial'])],retention_weight=coefficient,teacher_path=str(paths['teacher']),teacher_sha256=sha(paths['teacher'])),f,pickle.HIGHEST_PROTOCOL)
+                with (out/(name+'.pkl')).open('xb') as f:pickle.dump(dict(research_only=True,rl_config=conf,state={k:trainer._tree_to_numpy(getattr(state,k)) for k in payload['state']},sampling_schedule=str(out/('%s_seed%d_batches.npz'%(arm,seed))),next_schedule_index=step,arm=arm,seed=seed,experimental_options=arms[arm],initial_checkpoint_sha256=protected[str(paths['initial'])],retention_weight=coefficient,teacher_path=str(paths['teacher']),teacher_sha256=sha(paths['teacher'])),f,pickle.HIGHEST_PROTOCOL)
                 print(json.dumps(dict(arm=arm,seed=seed,update=step,elapsed_sec=time.time()-start)),flush=True)
         assert int(state.global_step)==8127 and int(state.actor_version)==4063
         report['runs'].append(dict(arm=arm,seed=seed,curve=curve,elapsed_sec=time.time()-start,final_step=int(state.global_step),actor_version=int(state.actor_version)))

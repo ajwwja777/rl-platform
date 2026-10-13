@@ -16,14 +16,20 @@ from methods.openpi_rlt.experiments.supported_sampler import FIELDS
 from run_matched_learning import read,arrays
 p=Path(sys.argv[1]);o=Path(sys.argv[2]);base=p/'models/rlt/plug_v3_yyshadow';profile=json.loads((base/'history/candidates/supported_hil8_clip_20261010/profile.json').read_text());rows=read(o/'training.pkl');data=arrays(rows)
 initial=pickle.loads((base/'history/candidates/supported_hil8_clip_20261010/teacher.pkl').read_bytes());results=[]
-for arm in ['teacher50','teacher5']:
+arms=list(json.loads((o/'study.json').read_text()).get('arms',{'teacher50':{},'teacher5':{}}))
+for arm in arms:
  payload=pickle.loads((o/(arm+'_seed42_u846.pkl')).read_bytes());cfg=RLTOnlineRLConfig(**payload['rl_config']);adapter=ActionRepresentationAdapter.from_config(cfg);actor,critic=trainer._make_networks(cfg)
  critic=HeldGripperCritic(critic,float(adapter.stats.q01[6]),float(adapter.stats.q99[6]))
  index=SupportedIndex(o/'training.pkl',.99,profile['retention_episodes']);raw=index.attach(data)
  b={k:jnp.asarray(v) for k,v in adapter.prepare_training_batch(raw).items()}
  def state(d):return trainer.RLTTrainState(**{k:trainer._tree_to_jax(v) for k,v in d.items()},actor_tx=optax.adam(cfg.actor_lr),critic_tx=optax.adam(cfg.critic_lr))
  start=state(payload['state']);teacher=trainer._tree_to_jax(initial['actor_params'])
- run=with_separate_actor_batch(make_retained_train_step(.3,teacher,50. if arm=='teacher50' else 5.,target_policy='clip'))
+ from methods.openpi_rlt.experiments.actor_q_reduction import with_actor_min_q
+ options=payload.get('experimental_options',dict(teacher=50. if arm=='teacher50' else 5.,clip=None,minq=False))
+ from methods.openpi_rlt.experiments.critic_stability import with_critic_gradient_diagnostics
+ core=make_retained_train_step(.3,teacher,options['teacher'],target_policy='clip')
+ if 'experimental_options' in payload:core=with_critic_gradient_diagnostics(core,options['clip'])
+ run=with_separate_actor_batch(with_actor_min_q(core,options['minq']))
  sched=np.load(o/(arm+'_seed42_batches.npz'));ci,ai=sched['critic'][-8:],sched['actor'][-8:]
  def advance(s,lo,hi):
   for k in range(lo,hi):
