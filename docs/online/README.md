@@ -84,3 +84,7 @@ HIL 标签必须保留；删标签不会消除人工救回的 credit 路径。Ac
 ## 2026-10-12 实践更新
 
 独立采集journal并入旧池必须用带源身份的顺序映射；新数据小号会漏出按ID近期池。实际batch而非静态buffer比例决定训练曝光。2配方3seed匹配结果见[当前任务结果](tasks/2026-10-11-online-learning-evidence/RESULT.md)，不据局部拟合放行自主Online。
+
+## 2026-10-13 EXPO 单卡验证
+
+xiqing 原生 RealTimeEXPOFTLearner 在 Cobot4090 完整推理通过；batch2/UTD1 的完整更新在默认及 platform 分配器均 OOM。原 SFT2000 已恢复暂停，在线接入未完成。详见 [实测记录](tasks/2026-10-13-expo-online/TASK.md)。
