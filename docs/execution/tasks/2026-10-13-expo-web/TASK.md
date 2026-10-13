@@ -1,6 +1,6 @@
 # EXPO 左臂双腕 RTC-SFT 网页接入
 
-日期：2026-10-13。负责人：/root。状态：部署验证进行中。
+日期：2026-10-13。负责人：/root。状态：完成网页接入与暂停加载；真机首轮待操作者验收。
 
 ## 授权与范围
 
@@ -26,10 +26,22 @@ Web `deployment.py`、`execution_options.py` 薄适配：EXPO独立family/id，�
 
 ## 验证证据与边界
 
-13项新RL行为回归通过，包含完整发布循环的前缀/端点一致与物理子步中途HIL；Web相关46通过/1既有可选集成跳过。初次Web worktree测试缺dagger sibling失败，按真实依赖根/scratch链接修正后通过，未改生产环境。
+14项新RL行为回归通过，包含完整发布循环的前缀/端点一致与物理子步中途HIL；Web相关46通过/1既有可选集成跳过。初次Web worktree测试缺dagger sibling失败，按真实依赖根/scratch链接修正后通过，未改生产环境。
 
 Cobot不可变bundle37文件SHA256全部匹配。隔离GPU运行原生step2000、boot/RTC两条路径；四次(0/2/2/0前缀)输出均有限8x7，RPC约105.5/97.2/96.2/89.5ms。没有ROS发布者或机器人动作；隔离模型已退出。原生只读Orbax缺可选metrics提示保留，不伪造metrics。
 
 初始/loader审计、CPU日志位于 `scratch/rl-platform/expo-web-20261013/`；现场隔离证据 `rl-platform/runtime/verification/expo-web-20261013/`。模型成功率、真实HIL操纵与现场deadline尚未验收，不以CPU或保存样本推理替代。
 
-唯一下一步：串行提交/push，同步校验并在确认现场仍idle后重载Web、加载EXPO为暂停状态，回写实际结果。
+## 现场交付完成
+
+运行代码先RL b684395/Web630fa2f提交push后同步9文件，逐SHA匹配，旧登记列表逐条未变。快速HIL交还补丁106e63f增加pending RTC起始时钟及实循环回归；合并时保留其他对话e6db138 teacher研究提交，源合并4aeea97。只在EXPO暂停、无Episode/录制时卸载并替换一个runtime模块后重新暂停加载。
+
+现场14项CPU行为测试通过。首轮测试副本按相对路径寻找runtime失败，改为已导入core位置后通过；现场Web生产环境没有pytest、RLT测试环境没有fastapi，未安装或混改环境，直接在实际Web环境用标准库patch执行3项相同接口断言通过；所有初次失败日志保留。
+
+Web正式8015重载（旧PID795010退出），EXPO登记available，输入/输出路径、capabilities及10Hz原生RTC显示正确。真实POST加载原生step2000至ready/paused；无错误，manual_pause=true，published=0。实际/api/collection/model的Session开始/结束均只暂停，session_active正确切换，策略命令保持0，录制idle。最终修订版加载PID2057530，无活动Episode/Session，policy fault为空。保留模型等用户手动开始；没有真机动作、归位、硬件重启、录制、EXPO在线更新或RLT资产修改。
+
+6个硬件PID/命令身份及4份RLT权重/norm SHA一致；最终完整回执A6000 `scratch/rl-platform/expo-web-20261013/field-evidence/`，现场 `runtime/verification/expo-web-20261013/`。最终paused回执 `web-loaded-paused-final.json`；旧首轮paused/Session回执保留不覆盖。
+
+网页使用：刷新正式8015，在场景plug_left_2cam → EXPO → rtc-sft → 2000选择模型。模型已加载且暂停，可按现有部署/采集/HIL/标签/归位按钮操作；本批只有左臂和两腕，默认动作时基10Hz。归位按用户选定的左臂/位姿，不自动套用旧右臂位置。可用HIL控制和采集不代表在线学习，train=false。
+
+唯一下一步：现场用户短轮验证Start/Pause/HIL交还/终止/归位，再验收成功率与实际deadline；不自动开始动作。

@@ -49,3 +49,5 @@ Online 新经验能否改善自主能力仍是主要问题。最近正式交付�
 代码导航见 [项目 README](../README.md)，现场操作见 [执行手册](execution/RUNBOOK.md)，历史批次见 [迁移记录](architecture/MIGRATION.md)。旧路径页仅供兼容；新增正文写对应模块。outputs 中原始报告、图、日志和 manifest 不移动，各模块列出所属入口。
 
 新增经验：合并独立Replay不能把源内Episode小号当全局新旧顺序；先建立带源身份的时间有序映射，再检查实际Actor/Critic批次和DEV零抽样。最终buffer比例不能代替逐集到达过程的训练比例。[证据](online/tasks/2026-10-11-online-learning-evidence/RESULT.md)
+
+2026-10-13新增交付：[EXPO左臂双腕RTC-SFT2000网页接入](execution/tasks/2026-10-13-expo-web/TASK.md)，独立原生checkpoint/norm与环境，14执行行为及46Web相关CPU回归、真实GPU/HTTP暂停加载通过；最终ready/paused、发布0命令，无训练/动作。HIL等操作接口已接通，真机短轮及成功率待用户，不改变RLT主线。
