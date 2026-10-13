@@ -1,6 +1,6 @@
 # EXPO 在线学习版本 · 2026-10-13
 
-当前：功能实现和隔离验证通过，现场安装/暂停加载待记录。真机成功率与长期稳定性未验收。
+当前：已部署交付；Web Online 模型 ready/paused，ROS PID2262658、Learner PID2262728，发布指令0、Replay0、在线版本0。真机成功率与长期稳定性未验收。
 
 ## 使用与数据路径
 
@@ -36,8 +36,8 @@ Web 采集页选择 `左臂拔插插头 · EXPO Online（SFT2000起点）`，ID 
 - 优化后 batch4 连续5次完整更新通过，Actor/Critic参数改变、全部标量指标有限，热态更新约2.05–2.06秒；更新后推理110ms。含保存的测试 GPU采样峰值19012MiB，主机可用内存最低约16.5GiB。
 - 分块保存约11秒；新进程恢复 Actor/Critic step5、RNG，与保存前相同输入/随机种子的动作最大差0。
 - 合成观测和实际命令接口模拟的 rollout/HIL 回合：未知回合排除，成功回合更新0→2；新进程恢复 Replay/优化器/RNG 后继续2→4，幂等结束不重复训练，新回合在更新期被拒绝；恢复续训采样 GPU峰值19027MiB。
-- 无成功样本：失败回合仍完成两次原生非基座 Actor 更新，基座 Actor step0；恢复验证另行记录。
-- Python回归：RL24项；Web58项通过、1项环境跳过；前端29项通过。包含暂停/HIL旧结果失效、实际动作、终止观测、录制后标注/学习顺序、RPC失败重试、本地HTTP身份检查。
+- 无成功样本：失败回合仍完成两次原生非基座 Actor 更新，基座 Actor step0；新进程恢复后继续2→4，基座 Actor仍为step0，全部指标有限。
+- Python回归：RL24项；Web58项通过、1项环境跳过；前端31项通过。包含暂停/HIL旧结果失效、实际动作、终止观测、录制后标注/学习顺序、RPC失败重试、本地HTTP身份检查。
 
 测试均为隔离输出，无 ROS 运动发布、无真实机器人动作、无真实录制或生产 Replay 写入。JAX 首次训练或恢复后可能重新编译数分钟；上述热态推理不是连续真机 deadline 验收。没有声明与原生整图执行逐位数值相等，也没有将合成数据更新通过视为成功率提升。
 
@@ -50,3 +50,12 @@ Web 采集页选择 `左臂拔插插头 · EXPO Online（SFT2000起点）`，ID 
 - RL：`native_online.py`（原生配置/Replay）、`memory_update.py`（捐赠/CPU EMA）、`stream_checkpoint.py`（有界保存恢复）、`online_learner.py`（回合版本/学习/事务）、`episode_journal.py`（实际动作与 HIL）、`online_protocol.py`（身份/数据协议）、`online_runtime.py`（ROS/HTTP协调）；均在 `methods/expo_ft/cobot_adapter/`。
 - 启动与登记：`scripts/expo_online_up.sh`、`configs/deployment_models.json`。原 fixed `ros_runtime.py` 仅添加可覆写入口，固定模型回归通过。
 - Web：`collection_model.py`、`deployment.py`、`execution_options.py`；`segmented_capture/api.py` 与采集/执行选项 JS。通过本机HTTP交接，不反向 import Web 或复制其录制实现。
+
+
+## 现场交付
+
+2026-10-13 19:07后核对：源文件18项按旧/新SHA256清单安装；Web-only重载后由 `/api/collection/model` 以 collection 用途加载 Online，50Hz发布、RTC开启、滤波开启。三份前端JS的HTTP响应与安装文件逐字节一致。模型进程和本机8043/8044服务就绪，手动暂停、无故障、无活动录制/回合/Session、发布计数0。生产目录没有模拟数据，初始化版本0；GPU现场仅Learner PID2262728，约12016MiB。现场未自动开始/继续/复位。
+
+源码运行版本：rl-platform `3511f4f`，cobot-web `bdc45e8`；后续只有测试/事实文档提交时，运行源文件仍以安装清单SHA为准。检查发现旧EXPO启动回调曾并发写gate临时文件，已在Runtime.save内部使用现有RLock串行化并通过回归。
+
+安装回执与最终状态：`/data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/expo-online-20261013/field-install/`。模型启动日志：`/home/agilex/jiaan/project/cobot-web/runtime/deployment/model-*.log`；学习状态：在线目录`status.json`。用户拥有后续真实 rollout/HIL/结果标注和回退操作。
