@@ -91,8 +91,18 @@ class Runtime:
             intervention_count=self.gate.intervention_count, generation=self.gate.generation,
             runtime_fault=self.gate.fault, updated_at=time.time(), logical_hz=10,
             published=self.published, robot_publishers=0 if self.args.shadow else 1,
-            execution=self.options))
+            execution=self.options, **self.status_extra()))
         self.last_gate_save = time.monotonic()
+
+    def status_extra(self):
+        return {}
+
+    def resolve_inference(self, value):
+        return value
+
+    def policy_command(self):
+        return [str(self.args.project/".venv/bin/python"), str(Path(__file__).with_name("policy_server.py")),
+                "--bundle", str(self.args.bundle), "--project", str(self.args.project), "--port", str(self.args.port)]
 
     def fail(self, reason):
         with self.lock:
@@ -174,8 +184,7 @@ class Runtime:
             OPENPI_DATA_HOME=storage+'/.cache/openpi', TMPDIR=storage+'/tmp/expo-ft',
             JAX_COMPILATION_CACHE_DIR=storage+'/.cache/jax/expo-web', CUDA_CACHE_PATH=storage+'/.cache/nvidia')
         Path(env['JAX_COMPILATION_CACHE_DIR']).mkdir(parents=True, exist_ok=True)
-        command = [str(self.args.project/'.venv/bin/python'), str(Path(__file__).with_name('policy_server.py')),
-                   '--bundle', str(self.args.bundle), '--project', str(self.args.project), '--port', str(self.args.port)]
+        command = self.policy_command()
         self.server = subprocess.Popen(command, env=env)
         deadline = time.monotonic() + 600
         while not self.stop.wait(.3):
@@ -245,7 +254,7 @@ class Runtime:
                         continue
                     if time.monotonic() - self.future_started > .5:
                         raise ValueError('Bootstrap observation expired during inference')
-                    plan = limited_plan(actions, last, self.options['smoothing'])
+                    plan = limited_plan(self.resolve_inference(actions), last, self.options['smoothing'])
                     self.future = None
                     index = 0
                     next_tick = time.monotonic()
@@ -316,7 +325,7 @@ class Runtime:
                         if self.future_epoch != self.gate.generation:
                             plan = None
                             continue
-                        plan = limited_plan(actions, last, self.options['smoothing'])
+                        plan = limited_plan(self.resolve_inference(actions), last, self.options['smoothing'])
                         index = 0
                     except Exception as exc:
                         self.future = None
