@@ -84,3 +84,7 @@
 ## 2026-10-13 online-review核验完成
 
 [REVIEW_VALIDATION](REVIEW_VALIDATION.md)：修复旧review回报时基/接管前置零与历史实验配置记录，完成teacher5/clip10/min-Q三臂三seed单因素对照及旧AWBC保持复核。选择teacher5；clip10无触发、min-Q无新增纠正收益，AWBC保持不合格。8127/Actor4063独立包通过原生CPU加载/预算/恢复/导出；未登记或同步现场，未动生产Replay/默认。唯一下一步是按已有发布流程准备本包受控分批Online，先确认采集路由与首集真实入库；不重复旧实验。
+
+
+## 2026-10-13 Teacher5现场交付完成
+源码f4bae5c已push/同步；Teacher58127/Actor4063已实际暂停加载，50HzRTC/EMA、Replay3623、新预算0、发布0/录制idle。用户明确授权切换EXPO后完成，未自动运动。原生现场CPU恢复/输出及初始资产身份通过；pending启动重导出的字节差已验证参数完全相同。唯一下一步由用户首个完整采集Episode，然后核对真实入库/预算/批次/pending，不自动晋升、不声明自主收益。详见[TEACHER5_DELIVERY](TEACHER5_DELIVERY.md)，产物outputs/teacher5-delivery-20261013。

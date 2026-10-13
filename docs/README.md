@@ -1,5 +1,7 @@
 # RL 平台：当前进度与关键经验
 
+最新交付（2026-10-13）：[Teacher5 8127](online/tasks/2026-10-11-online-learning-evidence/TEACHER5_DELIVERY.md)已注册/同步并真实暂停加载，Actor4063、Replay3623、新预算0，50HzRTC/EMA、发布0。用户已批准从EXPO切换；首轮真实采集和学习闭环待用户，不是自主收益认证。此前“尚未登记”描述是历史状态。
+
 最新（2026-10-13）：[online-review核验与候选](online/tasks/2026-10-11-online-learning-evidence/REVIEW_VALIDATION.md)完成旧review回报口径修复、9组CPU对照和原生包验证。clip10从未触发、min-Q无新纠正收益，旧AWBC有保持代价；保留teacher5，8127/Actor4063包已准备但未现场登记/同步。独立自主收益仍证据不足；旧评估口径不能再作为Q高估根因证据。
 
 最新（2026-10-13）：[teacher续训对照](online/tasks/2026-10-11-online-learning-evidence/TEACHER_CONTINUATION.md)从HIL8 7281完整state、同teacher/数据/batch做50 vs5，6组CPU完成；teacher5新HIL DEV较50改善1.61%，旧DEV均值/尾部在工程筛选内，尚无独立自主收益。现场保持Actor3640；当前constant新运行处于evaluation路由，探索/Replay关闭，不能将口述12/15当完整训练数据或低频探索生效证明。
