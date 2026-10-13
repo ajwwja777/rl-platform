@@ -691,6 +691,59 @@
         "collection": "{DATA}/datasets/plug_insertion/recordings/rl-platform/rlt/exploration-hil8-7281-constant-v1"
       },
       "collection_directory_policy": "model"
+    },
+    {
+      "id": "expo-plug-left-2cam-rtc-sft-2000",
+      "label": "左臂拔插插头 · EXPO RTC-SFT 2,000 步",
+      "kind": "vla",
+      "family": "EXPO",
+      "runtime_adapter": "expo_left",
+      "mode": "evaluation",
+      "checkpoint": "/home/agilex/xiqing/models/expo-ft/plug_left_2cam/rtc_sft_20261013/step_2000",
+      "normalization": "/home/agilex/xiqing/models/expo-ft/plug_left_2cam/rtc_sft_20261013/step_2000/norm_stats.json",
+      "step": 2000,
+      "task": "plug_left_2cam",
+      "training_method": "rtc-sft",
+      "control_hz": 10,
+      "active_arm": "left",
+      "camera_keys": [
+        "left_wrist_image",
+        "right_wrist_image"
+      ],
+      "prompt": "Unplug the black plug from the bottom socket of the power strip and insert it into the top socket.",
+      "entry_relative": "scripts/expo_left_up.sh",
+      "required": [
+        "/home/agilex/xiqing/projects/expo-ft/.venv/bin/python",
+        "/home/agilex/xiqing/projects/expo-ft/scripts/cobot_plug/deployment.py",
+        "/home/agilex/xiqing/models/expo-ft/plug_left_2cam/rtc_sft_20261013/step_2000/checkpoints/2000/params",
+        "/home/agilex/xiqing/models/expo-ft/plug_left_2cam/rtc_sft_20261013/step_2000/norm_stats.json"
+      ],
+      "checkpoint_type": "native_rtc_sft_orbax",
+      "resumable_training": false,
+      "integration_level": "managed_runtime",
+      "io_contract": "expo-left-7d-two-wrist-10hz",
+      "evaluation_allowed": true,
+      "capabilities": {
+        "load": true,
+        "ready": true,
+        "start": true,
+        "pause": true,
+        "resume": true,
+        "stop": true,
+        "unload": true,
+        "logs": true,
+        "pid": true,
+        "capture": true,
+        "hil": true,
+        "evaluate": true,
+        "train": false
+      },
+      "data_directories": {
+        "collection": "/media/agilex/Getea1/xiqing/data/datasets/realtime_expo",
+        "evaluation": "/media/agilex/Getea1/xiqing/data/evaluations/expo-ft/plug_left_2cam/rtc_sft_2000"
+      },
+      "validation": "Native checkpoint restore and offline inference passed; robot operation pending",
+      "execution_fidelity": "Native RTC-SFT actor; deployment adds 200ms prefix overlap, 0.03rad/0.004m per logical step limits; optional 20-50Hz interpolation and EMA08. No online RL/edit actor."
     }
   ]
 }
