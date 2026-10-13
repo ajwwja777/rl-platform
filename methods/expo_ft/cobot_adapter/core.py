@@ -91,8 +91,8 @@ def execution_options(raw):
         return {"publish_hz": 10, "rtc": True, "smoothing": False}
     if set(raw) != {"enabled", "publish_hz", "rtc", "smoothing"} or raw["enabled"] is not True:
         raise ValueError("Invalid EXPO execution options")
-    if type(raw["publish_hz"]) is not int or raw["publish_hz"] not in (20, 30, 40, 50):
-        raise ValueError("EXPO publisher supports 20/30/40/50Hz overrides, logical rate remains 10Hz")
+    if type(raw["publish_hz"]) is not int or raw["publish_hz"] not in (10, 20, 30, 40, 50):
+        raise ValueError("EXPO publisher supports 10/20/30/40/50Hz overrides, logical rate remains 10Hz")
     if type(raw["rtc"]) is not bool or type(raw["smoothing"]) is not bool:
         raise ValueError("RTC/smoothing must be booleans")
     return {key: raw[key] for key in ("publish_hz", "rtc", "smoothing")}

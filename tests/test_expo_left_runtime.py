@@ -186,3 +186,9 @@ def test_fast_hil_handback_discards_pending_rtc_without_old_bootstrap_clock(monk
     assert not reasons
     assert len(calls)==3 and calls[-1].shape==(0,7)
     assert len(published)==16 and value.gate.intervention_count==1
+
+
+def test_native10_explicit_rtc_filter_overrides():
+    for rtc in (False,True):
+        for smoothing in (False,True):
+            assert execution_options(dict(enabled=True,publish_hz=10,rtc=rtc,smoothing=smoothing))==dict(publish_hz=10,rtc=rtc,smoothing=smoothing)
