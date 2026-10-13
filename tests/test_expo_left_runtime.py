@@ -150,3 +150,39 @@ def test_hil_invalidates_in_the_middle_of_physical_substeps(monkeypatch):
     value.run()
     assert len(published)==1 and value.gate.paused and value.gate.generation>before
     assert len(calls)==1
+
+
+def test_fast_hil_handback_discards_pending_rtc_without_old_bootstrap_clock(monkeypatch):
+    from concurrent.futures import Future
+    from types import SimpleNamespace
+    value,calls,published=_loop_fixture(monkeypatch)
+    pending=Future()
+    class Pool:
+        def submit(self,fn,observation,prefix):
+            actions=fn(observation,prefix)
+            if len(prefix):return pending
+            f=Future();f.set_result(actions);return f
+    value.pool=Pool()
+    original_wait=value.stop.wait
+    def wait(t):
+        result=original_wait(t)
+        if value.gate.intervention_count and not pending.done():
+            pending.set_result(np.full((8,7),9.,np.float32))
+        return result
+    value.stop.wait=wait
+    original_publish=value.publisher.publish
+    def publish(message):
+        original_publish(message)
+        if len(published)==13:
+            value.mode_callback(SimpleNamespace(data='manual:left'))
+            value.mode_callback(SimpleNamespace(data='policy'))
+    value.publisher.publish=publish
+    reasons=[]
+    original_fail=value.fail
+    def fail(reason):
+        reasons.append(str(reason));original_fail(reason);value.stop.set()
+    value.fail=fail
+    value.run()
+    assert not reasons
+    assert len(calls)==3 and calls[-1].shape==(0,7)
+    assert len(published)==16 and value.gate.intervention_count==1

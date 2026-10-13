@@ -259,6 +259,7 @@ class Runtime:
                     obs = self.observation()
                     self.future = self.pool.submit(self.infer, obs, plan[6:8].copy())
                     self.future_epoch = epoch
+                    self.future_started = time.monotonic()
                 except Exception as exc:
                     self.fail(exc)
                     continue
