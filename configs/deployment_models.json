@@ -679,7 +679,7 @@
       "stage1_step": 4999,
       "learner_step": 7281,
       "code_version_source": "Git revision + configs/assets manifests",
-      "training_method": "frozen-hil8-exploration-collection",
+      "training_method": "frozen-hil8-exploration-constant",
       "online_seed_available": false,
       "adapter_id": "plug-v3-warmup-5k",
       "custom": true,

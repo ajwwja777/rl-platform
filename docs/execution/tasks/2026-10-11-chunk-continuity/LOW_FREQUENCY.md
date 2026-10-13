@@ -42,3 +42,10 @@ Cobot备份：`/home/agilex/jiaan/project/rl-platform/outputs/matched-learning-2
 3. 若出现更大往返、跟踪异常、接触恶化、超时或动作来源不一致，即停止候选并回原探索入口。未完成新数据身份/实际发布与Replay核对前不继续学习；本候选本来就不启用Learner。
 
 源码回退只在释放模型且取得现场互斥后逐文件核对备份恢复，不在运行中热替换。通常只需选择旧入口，无需撤销安装。新训练权重未上机；本次采集验收不等于Online训练放行。
+
+
+## 2026-10-13 网页分组修复
+
+用户截图揭示此前只核验API可见遗漏了前端去重：新旧探索共用checkpoint、training_method、frozen模式，model_picker.weightKey将候选合并。已将constant候选方法身份独立为 `frozen-hil8-exploration-constant`；同一真实model_picker.js在JSDOM中通过“方法切换→版本选项→选中ID/提示”验证。未修改web代码、模型、训练参数或执行参数。之前的“网页可见”应限为API登记可见，不能作为此前下拉框可选证据。
+
+实际方法下拉名称：`frozen-hil8-exploration-constant`；版本／模式：`7281 · 冻结 · Actor 3640`；选中提示含 `plug-v3-hil8-explore-constant` 和“低频探索候选”。旧 `frozen-hil8-exploration-collection` 保持。产物 `outputs/exploration-picker-20261013/`。
