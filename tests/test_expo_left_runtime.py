@@ -89,7 +89,7 @@ def _loop_fixture(monkeypatch, rtc=True, takeover_after=None):
     from types import SimpleNamespace
     from methods.expo_ft.cobot_adapter import core
     monkeypatch.setitem(sys.modules,'core',core)
-    path=Path(__file__).parents[1]/'methods/expo_ft/cobot_adapter/ros_runtime.py'
+    path=Path(core.__file__).with_name('ros_runtime.py')
     spec=importlib.util.spec_from_file_location('expo_runtime_test',path)
     module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
     clock=[100.]
