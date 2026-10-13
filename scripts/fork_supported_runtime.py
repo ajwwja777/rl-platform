@@ -23,12 +23,18 @@ def fork(source,target):
     cfg=rebase(cfg);profile=json.loads((source/'profile.json').read_text())
     if profile['publication_policy']!='staged':raise ValueError('Staged publication required')
     if cfg['runtime']['actor_service']['snapshot_path']==cfg['runtime']['learner_service']['actor_snapshot_path']:raise ValueError('Served/pending Actor must differ')
-    receipts={name:sha(source/name)for name in FILES}
+    files=list(FILES)
+    pending='pending_actor/actor_snapshot.pkl'
+    if profile.get('schema')=='held-gripper-hil8-clip-v2' or (source/pending).exists():
+        files.append(pending)
+    # Validate every input before creating the destination. A missing staged
+    # Actor must not leave a partially usable runtime behind.
+    receipts={name:sha(source/name)for name in files}
     for name in ['teacher','normalization']:
         item=profile[name]
         if receipts[item['file']]!=item['sha256']:raise ValueError('Source candidate asset changed')
     target.mkdir(parents=True)
-    for name in FILES:
+    for name in files:
         dst=target/name;dst.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(source/name,dst)
         if sha(dst)!=receipts[name]:raise ValueError('Copied candidate identity mismatch')
     (target/'online.yaml').write_text(yaml.safe_dump(cfg,sort_keys=False))

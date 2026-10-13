@@ -12,7 +12,14 @@ from rlt_online_rl.action_representation import ActionRepresentationAdapter
 from rlt_online_rl.inference import ActorService,ActorRequest,RLTPolicyInferenceWrapper
 from methods.openpi_rlt.experiments.supported_hil_runtime import load_profile,build_components,SupportedIndex
 from methods.openpi_rlt.experiments.supported_sampler import SupportedSampler,unpack_actor_batch
-from run_teacher_continuation import read,sha
+def sha(p):return hashlib.sha256(Path(p).read_bytes()).hexdigest()
+def read(p):
+    rows=[]
+    with Path(p).open('rb') as stream:
+        while True:
+            try:rows.append(pickle.load(stream))
+            except EOFError:break
+    return rows
 package,output=Path(sys.argv[1]),Path(sys.argv[2])
 assert not output.exists() and all(d.platform=='cpu' for d in jax.devices())
 protected={str(f):sha(f) for f in package.rglob('*') if f.is_file()}
