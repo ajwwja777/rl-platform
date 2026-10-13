@@ -85,14 +85,15 @@ class Runtime:
         self.save()
 
     def save(self):
-        atomic_json(self.path, dict(schema_version=1, pid=os.getpid(), model_id=self.args.model_id,
-            checkpoint=str(self.args.bundle), ready=self.ready, paused=self.gate.paused,
-            manual_pause=self.gate.manual_pause, hil_active=self.gate.hil_active,
-            intervention_count=self.gate.intervention_count, generation=self.gate.generation,
-            runtime_fault=self.gate.fault, updated_at=time.time(), logical_hz=10,
-            published=self.published, robot_publishers=0 if self.args.shadow else 1,
-            execution=self.options, **self.status_extra()))
-        self.last_gate_save = time.monotonic()
+        with self.lock:
+            atomic_json(self.path, dict(schema_version=1, pid=os.getpid(), model_id=self.args.model_id,
+                checkpoint=str(self.args.bundle), ready=self.ready, paused=self.gate.paused,
+                manual_pause=self.gate.manual_pause, hil_active=self.gate.hil_active,
+                intervention_count=self.gate.intervention_count, generation=self.gate.generation,
+                runtime_fault=self.gate.fault, updated_at=time.time(), logical_hz=10,
+                published=self.published, robot_publishers=0 if self.args.shadow else 1,
+                execution=self.options, **self.status_extra()))
+            self.last_gate_save = time.monotonic()
 
     def status_extra(self):
         return {}
