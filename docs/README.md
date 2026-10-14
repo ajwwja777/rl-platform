@@ -1,5 +1,7 @@
 # RL 平台：当前进度与关键经验
 
+2026-10-14 RLT：[Teacher5首批真实Online审计](online/tasks/2026-10-11-online-learning-evidence/TEACHER5_FIRST_ONLINE_BATCH.md)：恢复后3集2成功/1失败、89条入库/89更新/45Actor，最新8234/4117未发布；执行仍8127/4063。新增3集实际Critic/Actor采样4.55%/4.10%，新TRAIN回报残差下降，重复DEV平均拟合保持；无新Actor自主增益证明。用户说明抓持相对位置有变化；现场随后已交EXPO，数据/结论分开。
+
 2026-10-14 RLT恢复：[Teacher5 CPU Learner恢复结果](execution/tasks/2026-10-14-teacher5-learner-crash/RESULT.md)。已捕获正式GPU训练编译SIGSEGV；仅Teacher5 Learner改CPU，19回归通过/已部署，正式18更新完成8127→8145并保存重载，预算0。served4063不变/pending4072，ready暂停0命令、三相机约30Hz；用户可继续受控Online。GPU底层原因及长期rollout稳定性仍待验证。
 
 2026-10-14 EXPO：[Cobot本地Actor / LFT1 Learner经LFT2中转](online/tasks/2026-10-14-expo-native-sync/TASK.md)正式Web暂停加载交付完成：两端ready/version0一致、25seed/3301帧、online0、Session启停/目录/健康检查通过，发布0；用户已结束Teacher5。原生20Critic/1VLA与三机传输隔离验证通过；真实rollout/HIL与成功率仍由操作员验收。
