@@ -115,3 +115,14 @@ def restore(directory,agent,identity):
     result=agent.replace(actor_train_state=state,batch_encoder=agent.batch_encoder.replace(params=sections['encoder']),
         edit_actor=agent.edit_actor.replace(params=sections['edit']),target_critic=agent.target_critic.replace(params=sections['critic']),_infer_cache=None)
     return result.cache_infer_params(),manifest
+
+
+def prune(root,current):
+    """Keep current and previous complete snapshots; only this run's numeric dirs."""
+    import shutil
+    root=Path(root).resolve()
+    complete=sorted((int(p.name),p) for p in root.iterdir() if p.is_dir() and p.name.isdigit() and (p/'manifest.json').is_file())
+    previous=max((version for version,_ in complete if version<current),default=None)
+    for version,path in complete:
+        if version not in (current,previous) and version<current and path.resolve().parent==root:
+            shutil.rmtree(path)

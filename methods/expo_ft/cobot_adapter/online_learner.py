@@ -260,6 +260,9 @@ class Learner:
         self.meta['agent_rng']=np.asarray(self.agent.rng).tolist()
         if hasattr(self.buffer,'rng'):self.meta['replay_rng']=np.asarray(self.buffer.rng).tolist()
         atomic_json(self.meta_path,self.meta)
+        if self.learner_only:
+            from actor_snapshot import prune
+            prune(self.root/'actors',self.meta['updates'])
         # Metadata is committed before deleting older complete checkpoints.
         import shutil
         retained={self.meta['checkpoint'],previous_checkpoint}

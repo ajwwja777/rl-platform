@@ -114,6 +114,8 @@ class RemoteSupport:
                         result=self.local_rpc("/actor/install",{"directory":str(directory)},timeout=600)
                         if result["actor_version"]!=manifest["actor_version"] or not result["ready"]:raise ValueError("Local Actor publication failed")
                         self.local_actor_version=result["actor_version"]
+                    from actor_snapshot import prune
+                    prune(self.actor_root,self.local_actor_version)
                     self.pending_upload.unlink(missing_ok=True)
                     self.transfer = None
                     return

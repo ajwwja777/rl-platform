@@ -82,7 +82,8 @@ def main():
             self.send_header('Content-Length',str(len(body)));self.send_header('Content-Type','application/json');self.end_headers();self.wfile.write(body)
         def do_GET(self):self.send(200,actor.status())
         def do_POST(self):
-            if not actor.lock.acquire(blocking=False):return self.send(409,{'error':'Actor is busy'})
+            acquired=actor.lock.acquire(blocking=False) if self.path in ('/precache','/select') else actor.lock.acquire(timeout=5)
+            if not acquired:return self.send(409,{'error':'Actor is busy'})
             try:
                 length=int(self.headers.get('Content-Length',0))
                 if not 0<length<2*1024*1024:raise ValueError('Invalid body')

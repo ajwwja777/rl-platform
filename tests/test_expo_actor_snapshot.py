@@ -61,3 +61,28 @@ def test_corrupt_snapshot_and_wrong_contract_rejected(tmp_path):
     item=next(r for r in manifest['records'] if not r['seed'])
     (tmp_path/'0'/item['file']).write_bytes(b'corrupt')
     with pytest.raises(ValueError,match='checksum'):restore(tmp_path/'0',make_agent(),{'recipe':'test'})
+
+
+def test_actor_receipt_is_idempotent_and_survives_reload(tmp_path):
+    from online_actor import Actor
+    actor=Actor.__new__(Actor);actor.agent=make_agent();actor.active=None;actor.phase='ready';actor.error=None
+    actor.args=SimpleNamespace(snapshot_root=tmp_path/'actors',model_id='test');actor.rtc_delay=5;actor.meta={'updates':0}
+    identity='a4444444-4444-4444-8444-444444444444'
+    request=dict(episode_uuid=identity,actor_version=0,rollout_rng=[1,2])
+    actor.begin(request);actor.agent=actor.agent.replace(rng=jnp.asarray([5,7],dtype=jnp.uint32))
+    actor.begin(request)
+    np.testing.assert_array_equal(actor.agent.rng,[5,7])
+    with pytest.raises(ValueError,match='during an episode'):actor.install(tmp_path/'actors/1')
+    receipt=actor.finish(request);assert receipt['rollout_rng']==[5,7]
+    assert actor.finish(request)==receipt
+    actor.agent=make_agent()
+    assert actor.finish(request)==receipt
+    with pytest.raises(ValueError,match='version'):actor.begin({**request,'episode_uuid':'b4444444-4444-4444-8444-444444444444','actor_version':1})
+
+def test_snapshot_retention_only_removes_old_complete_versions(tmp_path):
+    from actor_snapshot import prune
+    for name in ('0','1','3','notes','.pending-x'):
+        directory=tmp_path/name;directory.mkdir();(directory/'manifest.json').write_text('{}')
+    prune(tmp_path,3)
+    assert not (tmp_path/'0').exists()
+    for name in ('1','3','notes','.pending-x'):assert (tmp_path/name).exists()
