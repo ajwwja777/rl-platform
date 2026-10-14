@@ -1123,7 +1123,7 @@
       "data_directories": {
         "collection": "/media/agilex/Getea1/jiaan/data/datasets/plug_left_2cam/recordings/expo-edit001-online-sft2000"
       },
-      "validation": "Edit0.01 user reports smooth; full online update/restore and paused Web acceptance pending",
+      "validation": "60 CPU checks; native20Critic/1VLA, fresh-process restore, updated Cobot Actor and paused Web Session/Range checks passed. Real online rollout/HIL benefit pending.",
       "execution_fidelity": "Independent native synchronous recipe with edit_scale0.01 in Actor and Learner; 25 confirmed TRAIN demos, first10 online episodes collect, batch64/UTD20/interval30; RTC5/HIL/local50Hz. Original0.1 recipe preserved.",
       "online_run_dir": "/home/agilex/jiaan/data/expo_ft/plug_left_2cam/native_remote_edit001_sft2000_success25_20261014",
       "collection_directory_policy": "model"

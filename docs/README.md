@@ -1,5 +1,7 @@
 # RL 平台：当前进度与关键经验
 
+2026-10-14 EXPO最新：[edit0.01 Online](online/tasks/2026-10-14-expo-native-sync/EDIT001_ONLINE.md)已在Web暂停加载交付，Cobot本地推理/LFT2 GPU1学习；60CPU、完整20Critic/1VLA、新进程恢复和更新后本地Actor通过。25seed/3301、online0、更新0、版本0一致，Session/传输/目录检查通过，发布0。用户反馈0.01预览近乎不抖、0.05仍抖；Online实际收益待验收。
+
 2026-10-14 RLT：[Teacher5首批真实Online审计](online/tasks/2026-10-11-online-learning-evidence/TEACHER5_FIRST_ONLINE_BATCH.md)：恢复后3集2成功/1失败、89条入库/89更新/45Actor，最新8234/4117未发布；执行仍8127/4063。新增3集实际Critic/Actor采样4.55%/4.10%，新TRAIN回报残差下降，重复DEV平均拟合保持；无新Actor自主增益证明。用户说明抓持相对位置有变化；现场随后已交EXPO，数据/结论分开。
 
 2026-10-14 RLT恢复：[Teacher5 CPU Learner恢复结果](execution/tasks/2026-10-14-teacher5-learner-crash/RESULT.md)。已捕获正式GPU训练编译SIGSEGV；仅Teacher5 Learner改CPU，19回归通过/已部署，正式18更新完成8127→8145并保存重载，预算0。served4063不变/pending4072，ready暂停0命令、三相机约30Hz；用户可继续受控Online。GPU底层原因及长期rollout稳定性仍待验证。

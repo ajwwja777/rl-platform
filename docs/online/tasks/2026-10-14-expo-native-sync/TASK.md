@@ -1,5 +1,7 @@
 # EXPO 原仓库同步 Online 对齐 · 2026-10-14
 
+2026-10-14 22:48最新：[edit0.01 Online交付](EDIT001_ONLINE.md)已完成，当前正式入口realtime-expo-ft-edit001-online，Cobot本地Actor/LFT2 GPU1 Learner，ready暂停/版本0/online0/更新0。完整学习、恢复、更新后本地推理及Web Session通过；唯一下一步是用户真实rollout/HIL与首批学习审计。下方原0.1/LFT1描述为历史及保留入口，不是当前选中服务。
+
 最新：用户报告Online抖动而SFT平滑；已完成配对离线诊断并交付独立edit0.01本地预览，真机待验收，原Online仍0.1且当前加载受LFT1GPU占用阻塞。见[JITTER](JITTER.md)。
 
 历史交付状态：正式Web暂停加载交付完成。Cobot本地Actor/LFT1GPU0 Learner经LFT2中转均ready、版本0一致；Session启停与数据目录检查通过，发布0、无真实Episode。用户负责开始rollout/HIL及真机效果验收。
