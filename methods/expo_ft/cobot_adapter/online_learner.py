@@ -335,8 +335,8 @@ def main():
                     manifest=json.loads((directory/'manifest.json').read_text())
                     record=next(x for x in manifest['records'] if x.get('file')==match[2])
                 except (OSError,ValueError,StopIteration):return self.send(404,{'error':'not_found'})
-                self.send_response(200);self.send_header('Content-Length',str(record['bytes']));self.end_headers()
-                with (directory/match[2]).open('rb') as stream:shutil.copyfileobj(stream,self.wfile,1024*1024)
+                from actor_http import serve
+                serve(self,directory/match[2],record['bytes'])
                 return
             if self.path not in ('/ready','/status'):return self.send(404,{'error':'not_found'})
             self.send(200,{**json.loads((learner.root/'status.json').read_text()),'step':2000})

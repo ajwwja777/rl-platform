@@ -21,6 +21,8 @@ class RemoteSupport:
         self.remote_status = {"ready": False, "phase": "loading"}
         self.remote_seen = 0.
         self.remote_process = None
+        self.remote_process_lock = threading.Lock()
+        self.reconnect_after = 0.
         self.local_actor_version = -1
         self.actor_root = args.run_dir / "actors"
         self.transfer = None
@@ -40,15 +42,25 @@ class RemoteSupport:
     def remote_poll(self):
         while not self.stop.wait(.5):
             try:
-                with self.rpc.open("http://127.0.0.1:%d/status" % self.remote.get("local_port",18453), timeout=1) as response:
+                with self.rpc.open("http://127.0.0.1:%d/status" % self.remote.get("local_port",18453), timeout=5 if self.transfer else 1) as response:
                     value = json.load(response)
                 self.validate_server_status(value)
                 self.remote_status = value
                 self.remote_seen = time.monotonic()
-            except Exception:
+            except RuntimeError as exc:
+                self.remote_status={"ready":False,"phase":"fault","error":str(exc)}
+                self.fail(str(exc))
+            except (OSError,ValueError):
                 if self.ready and time.monotonic() - self.remote_seen > 3:
-                    self.remote_status = {"ready": False, "phase": "fault", "error": "Remote learner connection lost"}
-                    self.fail("Remote learner connection lost; episode retained locally")
+                    if self.transfer:
+                        self.remote_status={**self.remote_status,"ready":False,"phase":"reconnecting","error":"Waiting for remote transfer connection; local episode retained"}
+                        with self.remote_process_lock:
+                            if (not self.stop.is_set() and self.remote_process is not None and self.remote_process.poll() is not None and time.monotonic()>=self.reconnect_after):
+                                self.remote_process=subprocess.Popen(self.remote_command(),stdin=subprocess.PIPE)
+                                self.reconnect_after=time.monotonic()+5
+                    else:
+                        self.remote_status = {"ready": False, "phase": "fault", "error": "Remote learner connection lost"}
+                        self.fail("Remote learner connection lost; episode retained locally")
 
     def remote_online_status(self):
         value = dict(self.remote_status)
@@ -157,16 +169,32 @@ class RemoteSupport:
             destination=directory/name
             if destination.exists() and destination.stat().st_size==record["bytes"] and digest_file(destination)==record["sha256"]:continue
             temporary=destination.with_suffix('.download')
-            digest=hashlib.sha256();size=0
-            with self.rpc.open(base+'/actor/%d/%s'%(version,name),timeout=30) as response,temporary.open('wb') as stream:
-                while True:
-                    chunk=response.read(1024*1024)
-                    if not chunk:break
-                    size+=len(chunk)
-                    if size>record['bytes']:raise ValueError('Actor download size exceeded')
-                    stream.write(chunk);digest.update(chunk)
-                stream.flush();os.fsync(stream.fileno())
-            if size!=record['bytes'] or digest.hexdigest()!=record['sha256']:raise ValueError('Actor download checksum mismatch')
+            size=temporary.stat().st_size if temporary.exists() else 0
+            if size>record['bytes']:temporary.unlink();size=0
+            digest=hashlib.sha256()
+            if size:
+                with temporary.open('rb') as stream:
+                    for chunk in iter(lambda:stream.read(4*1024*1024),b''):digest.update(chunk)
+            if size==record['bytes']:
+                if digest.hexdigest()==record['sha256']:os.replace(temporary,destination);continue
+                temporary.unlink();raise ValueError('Partial Actor checksum mismatch; restarting file')
+            request=Request(base+'/actor/%d/%s'%(version,name),headers={'Range':'bytes=%d-'%size} if size else {})
+            with self.rpc.open(request,timeout=30) as response:
+                if size and response.status==200:
+                    # Compatibility with an earlier non-range server.
+                    size=0;digest=hashlib.sha256()
+                elif size and (response.status!=206 or response.headers.get('Content-Range')!='bytes %d-%d/%d'%(size,record['bytes']-1,record['bytes'])):
+                    raise ValueError('Invalid Actor range response')
+                with temporary.open('ab' if size else 'wb') as stream:
+                    while True:
+                        chunk=response.read(1024*1024)
+                        if not chunk:break
+                        size+=len(chunk)
+                        if size>record['bytes']:raise ValueError('Actor download size exceeded')
+                        stream.write(chunk);digest.update(chunk)
+                    stream.flush();os.fsync(stream.fileno())
+            if size!=record['bytes'] or digest.hexdigest()!=record['sha256']:
+                temporary.unlink();raise ValueError('Actor download checksum mismatch')
             os.replace(temporary,destination)
         atomic_json(directory/'manifest.json',manifest)
         return directory,manifest
@@ -175,7 +203,8 @@ class RemoteSupport:
         port=self.remote.get("local_port",18453)
         with socket.socket() as sock:
             if sock.connect_ex(("127.0.0.1",port))==0:raise RuntimeError("Remote Learner tunnel port is occupied")
-        self.remote_process=subprocess.Popen(self.remote_command(),stdin=subprocess.PIPE)
+        with self.remote_process_lock:
+            self.remote_process=subprocess.Popen(self.remote_command(),stdin=subprocess.PIPE)
         deadline=time.monotonic()+1200
         while not self.stop.wait(.5):
             if self.remote_process.poll() is not None:raise RuntimeError('Remote Learner exited during load')
@@ -190,7 +219,8 @@ class RemoteSupport:
         raise RuntimeError('Remote load interrupted')
 
     def close_remote(self):
-        if self.remote_process is not None and self.remote_process.poll() is None:
-            self.remote_process.terminate()
-            try:self.remote_process.wait(timeout=10)
-            except subprocess.TimeoutExpired:self.remote_process.kill();self.remote_process.wait()
+        with self.remote_process_lock:
+            if self.remote_process is not None and self.remote_process.poll() is None:
+                self.remote_process.terminate()
+                try:self.remote_process.wait(timeout=10)
+                except subprocess.TimeoutExpired:self.remote_process.kill();self.remote_process.wait()

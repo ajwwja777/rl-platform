@@ -94,6 +94,7 @@ def main():
                 else:
                     data=json.loads(body)
                     if self.path=='/episode/start':result=actor.begin(data)
+                    elif self.path=='/episode/cancel-start' and actor.active is None:result=actor.status()
                     elif self.path in ('/episode/end','/episode/cancel-start'):result=actor.finish(data)
                     elif self.path=='/actor/install':result=actor.install(data['directory'])
                     else:raise ValueError('Unknown Actor operation')
