@@ -1,6 +1,6 @@
 # Online：Replay、采样、学习与 Actor 发布
 
-2026-10-14 EXPO：[本地Actor / A6000 Learner](tasks/2026-10-14-expo-native-sync/TASK.md)两次原生整批更新/恢复和本地延迟通过；40CPU/14DOM通过。源码已安装、SSH已激活；用户选择等待现有A6000评测结束，暂停加载已排队。真机rollout/HIL仍待操作员；Cobot不训练。
+2026-10-14 EXPO：[Cobot本地Actor / LFT1 Learner经LFT2中转](tasks/2026-10-14-expo-native-sync/TASK.md)已完成LFT1原生20Critic/1VLA、checkpoint/更新后推理及真实三机SSH/文件校验，峰值32888MiB。旧LFT2自动等待器取消；用户保留Teacher5使用/修复，未切现场模型，Web暂停加载及真机rollout待其结束后验收。
 
 [全项目进度与经验](../README.md) · 更新：2026-10-11（文档整理，无新增模型能力验证）。
 

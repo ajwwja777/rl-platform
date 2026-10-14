@@ -1,6 +1,6 @@
 # EXPO 原仓库同步 Online 对齐 · 2026-10-14
 
-状态：用户最新要求 Cobot 本地推理、A6000 仅 Learner；隔离验证和正式源码安装已通过，专用 SSH key 正式切换已获准并完成；最终暂停加载排队等待 A6000 评测释放显卡。A6000 原生整批更新/恢复通过，分批增强不采用，远端动作推理因 Wi-Fi 延迟未通过而撤回。Cobot 不运行训练。
+状态：LFT1 GPU0 原生完整更新与 Cobot→LFT2→LFT1 链路已验证，可承接 Learner；Cobot 本地 Actor 保持原架构。用户明确保留正在使用/修复的 Teacher5，未切现场 EXPO，也无自动切换等待器。
 
 用户授权按新传入的 train_pi_robo.py / train_pi_robo_async.py 对齐并交付可用于 Web rollout/HIL 的 Online 版本；采用同步 recipe。用户明确确认 realtime_expo 整批示教成功，允许使用 TRAIN 前25回合。
 
@@ -85,3 +85,19 @@ RL728de33/Webaa5d24a已串行合入main/push；保留另一对话a32707f的Stage
 已启动本任务等待器PID3328687（A6000），最多等待6小时：仅当某卡持续60秒没有计算进程、现场模型/Session/录制/GPU均空闲，才选该卡并启动ROS master、请求Web正式模型暂停加载，验证seed25/3301、online0、更新0、本地版本0、Session启停、HTTP Range与发布0。脚本不启动机械臂、相机、Episode、录制或运动；任何冲突/错误停止并留报告。等待器脚本与状态在outputs/expo-native-remote-20261014/verification/{wait_and_activate.py,accept_paused_field.py,activation-status.json,production-acceptance.json}，最后一项仅完成尝试后存在。
 
 当前尚未正式加载，不能开始Online。继续任务先查activation-status.json与真实现场；ready_paused仍只表示软件暂停验收，真实rollout/HIL由操作员完成。不要重复启动等待器；若其他对话需要切模型，先明确取消本任务的等待器。
+
+## 2026-10-14 20:43：LFT1 后端验证完成，Teacher5 保留
+
+用户指定10.12.0.212（LFT1）通过LFT2访问，并要求不要在LFT2随意放文件。实际SSH账户为LFT-W02（显式LFT-W01尝试无权限，未更改任何认证配置）；LFT1 hostname=LFT-A6000-1。GPU0为RTX A600048GB且空闲，GPU1被其他任务使用；仅使用GPU0。先取消原LFT2等待器3328687，旧自动现场加载不再排队。
+
+- LFT1独立目录：`/data/LFT-W02_data/jiaan/expo-online-lft1-20261014/`。assets保存SFT/common/seed/native快照；runtime/{venv,python}为独立环境，3个editable路径和Python软链接已调整；adapter为已发布源码；learner.json为GPU0正式配置；online是正式Learner状态；verification为隔离合成验证。未修改LFT1其他人的环境/模型/任务。
+- LFT2只沿用原主项目、任务worktree及`outputs/expo-native-remote-20261014/`，没有新建散落目录或额外复制权重/环境。既有profile.json切为固定loopback SSH中转；原配置备份在该outputs的verification/lft2-profile-before-relay.json。Cobot专用key/目标端口仍是LFT2 localhost18443，LFT2转LFT1 localhost18443；不公开模型HTTP端口。
+- 272资产/6,659,555,704字节SHA全部通过。JAX0.5.3/Flax0.10.2与GPU计算通过。初次资产校验SSH等待120秒超时，未作为成功；随后独立后台逐文件校验得到完整回执。第一次环境检测GPU计算已通过，但写回执时verification目录尚不存在；补建后保存事实，不以失败日志冒充全程成功。
+- 原生full batch64/UTD20测试完成：25成功示教/3301帧，unknown/abort排除、10有效在线回合仅收集，第11回合20Critic/1VLA更新、完整checkpoint及更新后有限输出推理通过。GPU实测峰值32888MiB。合成测试数据仅在verification/native-lifecycle/run，未用于正式online。
+- Cobot仅CPU SSH验证真实三机链路：Cobot→LFT2固定relay→LFT1正式Learner，ready/身份/seed25/3301/online0/更新0/version0检查通过，Actor文件SHA与Range206断点读取通过。验证结束通过stdin EOF退出本任务Learner及双层SSH，GPU0确认空闲、18443/18453关闭；磁盘status.json中的ready是历史回执，不代表服务仍运行。
+- 源码576dd1e已feature/main push；9项relay/恢复测试通过。现场只同步未运行的EXPO remote_launcher.py、remote_runtime_support.py及本任务profile的learner_host标识，按旧/新SHA检查并加操作锁。没有加载/释放模型、重启Web/ROS/硬件、开始录制或机器人动作。
+- 用户确认Teacher5仍在使用/修复，必须保留。本任务终检仍为Teacher5，Stage1 PID122499保留；runtime PID由另一对话变为165463，状态error，录制idle。未把旧runtime PID不变作为承诺，也未干预修复。EXPO完整Web暂停加载/Session/真机rollout尚未在此后端验收。
+
+正式入口仍为`expo-plug-left-2cam-native-remote-2000` / `realtime-expo-ft-native-remote`。加载时启动LFT1 Learner，Cobot运行本地Actor；同步学习/权重回传等待期间不开放下一回合。唯一下一步：用户结束Teacher5并允许切换后，重新核对LFT1 GPU0和现场状态，执行已有暂停加载验收；不再询问已经批准的专用SSH改动，不重跑已通过的隔离学习实验。
+
+证据（LFT2原outputs/verification）：lft1-native-result.json、lft1-final-verification.json、lft1-relay-result.json、lft1-field-preserved.json、relay-tests.log、relay-install.json、lft1-transfer.log。LFT1详细日志/完整checkpoint留本机verification，不把大文件重复复制到LFT2。LFT1该测试Learner已退出，现场Teacher5保留；Online软件整体最终交付仍受现场模型切换边界限制。
