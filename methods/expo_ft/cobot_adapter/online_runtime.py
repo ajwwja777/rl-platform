@@ -72,6 +72,8 @@ class OnlineRuntime(RemoteSupport, Runtime):
 
     def start_server(self):
         super().start_server()
+        if self.remote:
+            with self.rpc.open("http://127.0.0.1:%d/status"%self.args.port,timeout=2) as response:self.local_actor_version=json.load(response)["actor_version"]
         if self.remote and self.transfer:
             threading.Thread(target=self.upload_episode,args=(self.transfer['episode_uuid'],),daemon=True).start()
 
@@ -82,7 +84,11 @@ class OnlineRuntime(RemoteSupport, Runtime):
         return {'online':value,'episode_uuid':self.episode}
 
     def policy_command(self):
-        if self.remote:return self.remote_command()
+        if self.remote:
+            directory=self.start_remote()
+            return [self.remote['python'],str(Path(__file__).with_name('online_actor.py')),
+                '--project',self.remote['native_project'],'--bundle',str(self.args.bundle),'--model-id',self.args.model_id,
+                '--snapshot-root',str(self.actor_root),'--snapshot',str(directory),'--port',str(self.args.port),'--rtc-delay',str(self.args.rtc_delay)]
         command=[str(self.args.project/'.venv/bin/python'),str(Path(__file__).with_name('online_learner.py')),
                 '--project',str(self.args.project),'--bundle',str(self.args.bundle),
                 '--run-dir',str(self.args.run_dir),'--port',str(self.args.port),'--rtc-delay',str(self.args.rtc_delay)]
@@ -91,12 +97,21 @@ class OnlineRuntime(RemoteSupport, Runtime):
         return command
 
     def json_rpc(self,path,body):
+        if self.remote:
+            value=self.remote_rpc(path,body)
+            if path=='/episode/start':
+                try:self.local_rpc(path,{**body,'actor_version':value['actor_version'],'rollout_rng':value['rollout_rng']})
+                except Exception:
+                    self.remote_rpc('/episode/cancel-start',body)
+                    raise
+            elif path=='/episode/cancel-start':self.local_rpc(path,body)
+            return value
         request=Request('http://127.0.0.1:%d%s'%(self.args.port,path),data=json.dumps(body).encode(),headers={'Content-Type':'application/json'})
         with self.rpc.open(request,timeout=15) as response:return json.load(response)
 
     def array_rpc(self,path,**values):
         from wire import encode
-        payload,encoding=encode(values,compress=bool(self.remote))
+        payload,encoding=encode(values,compress=False)
         request=Request('http://127.0.0.1:%d%s'%(self.args.port,path),data=payload,
             headers={'Content-Type':'application/octet-stream','Content-Encoding':encoding})
         with self.rpc.open(request,timeout=30) as response:return json.load(response)
@@ -144,6 +159,7 @@ class OnlineRuntime(RemoteSupport, Runtime):
     def close(self):
         if hasattr(self,'control'):self.control.shutdown()
         super().close()
+        self.close_remote()
 
 
 def main():

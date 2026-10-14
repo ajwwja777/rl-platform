@@ -20,6 +20,7 @@ class Learner:
         self.args=args
         self.aligned=getattr(args,'recipe','legacy')=='native_sync'
         self.native_batch_update=bool(getattr(args,'native_batch_update',False))
+        self.learner_only=bool(getattr(args,'learner_only',False))
         self.rtc_delay=int(getattr(args,'rtc_delay',2))
         if not 1<=self.rtc_delay<=8:raise ValueError('Invalid RTC delay')
         self.seed=None
@@ -53,6 +54,7 @@ class Learner:
                 adapter_signature.update(Path(__file__).with_name(name).read_bytes())
             contract['adapter_source_sha256']=adapter_signature.hexdigest()
             contract['update_layout']='native_full_batch' if self.native_batch_update else 'experimental_streamed'
+            contract['learner_only']=self.learner_only
         contract_path=self.root/'contract.json'
         if contract_path.exists() and json.loads(contract_path.read_text())!=contract:
             raise ValueError('Online run configuration changed; use an independent run directory')
@@ -80,7 +82,8 @@ class Learner:
         self.rebuild()
         if 'replay_rng' in self.meta:
             self.buffer.rng=jax.numpy.asarray(self.meta['replay_rng'],dtype=jax.numpy.uint32)
-        self.warm_inference()
+        if not self.learner_only:self.warm_inference()
+        if self.learner_only:self.publish_actor()
         self.phase='ready'
         self.save_status()
         # Completed journal with a lost finish RPC is recovered exactly once.
@@ -90,6 +93,10 @@ class Learner:
             self.phase='updating'
             self.save_status()
             threading.Thread(target=self.recover,args=(pending,),daemon=True).start()
+
+    def publish_actor(self):
+        from actor_snapshot import contract,export
+        self.actor_manifest=export(self.root/'actors',self.agent,self.meta['updates'],contract(self.args.bundle,self.args.project,self.rtc_delay))
 
     def warm_inference(self):
         with np.load(self.args.bundle.parent/'common/dev_observation.npz',allow_pickle=False) as z:
@@ -140,7 +147,7 @@ class Learner:
 
     def begin(self, identity):
         identity=episode_id(identity)
-        if self.active==identity and self.phase=='rollout':return self.save_status()
+        if self.active==identity and self.phase=='rollout':return {**self.save_status(),'rollout_rng':np.asarray(self.agent.rng).tolist()}
         if self.phase!='ready' or self.active or identity in self.meta['accepted']:
             raise ValueError('Learner is not ready for a new episode')
         import shutil
@@ -148,7 +155,7 @@ class Learner:
             raise ValueError('EXPO online NVMe needs at least16GiB free for journal and checkpoint')
         self.active=identity
         self.phase='rollout'
-        return self.save_status()
+        return {**self.save_status(),'rollout_rng':np.asarray(self.agent.rng).tolist()}
 
     def cancel_start(self,identity):
         identity=episode_id(identity)
@@ -193,6 +200,10 @@ class Learner:
         info,data=read_journal(self.root/'episodes',identity)
         if info['actor_version']!=self.meta['updates']:
             raise ValueError('Episode policy version differs from committed learner')
+        if self.learner_only:
+            rng=np.asarray(info.get('rollout_rng',[]))
+            if rng.shape!=(2,) or not np.issubdtype(rng.dtype,np.integer) or np.any(rng<0) or np.any(rng>2**32-1):raise ValueError('Missing/invalid local Actor RNG receipt')
+            self.agent=self.agent.replace(rng=jax.device_put(rng.astype(np.uint32),self.agent.rng.sharding))
         accepted=data is not None and info.get('training_eligible',True) and info['outcome'] in ('success','failure')
         if accepted:
             self.meta['replay'].append(identity)
@@ -239,11 +250,12 @@ class Learner:
                 self.meta['actor_updates']=int(self.agent.actor_train_state.step)
                 self.save_status()
             if self.meta['updates'] != previous_updates:
-                self.warm_inference()
+                if not self.learner_only:self.warm_inference()
                 # Use a fresh disk step even after an interrupted uncommitted save.
                 disk_step=max([int(p.name) for p in (self.root/'checkpoints').glob('*') if p.name.isdigit()] or [0])+1
                 save(self.root/'checkpoints',self.agent,self.updater,disk_step)
                 self.meta['checkpoint']=disk_step
+                if self.learner_only:self.publish_actor()
         self.meta['accepted'].append(identity)
         self.meta['agent_rng']=np.asarray(self.agent.rng).tolist()
         if hasattr(self.buffer,'rng'):self.meta['replay_rng']=np.asarray(self.buffer.rng).tolist()
@@ -294,6 +306,7 @@ def main():
     p.add_argument('--deployment-id')
     p.add_argument('--rtc-delay',type=int,default=2)
     p.add_argument('--native-batch-update',action='store_true')
+    p.add_argument('--learner-only',action='store_true')
     args=p.parse_args()
     if args.recipe=='native_sync':
         if args.seed_dir is None:p.error('native_sync requires --seed-dir')
@@ -308,6 +321,20 @@ def main():
             self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(body)))
             self.end_headers();self.wfile.write(body)
         def do_GET(self):
+            if self.path=='/actor/manifest' and learner.learner_only:
+                return self.send(200,learner.actor_manifest)
+            if self.path.startswith('/actor/') and learner.learner_only:
+                import re,shutil
+                match=re.fullmatch(r'/actor/([0-9]+)/([a-z]+-[0-9]+\.gz)',self.path)
+                if not match:return self.send(404,{'error':'not_found'})
+                directory=learner.root/'actors'/match[1]
+                try:
+                    manifest=json.loads((directory/'manifest.json').read_text())
+                    record=next(x for x in manifest['records'] if x.get('file')==match[2])
+                except (OSError,ValueError,StopIteration):return self.send(404,{'error':'not_found'})
+                self.send_response(200);self.send_header('Content-Length',str(record['bytes']));self.end_headers()
+                with (directory/match[2]).open('rb') as stream:shutil.copyfileobj(stream,self.wfile,1024*1024)
+                return
             if self.path not in ('/ready','/status'):return self.send(404,{'error':'not_found'})
             self.send(200,{**json.loads((learner.root/'status.json').read_text()),'step':2000})
         def do_POST(self):
@@ -334,6 +361,7 @@ def main():
                     method={'/episode/start':learner.begin,'/episode/end':learner.finish,'/episode/cancel-start':learner.cancel_start}[self.path]
                     result=method(payload['episode_uuid'])
                 elif self.path in ('/precache','/select'):
+                    if learner.learner_only:raise ValueError('Inference is local to Cobot')
                     from wire import decode
                     data=decode(body,self.headers.get('Content-Encoding','identity'))
                     started=time.monotonic()

@@ -39,7 +39,7 @@ def main():
         env.pop(key, None)
     env.update(CUDA_VISIBLE_DEVICES=gpu, XLA_PYTHON_CLIENT_PREALLOCATE="false", XLA_PYTHON_CLIENT_ALLOCATOR="platform", OMP_NUM_THREADS="4", JAX_COMPILATION_CACHE_DIR=config["cache_dir"])
     adapter = Path(__file__).resolve().parent
-    command = [config["python"], str(adapter / "online_learner.py"), "--project", config["project"], "--bundle", config["bundle"], "--run-dir", str(root), "--port", str(config["port"]), "--recipe", "native_sync", "--seed-dir", config["seed_dir"], "--deployment-id", config["model_id"], "--rtc-delay", str(config["rtc_delay"]), "--native-batch-update"]
+    command = [config["python"], str(adapter / "online_learner.py"), "--project", config["project"], "--bundle", config["bundle"], "--run-dir", str(root), "--port", str(config["port"]), "--recipe", "native_sync", "--seed-dir", config["seed_dir"], "--deployment-id", config["model_id"], "--rtc-delay", str(config["rtc_delay"]), "--native-batch-update", "--learner-only"]
     process = subprocess.Popen(command, env=env, start_new_session=True)
     try:
         while process.poll() is None and not stop.wait(.5):
