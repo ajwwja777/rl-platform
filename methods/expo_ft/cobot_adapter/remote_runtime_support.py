@@ -99,7 +99,12 @@ class RemoteSupport:
                         self.remote_rpc("/episode/end", {"episode_uuid": identity})
                         # Wait for durable learner commit, including checkpoint save.
                         self.transfer = {"episode_uuid": identity, "state": "waiting_commit"}
+                        last_progress=self.remote_status.get("updated_at")
                         while not self.stop.wait(1) and time.monotonic() < deadline:
+                            progress=self.remote_status.get("updated_at")
+                            if self.remote_status.get("phase")=="updating" and progress!=last_progress:
+                                deadline=time.monotonic()+2400
+                                last_progress=progress
                             receipt = self.remote_rpc("/episode/receipt", {"episode_uuid": identity})
                             if self.remote_status.get("phase") == "fault":
                                 self.fail(self.remote_status.get("error", "Remote learning failed"))

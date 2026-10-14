@@ -43,7 +43,7 @@ def export(root,agent,version,identity):
         for section,tree in trees(agent).items():
             for index,(_,value) in enumerate(jax.tree_util.tree_flatten_with_path(tree)[0]):
                 record=next(x for x in existing['records'] if x['section']==section and x['index']==index)
-                digest=hashlib.sha256();flat=value.reshape(-1)
+                digest=hashlib.sha256();flat=np.asarray(value).reshape(-1)
                 for start in range(0,flat.size,1024*1024):digest.update(np.asarray(flat[start:start+1024*1024]).tobytes())
                 if digest.hexdigest()!=record['raw_sha256']:raise ValueError('Existing Actor version differs from restored learner')
         return existing
@@ -55,8 +55,8 @@ def export(root,agent,version,identity):
             seed=version==0 and section=='actor'
             record['seed']=seed
             name='%s-%d.gz'%(section,index)
-            digest=hashlib.sha256();flat=value.reshape(-1)
-            stream=None if seed else gzip.open(temporary/name,'wb',compresslevel=1)
+            digest=hashlib.sha256();flat=np.asarray(value).reshape(-1)
+            stream=None if seed else gzip.open(temporary/name,'wb',compresslevel=0)
             try:
                 for start in range(0,flat.size,1024*1024):
                     chunk=np.asarray(flat[start:start+1024*1024]).tobytes();digest.update(chunk)

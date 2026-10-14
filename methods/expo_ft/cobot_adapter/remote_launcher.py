@@ -47,6 +47,7 @@ def main():
         # An operator unload / disconnected SSH stops rollout immediately locally.
         # Finish an already-started update/save before retiring the learner.
         deadline = time.monotonic() + 2400
+        last_progress = None
         while process.poll() is None and time.monotonic() < deadline:
             try:
                 status = json.loads((root / "status.json").read_text())
@@ -54,6 +55,10 @@ def main():
                 status = {}
             if status.get("pid") != process.pid or status.get("phase") != "updating":
                 break
+            progress = status.get("updated_at")
+            if progress != last_progress:
+                deadline = time.monotonic() + 2400
+                last_progress = progress
             time.sleep(1)
     finally:
         if process.poll() is None:
