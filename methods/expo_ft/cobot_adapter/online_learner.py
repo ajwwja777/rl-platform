@@ -19,6 +19,8 @@ class Learner:
         import jax
         self.args=args
         self.aligned=getattr(args,'recipe','legacy')=='native_sync'
+        self.rtc_delay=int(getattr(args,'rtc_delay',2))
+        if not 1<=self.rtc_delay<=8:raise ValueError('Invalid RTC delay')
         self.seed=None
         if self.aligned:
             from success_seed import seed_manifest
@@ -40,13 +42,13 @@ class Learner:
         for directory in ('expo_ft','configs'):
             for source in sorted((args.project/directory).rglob('*.py')):
                 source_signature.update(str(source.relative_to(args.project)).encode());source_signature.update(source.read_bytes())
-        contract=dict(native_source_sha256=source_signature.hexdigest(),bundle=str(args.bundle.resolve()),bundle_metadata_sha256=signature.hexdigest(),batch_size=args.batch_size,capacity=args.capacity,warmup_steps=args.warmup_steps,steps_per_update=args.steps_per_update,max_updates=args.max_updates,rtc_delay=2,schema=1)
+        contract=dict(native_source_sha256=source_signature.hexdigest(),bundle=str(args.bundle.resolve()),bundle_metadata_sha256=signature.hexdigest(),batch_size=args.batch_size,capacity=args.capacity,warmup_steps=args.warmup_steps,steps_per_update=args.steps_per_update,max_updates=args.max_updates,rtc_delay=self.rtc_delay,schema=1)
         if self.aligned:
             for name in ('train_pi_robo.py','scripts/dynamic_pick/run_server.sh'):
                 source_signature.update((args.project/name).read_bytes())
-            contract.update(native_source_sha256=source_signature.hexdigest(),recipe='native_sync',schema=2,utd_ratio=20,seed_manifest=self.seed,rtc_delay=2)
+            contract.update(native_source_sha256=source_signature.hexdigest(),recipe='native_sync',schema=2,utd_ratio=20,seed_manifest=self.seed,rtc_delay=self.rtc_delay)
             adapter_signature=hashlib.sha256()
-            for name in ('native_online.py','memory_update.py','batch_memory.py','split_update.py','stream_sample.py','sync_schedule.py','success_seed.py','online_protocol.py','episode_journal.py','online_learner.py'):
+            for name in ('native_online.py','memory_update.py','batch_memory.py','split_update.py','stream_sample.py','sync_schedule.py','success_seed.py','online_protocol.py','episode_journal.py','online_learner.py','stream_checkpoint.py','remote_journal.py'):
                 adapter_signature.update(Path(__file__).with_name(name).read_bytes())
             contract['adapter_source_sha256']=adapter_signature.hexdigest()
         contract_path=self.root/'contract.json'
@@ -57,7 +59,7 @@ class Learner:
             checkpoint=None,updates=0,accepted=[],replay=[],steps=0,credit=0,actor_updates=0)
         self.meta.setdefault('completed_episodes',0)
         self.meta.setdefault('critic_updates',0)
-        self.agent,self.config,self.prompt=load_native(args.bundle,2,resume=False,aligned=self.aligned)
+        self.agent,self.config,self.prompt=load_native(args.bundle,self.rtc_delay,resume=False,aligned=self.aligned)
         if self.aligned:
             from batch_memory import install
             install()
@@ -82,11 +84,11 @@ class Learner:
         saved_rng=self.agent.rng
         cached,self.agent=self.agent.sample_pre_cache(dict(obs))
         actions,self.agent,info=self.agent.sample_actions(dict(obs),precached=cached)
-        prefix=np.asarray(info['executed_padded'])[-2:]
+        prefix=np.asarray(info['executed_padded'])[-self.rtc_delay:]
         cached,self.agent=self.agent.sample_pre_cache(dict(obs),prefix)
-        actions,self.agent,info=self.agent.sample_actions(dict(obs),precached=cached,delay=2)
+        actions,self.agent,info=self.agent.sample_actions(dict(obs),precached=cached,delay=self.rtc_delay)
         assert np.isfinite(np.asarray(actions)).all()
-        for d in (0,2):
+        for d in (0,self.rtc_delay):
             actions,self.agent,info=self.agent.sample_actions(dict(obs),precached=cached,delay=d,only_base_actions=True)
             assert np.isfinite(np.asarray(actions)).all()
         self.agent=self.agent.replace(rng=saved_rng)
@@ -109,11 +111,11 @@ class Learner:
         value=dict(ready=self.phase in ('ready','rollout'),phase=self.phase,error=self.error,
             active_episode=self.active,actor_version=self.meta['updates'],learner_step=self.meta['updates'],
             actor_updates=self.meta['actor_updates'],replay_steps=max(0,len(self.buffer)-(0 if self.aligned else len(self.meta['replay']))),
-            accepted_episodes=len(self.meta['accepted']),training_enabled=True,
+            accepted_episodes=len(self.meta['accepted']),training_enabled=True,deployment_id=getattr(self.args,'deployment_id',None),
             metrics=self.metrics,updated_at=time.time(),pid=os.getpid(),batch_size=self.args.batch_size,
             warmup_steps=self.args.warmup_steps,steps_per_update=self.args.steps_per_update)
         if self.aligned:
-            value.update(recipe='native_sync',warmup_episodes=10,completed_episodes=self.meta['completed_episodes'],
+            value.update(recipe='native_sync',rtc_delay=self.rtc_delay,warmup_episodes=10,completed_episodes=self.meta['completed_episodes'],
                 warmup_remaining=max(0,10-self.meta['completed_episodes']),critic_updates=self.meta['critic_updates'],
                 utd_ratio=20,seed_episodes=25,seed_steps=self.seed['frames'],online_steps=self.meta['steps'])
         atomic_json(self.root/'status.json',value)
@@ -251,7 +253,7 @@ class Learner:
         version=self.meta['updates']
         if route=='/precache':
             prefix=data['prefix']
-            if prefix.shape not in ((0,7),(2,7)) or not np.isfinite(prefix).all():raise ValueError('Invalid RTC prefix')
+            if prefix.shape not in ((0,7),(self.rtc_delay,7)) or not np.isfinite(prefix).all():raise ValueError('Invalid RTC prefix')
             padded=None
             if len(prefix):
                 value=self.agent.actor.input_transforms({**obs,'actions':prefix.copy()})['actions']
@@ -277,6 +279,8 @@ def main():
     p.add_argument('--max-updates',type=int,default=8)
     p.add_argument('--recipe',choices=('legacy','native_sync'),default='legacy')
     p.add_argument('--seed-dir',type=Path)
+    p.add_argument('--deployment-id')
+    p.add_argument('--rtc-delay',type=int,default=2)
     args=p.parse_args()
     if args.recipe=='native_sync':
         if args.seed_dir is None:p.error('native_sync requires --seed-dir')
@@ -293,12 +297,25 @@ def main():
             if self.path not in ('/ready','/status'):return self.send(404,{'error':'not_found'})
             self.send(200,{**json.loads((learner.root/'status.json').read_text()),'step':2000})
         def do_POST(self):
+            if self.path=='/episode/receipt':
+                try:
+                    length=int(self.headers.get('Content-Length','0'))
+                    if not 0<length<16384:raise ValueError('Invalid receipt body')
+                    identity=episode_id(json.loads(self.rfile.read(length))['episode_uuid'])
+                    committed=json.loads(learner.meta_path.read_text()) if learner.meta_path.exists() else {}
+                    return self.send(200,{'accepted':identity in committed.get('accepted',[])})
+                except Exception as exc:return self.send(409,{'error':str(exc)})
             if not learner.lock.acquire(blocking=False):return self.send(409,{'error':'EXPO learner is updating; wait for the next episode'})
             try:
                 length=int(self.headers.get('Content-Length','0'))
                 if not 0<length<=2000000:raise ValueError('Invalid body size')
                 body=self.rfile.read(length)
-                if self.path in ('/episode/start','/episode/end','/episode/cancel-start'):
+                if self.path.startswith('/journal/'):
+                    from remote_journal import receive
+                    parts=self.path.split('/')
+                    if len(parts)!=4:raise ValueError('Invalid journal upload route')
+                    result=receive(learner.root/'episodes',learner.active,learner.meta['accepted'],parts[2],parts[3],body,self.headers.get('X-Content-SHA256',''))
+                elif self.path in ('/episode/start','/episode/end','/episode/cancel-start'):
                     payload=json.loads(body)
                     method={'/episode/start':learner.begin,'/episode/end':learner.finish,'/episode/cancel-start':learner.cancel_start}[self.path]
                     result=method(payload['episode_uuid'])

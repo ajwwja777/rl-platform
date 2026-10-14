@@ -32,6 +32,8 @@ class Runtime:
         from std_msgs.msg import String
         from std_srvs.srv import SetBool, SetBoolResponse, Trigger, TriggerResponse
         self.args, self.ros = args, ros
+        self.rtc_delay = int(getattr(args, "rtc_delay", 2))
+        if not 1 <= self.rtc_delay <= 8:raise ValueError("RTC delay must be between1and8")
         self.options = execution_options(json.loads(os.environ.get("COBOT_EXECUTION_OPTIONS", '{"enabled":false}')))
         self.gate = Gate()
         self.lock = threading.RLock()
@@ -171,6 +173,9 @@ class Runtime:
             payload = json.load(response)
         return np.asarray(payload["actions"], np.float32)
 
+    def validate_server_status(self, info):
+        pass
+
     def start_server(self):
         with socket.socket() as sock:
             if sock.connect_ex(("127.0.0.1", self.args.port)) == 0:
@@ -186,7 +191,7 @@ class Runtime:
             JAX_COMPILATION_CACHE_DIR=storage+'/.cache/jax/expo-web', CUDA_CACHE_PATH=storage+'/.cache/nvidia')
         Path(env['JAX_COMPILATION_CACHE_DIR']).mkdir(parents=True, exist_ok=True)
         command = self.policy_command()
-        self.server = subprocess.Popen(command, env=env)
+        self.server = subprocess.Popen(command, env=env, stdin=subprocess.PIPE if getattr(self.args,'remote_config',None) else None)
         deadline = time.monotonic() + 600
         while not self.stop.wait(.3):
             if self.server.poll() is not None:
@@ -197,6 +202,7 @@ class Runtime:
                 with self.rpc.open('http://127.0.0.1:%d/ready' % self.args.port, timeout=1) as response:
                     info = json.load(response)
                 if info['ready'] and info['step'] == self.args.step:
+                    self.validate_server_status(info)
                     self.ready = True
                     self.save()
                     print("EXPO ready and PAUSED; left 7D, two wrist cameras, logical10Hz", flush=True)
@@ -264,10 +270,10 @@ class Runtime:
                     self.future = None
                     self.fail(exc)
                     continue
-            if self.options['rtc'] and index == 6 and self.future is None:
+            if self.options['rtc'] and index == 8-self.rtc_delay and self.future is None:
                 try:
                     obs = self.observation()
-                    self.future = self.pool.submit(self.infer, obs, plan[6:8].copy())
+                    self.future = self.pool.submit(self.infer, obs, plan[8-self.rtc_delay:8].copy())
                     self.future_epoch = epoch
                     self.future_started = time.monotonic()
                 except Exception as exc:
@@ -318,7 +324,7 @@ class Runtime:
                     if remaining > 0:
                         self.stop.wait(remaining)
                     if self.future is None or not self.future.done():
-                        self.fail('RTC inference missed the two-step/200ms prefix budget')
+                        self.fail('RTC inference missed the %d-step/%dms prefix budget' % (self.rtc_delay,100*self.rtc_delay))
                         continue
                     try:
                         actions = self.future.result()

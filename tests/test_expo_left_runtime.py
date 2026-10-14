@@ -82,7 +82,7 @@ def test_publish_overrides_never_change_training_time():
     with pytest.raises(ValueError):execution_options(dict(enabled=True,publish_hz=30,rtc='true',smoothing=False))
 
 
-def _loop_fixture(monkeypatch, rtc=True, takeover_after=None):
+def _loop_fixture(monkeypatch, rtc=True, takeover_after=None, delay=2):
     import sys
     import threading
     from concurrent.futures import Future
@@ -97,6 +97,7 @@ def _loop_fixture(monkeypatch, rtc=True, takeover_after=None):
     value=object.__new__(module.Runtime)
     value.lock=threading.RLock();value.gate=Gate();value.gate.update_mode('policy');value.gate.request(False,'/cobot_deployment_command')
     value.options=dict(publish_hz=20,rtc=rtc,smoothing=False)
+    value.rtc_delay=delay
     value.server=SimpleNamespace(poll=lambda:None)
     value.ready=True;value.chunk_ready=False;value.last_gate_save=100.;value.last_resume=99.
     value.future=None;value.published=0
@@ -192,3 +193,11 @@ def test_native10_explicit_rtc_filter_overrides():
     for rtc in (False,True):
         for smoothing in (False,True):
             assert execution_options(dict(enabled=True,publish_hz=10,rtc=rtc,smoothing=smoothing))==dict(publish_hz=10,rtc=rtc,smoothing=smoothing)
+
+
+def test_remote_five_step_prefix_uses_actual_future_commands(monkeypatch):
+    value,calls,published=_loop_fixture(monkeypatch,delay=5)
+    value.run()
+    assert len(published)==16 and len(calls)==2
+    assert calls[1].shape==(5,7)
+    np.testing.assert_allclose(calls[1],np.asarray(published)[[7,9,11,13,15]],atol=1e-7)

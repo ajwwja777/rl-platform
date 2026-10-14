@@ -13,10 +13,12 @@ import numpy as np
 from ros_runtime import Runtime
 from episode_journal import EpisodeJournal
 from online_protocol import episode_id
+from remote_runtime_support import RemoteSupport
 
 
-class OnlineRuntime(Runtime):
+class OnlineRuntime(RemoteSupport, Runtime):
     def __init__(self,args,ros):
+        self.remote_init(args)
         self.journal=EpisodeJournal(args.run_dir/'episodes')
         self.episode=None
         super().__init__(args,ros)
@@ -41,6 +43,7 @@ class OnlineRuntime(Runtime):
                     identity=episode_id(body['episode_uuid'])
                     if self.path=='/episode/start':
                         if not runtime.gate.paused:raise ValueError('Pause before opening an episode')
+                        if runtime.transfer:raise ValueError('Previous remote episode transfer/update is pending')
                         if (runtime.journal.root/identity).exists() and not runtime.journal.active:
                             raise ValueError('Episode already exists; recover its outcome before restarting')
                         value=runtime.json_rpc('/episode/start',{'episode_uuid':identity})
@@ -52,7 +55,7 @@ class OnlineRuntime(Runtime):
                             value=runtime.json_rpc('/episode/cancel-start',{'episode_uuid':identity})
                         else:
                             runtime.journal.finish(identity,body.get('outcome','unknown'))
-                            value=runtime.json_rpc('/episode/end',{'episode_uuid':identity})
+                            value=runtime.transfer_episode(identity) if runtime.remote else runtime.json_rpc('/episode/end',{'episode_uuid':identity})
                         runtime.episode=None
                     elif self.path in ('/episode/pause','/episode/resume'):
                         if identity!=runtime.episode:raise ValueError('Stale episode identity')
@@ -65,16 +68,24 @@ class OnlineRuntime(Runtime):
         self.control=ThreadingHTTPServer(('127.0.0.1',args.control_port),Handler)
         threading.Thread(target=self.control.serve_forever,daemon=True).start()
         threading.Thread(target=self.collect,daemon=True).start()
+        if self.remote:threading.Thread(target=self.remote_poll,daemon=True).start()
+
+    def start_server(self):
+        super().start_server()
+        if self.remote and self.transfer:
+            threading.Thread(target=self.upload_episode,args=(self.transfer['episode_uuid'],),daemon=True).start()
 
     def status_extra(self):
+        if self.remote:return {'online':self.remote_online_status(),'episode_uuid':self.episode}
         try:value=json.loads((self.args.run_dir/'status.json').read_text())
         except (OSError,ValueError):value={'phase':'loading','ready':False}
         return {'online':value,'episode_uuid':self.episode}
 
     def policy_command(self):
+        if self.remote:return self.remote_command()
         command=[str(self.args.project/'.venv/bin/python'),str(Path(__file__).with_name('online_learner.py')),
                 '--project',str(self.args.project),'--bundle',str(self.args.bundle),
-                '--run-dir',str(self.args.run_dir),'--port',str(self.args.port)]
+                '--run-dir',str(self.args.run_dir),'--port',str(self.args.port),'--rtc-delay',str(self.args.rtc_delay)]
         if getattr(self.args,'recipe','legacy')=='native_sync':
             command+=['--recipe','native_sync','--seed-dir',str(self.args.seed_dir)]
         return command
@@ -141,8 +152,10 @@ def main():
     p.add_argument('--control-port',type=int,default=8044);p.add_argument('--shadow',action='store_true')
     p.add_argument('--recipe',choices=('legacy','native_sync'),default='legacy')
     p.add_argument('--seed-dir',type=Path)
+    p.add_argument('--remote-config',type=Path)
+    p.add_argument('--rtc-delay',type=int,default=2)
     args=p.parse_args()
-    if args.recipe=='native_sync' and args.seed_dir is None:p.error('native_sync requires --seed-dir')
+    if args.recipe=='native_sync' and args.seed_dir is None and args.remote_config is None:p.error('native_sync requires --seed-dir')
     import rospy
     runtime=OnlineRuntime(args,rospy)
     for sig in (signal.SIGINT,signal.SIGTERM):signal.signal(sig,lambda *_:runtime.stop.set())
