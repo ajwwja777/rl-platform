@@ -65,3 +65,8 @@ Web 7438333仅对expo_online启用该录像，回放/HIL分别计数；旧零HIL
 7运行文件提交push后按旧/新SHA与模型操作锁安装；仅重载Web，保持相机订阅至新Web健康，再退出订阅。Runtime378049/Actor379952启动时间不变，Learner1070338仍在LFT2 GPU1；模型paused、Online ready、completed2/online326/warmup_remaining8、Critic/VLA0、版本0=served0，目录下一条3。两个历史preview均HTTP200 unavailable，失败结果保留，三路新鲜、ROS readiness ok。Web重载后Session inactive，用户刷新页面重新开始Session后采集。新版本的真实运动rollout/HIL视频验收仍由用户执行。
 
 证据：/data/LFT-W02_data/jiaan/jiaan/projects/rl-platform/outputs/expo-native-remote-20261014/verification/edit001-online/review-video/，含测试日志、source/manifest、安装/切换/HTTP回执及只读相机MP4；跨机文件逐项SHA核验见receipts.json。
+
+
+## 2026-10-14 后续：完整页面开始阻塞已定位
+
+用户再次反馈无法开始。完整Chromium证明profile迟到覆盖EXPO专用目录，目录同步失败永久保留key；默认目录历史提前请求还会在刷新后留下episode_not_found。Web a5f3beb/6c0ce78按初始化完成后再同步/加载历史并丢弃旧目录响应；Dagger e238ffa严格认可已结束的零HIL节点回合，避免录制检查错误建议暂存。53后端/100前端及实际部署两次加载、按钮可操作性、recorder-check ok/next3通过；未执行真实start。当前Runtime475551、Learner1916528（用户此前重新加载的实例）保留；completed2/online326，Session inactive、相机健康。上一轮仅局部测试不足以证明完整页面可用，后续结论以完整浏览器证据为准。证据：/data/LFT-W02_data/jiaan/jiaan/projects/rl-platform/outputs/expo-native-remote-20261014/verification/edit001-online/start-blocker；细节见cobot-web与cobot-dagger的docs/MIGRATION.md。
