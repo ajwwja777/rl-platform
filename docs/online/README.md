@@ -1,5 +1,7 @@
 # Online：Replay、采样、学习与 Actor 发布
 
+2026-10-14 EXPO：[本地Actor / A6000 Learner](tasks/2026-10-14-expo-native-sync/TASK.md)两次原生整批更新/恢复和本地延迟通过；40CPU/14DOM通过。正在正式安装/暂停加载，真机rollout/HIL仍待操作员；Cobot不训练。
+
 [全项目进度与经验](../README.md) · 更新：2026-10-11（文档整理，无新增模型能力验证）。
 
 追溯录制→准入→Replay→实际批次→更新→pending/served 身份；维护训练目标、HIL、采样与候选离线验证。

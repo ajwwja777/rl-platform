@@ -1,5 +1,7 @@
 # RL 平台：当前进度与关键经验
 
+2026-10-14 EXPO：[本地Actor / A6000 Learner](online/tasks/2026-10-14-expo-native-sync/TASK.md)两次原生整批更新/恢复和本地延迟通过；40CPU/14DOM通过。正在正式安装/暂停加载，真机rollout/HIL仍待操作员；Cobot不训练。
+
 2026-10-14 RLT：[Stage1证据复核](stage1/tasks/2026-10-14-evidence-reconciliation/RESULT.md)确认已有134集/19022帧分析图前向，并完成三权重CPU比较。Teacher5训练内六关节MAE1.612mrad、HIL8 1.640、原5k 1.651；单改Reference为20Hz均变差。保留Teacher5原输入合同，不作权重/现场切换；自主Online增益仍证据不足。以下加载/进程描述为各日期历史回执，不代表当前现场。
 
 最新交付（2026-10-13）：[Teacher5 8127](online/tasks/2026-10-11-online-learning-evidence/TEACHER5_DELIVERY.md)已注册/同步并真实暂停加载，Actor4063、Replay3623、新预算0，50HzRTC/EMA、发布0。用户已批准从EXPO切换；首轮真实采集和学习闭环待用户，不是自主收益认证。此前“尚未登记”描述是历史状态。
