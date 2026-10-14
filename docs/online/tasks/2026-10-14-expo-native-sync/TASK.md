@@ -1,6 +1,6 @@
 # EXPO 原仓库同步 Online 对齐 · 2026-10-14
 
-状态：用户最新要求 Cobot 本地推理、A6000 仅 Learner；隔离验证已通过，正在正式安装与 Web 暂停加载。A6000 原生整批更新/恢复通过，分批增强不采用，远端动作推理因 Wi-Fi 延迟未通过而撤回。Cobot 不运行训练。
+状态：用户最新要求 Cobot 本地推理、A6000 仅 Learner；隔离验证和正式源码安装已通过，最终暂停加载等待本次专用 SSH key 的正式启动命令切换授权。A6000 原生整批更新/恢复通过，分批增强不采用，远端动作推理因 Wi-Fi 延迟未通过而撤回。Cobot 不运行训练。
 
 用户授权按新传入的 train_pi_robo.py / train_pi_robo_async.py 对齐并交付可用于 Web rollout/HIL 的 Online 版本；采用同步 recipe。用户明确确认 realtime_expo 整批示教成功，允许使用 TRAIN 前25回合。
 
@@ -67,3 +67,11 @@ A6000 native64-delay5 单次原生整批更新完成20Critic/1Actor、推理和c
 恢复后50次Cobot本地调用：slow最大161.44ms（delay5预算500ms），fast最大10.73ms（保护50ms）；全部通过。真实机器人运动、相机实时负载、长期成功率仍未验收。恢复报告：scratch/rl-platform/expo-sync-alignment-20261014/verification/a6000/hybrid-http/recovery-result.json。GPU验证使用冻结验证adapter；最终c27fcd4另加入传输恢复/Range与无损导出优化，生产暂停加载将另核对。
 
 最终可选入口expo-plug-left-2cam-native-remote-2000 / realtime-expo-ft-native-remote。仅A6000更新，本地Actor无优化器/Replay训练。同步更新和约2GB权重回传期间下一回合禁用，Wi-Fi下等待可达数分钟；不隐式切异步、不减batch/UTD或精度。原19个模型保留。
+
+## 正式安装回执与剩余步骤
+
+RL728de33/Webaa5d24a已串行合入main/push；保留另一对话a32707f的Stage1文档和代码。21个现场源码文件、226个原生源码快照在操作锁下安装，旧SHA、新SHA、Python/bash语法通过；回退原件在Cobot runtime/verification/expo-remote-20261014/install-before。正式profile已安装，Web35055未重启，/api/site/options显示新入口available。model offline、Session inactive、录制idle、GPU空闲；未启动ROS或机器人。
+
+自动审批拒绝包含安装及authorized_keys调整的组合命令，未返回具体理由；该组合未执行。随后独立源码安装成功。专用EXPO key仍指向已结束的测试启动器，尚未切正式配置；已经向用户明确请求仅修改该key固定命令并收紧permitopen为18443的授权，等待回复。不能将当前文件可用状态描述成正式Online服务已加载。
+
+唯一下一步：获准后切换专用SSH key（不改其他key），用正式profile加载模型并保持暂停，验证seed25/3301、online0、Critic0、Actor0与本地version0、Session启停及published0，再释放现场负责人给用户。真实rollout/HIL仍由操作员验收。正式证据已保存outputs/expo-native-remote-20261014/verification/，没有合成Replay进入正式online目录。
