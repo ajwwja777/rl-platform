@@ -31,6 +31,7 @@ class Agent:
     target_critic: object
     rng: object
     _infer_cache: object=None
+    edit_scale: float=struct.field(pytree_node=False,default=.1)
     def cache_infer_params(self):return self
 
 def make_agent(offset=0):

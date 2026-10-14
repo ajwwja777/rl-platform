@@ -14,7 +14,7 @@ def source_path(project):
         sys.path.insert(0, str(path))
 
 
-def configuration(bundle, delay, aligned=False):
+def configuration(bundle, delay, aligned=False, edit_scale=None):
     from configs.model.realtime_expo_ft_pi_config import get_config
     from configs.openpi.cobot_pi05 import CONFIG_NAME, register
     register()
@@ -30,12 +30,16 @@ def configuration(bundle, delay, aligned=False):
         config.filter_n_edit=1
         config.edit_scale=0.1
         config.valids_keep_terminal_windows=True
+    if edit_scale is not None:
+        from sampling_config import edit_scale as validate
+        if not aligned:raise ValueError("Custom edit scale requires native_sync")
+        config.edit_scale=validate(edit_scale)
     config.delay = delay
     config.critic_camera_keys = CAMERAS
     return config
 
 
-def load_native(bundle, delay=4, resume=False, aligned=False):
+def load_native(bundle, delay=4, resume=False, aligned=False, edit_scale=None):
     import jax
     import openpi.training.sharding as sharding
     from configs.task.cobot_plug import get_config as task_config
@@ -46,7 +50,7 @@ def load_native(bundle, delay=4, resume=False, aligned=False):
         raise ValueError("EXPO online requires the verified left-arm10Hz/H16 bundle")
     if jax.default_backend() != "gpu" or jax.device_count() != 1:
         raise RuntimeError("Reserve exactly one GPU for native EXPO online")
-    config = configuration(bundle, delay, aligned)
+    config = configuration(bundle, delay, aligned, edit_scale)
     mesh = sharding.make_mesh(1)
     data = jax.sharding.NamedSharding(mesh, jax.sharding.PartitionSpec(sharding.DATA_AXIS))
     replicated = jax.sharding.NamedSharding(mesh, jax.sharding.PartitionSpec())

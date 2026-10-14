@@ -33,11 +33,16 @@ class RemoteSupport:
 
     def remote_command(self):
         c = self.remote
-        return ["ssh", "-T", "-o", "BatchMode=yes", "-o", "IdentitiesOnly=yes", "-o", "ExitOnForwardFailure=yes", "-o", "ServerAliveInterval=3", "-o", "ServerAliveCountMax=2", "-o", "ConnectTimeout=8", "-i", c["identity_file"], "-L", "127.0.0.1:%d:127.0.0.1:%d" % (c.get("local_port",18453), c["remote_port"]), c["destination"], "run"]
+        launch=c.get('launch_name')
+        if launch is not None and not re.fullmatch(r'[a-z][a-z0-9_]{0,31}',launch):raise ValueError('Invalid configured Learner name')
+        command='run' if launch is None else 'run '+launch
+        return ["ssh", "-T", "-o", "BatchMode=yes", "-o", "IdentitiesOnly=yes", "-o", "ExitOnForwardFailure=yes", "-o", "ServerAliveInterval=3", "-o", "ServerAliveCountMax=2", "-o", "ConnectTimeout=8", "-i", c["identity_file"], "-L", "127.0.0.1:%d:127.0.0.1:%d" % (c.get("local_port",18453), c["remote_port"]), c["destination"], command]
 
     def validate_server_status(self, info):
         if self.remote and (info.get("deployment_id") != self.args.model_id or info.get("rtc_delay") != self.args.rtc_delay or info.get("update_layout") != "native_full_batch"):
             raise RuntimeError("Remote learner identity mismatch")
+        if self.remote and 'edit_scale' in self.remote and info.get('edit_scale')!=self.remote['edit_scale']:
+            raise RuntimeError('Remote learner edit scale mismatch')
 
     def remote_poll(self):
         while not self.stop.wait(.5):

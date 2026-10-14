@@ -22,6 +22,9 @@ class Learner:
         self.native_batch_update=bool(getattr(args,'native_batch_update',False))
         self.learner_only=bool(getattr(args,'learner_only',False))
         self.rtc_delay=int(getattr(args,'rtc_delay',2))
+        from sampling_config import edit_scale as validate
+        self.edit_scale=validate(getattr(args,'edit_scale',None))
+        if self.edit_scale is not None and not self.aligned:raise ValueError('Custom edit scale requires native_sync')
         if not 1<=self.rtc_delay<=8:raise ValueError('Invalid RTC delay')
         self.seed=None
         if self.aligned:
@@ -50,11 +53,12 @@ class Learner:
                 source_signature.update((args.project/name).read_bytes())
             contract.update(native_source_sha256=source_signature.hexdigest(),recipe='native_sync',schema=2,utd_ratio=20,seed_manifest=self.seed,rtc_delay=self.rtc_delay)
             adapter_signature=hashlib.sha256()
-            for name in ('native_online.py','memory_update.py','batch_memory.py','split_update.py','stream_sample.py','sync_schedule.py','success_seed.py','online_protocol.py','episode_journal.py','online_learner.py','stream_checkpoint.py','remote_journal.py'):
+            for name in ('native_online.py','sampling_config.py','memory_update.py','batch_memory.py','split_update.py','stream_sample.py','sync_schedule.py','success_seed.py','online_protocol.py','episode_journal.py','online_learner.py','stream_checkpoint.py','remote_journal.py'):
                 adapter_signature.update(Path(__file__).with_name(name).read_bytes())
             contract['adapter_source_sha256']=adapter_signature.hexdigest()
             contract['update_layout']='native_full_batch' if self.native_batch_update else 'experimental_streamed'
             contract['learner_only']=self.learner_only
+        if self.edit_scale is not None:contract['edit_scale']=self.edit_scale
         contract_path=self.root/'contract.json'
         if contract_path.exists() and json.loads(contract_path.read_text())!=contract:
             raise ValueError('Online run configuration changed; use an independent run directory')
@@ -63,7 +67,7 @@ class Learner:
             checkpoint=None,updates=0,accepted=[],replay=[],steps=0,credit=0,actor_updates=0)
         self.meta.setdefault('completed_episodes',0)
         self.meta.setdefault('critic_updates',0)
-        self.agent,self.config,self.prompt=load_native(args.bundle,self.rtc_delay,resume=False,aligned=self.aligned)
+        self.agent,self.config,self.prompt=load_native(args.bundle,self.rtc_delay,resume=False,aligned=self.aligned,edit_scale=self.edit_scale)
         if self.aligned:
             from batch_memory import install
             install()
@@ -96,7 +100,7 @@ class Learner:
 
     def publish_actor(self):
         from actor_snapshot import contract,export
-        self.actor_manifest=export(self.root/'actors',self.agent,self.meta['updates'],contract(self.args.bundle,self.args.project,self.rtc_delay))
+        self.actor_manifest=export(self.root/'actors',self.agent,self.meta['updates'],contract(self.args.bundle,self.args.project,self.rtc_delay,self.edit_scale))
 
     def warm_inference(self):
         with np.load(self.args.bundle.parent/'common/dev_observation.npz',allow_pickle=False) as z:
@@ -133,6 +137,7 @@ class Learner:
             value.update(recipe='native_sync',rtc_delay=self.rtc_delay,update_layout='native_full_batch' if self.native_batch_update else 'experimental_streamed',warmup_episodes=10,completed_episodes=self.meta['completed_episodes'],
                 warmup_remaining=max(0,10-self.meta['completed_episodes']),critic_updates=self.meta['critic_updates'],
                 utd_ratio=20,seed_episodes=25,seed_steps=self.seed['frames'],online_steps=self.meta['steps'])
+        value['edit_scale']=float(self.agent.edit_scale)
         atomic_json(self.root/'status.json',value)
         return value
 
@@ -310,6 +315,7 @@ def main():
     p.add_argument('--rtc-delay',type=int,default=2)
     p.add_argument('--native-batch-update',action='store_true')
     p.add_argument('--learner-only',action='store_true')
+    p.add_argument('--edit-scale',type=float)
     args=p.parse_args()
     if args.recipe=='native_sync':
         if args.seed_dir is None:p.error('native_sync requires --seed-dir')

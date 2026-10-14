@@ -31,13 +31,24 @@ def relay_command(config):
             '-o', 'ConnectTimeout=8', '-L',
             '127.0.0.1:%d:127.0.0.1:%d' % (local_port, remote_port), destination, remote]
 
+def selected_profile(config, command):
+    if command=='run':return config
+    match=re.fullmatch(r'run ([a-z][a-z0-9_]{0,31})',command)
+    if not match or match[1] not in config.get('profiles',{}):
+        raise ValueError('Only a configured EXPO profile is allowed')
+    path=Path(config['profiles'][match[1]])
+    if not path.is_absolute():raise ValueError('Configured profile path must be absolute')
+    selected=json.loads(path.read_text())
+    if selected.get('port')!=config.get('port'):raise ValueError('Profile must use the restricted forward port')
+    return selected
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=Path, required=True)
     args = parser.parse_args()
     config = json.loads(args.config.read_text())
-    if os.environ.get("SSH_ORIGINAL_COMMAND", "run") != "run":
-        raise ValueError("Only the configured EXPO run is allowed")
+    config=selected_profile(config,os.environ.get('SSH_ORIGINAL_COMMAND','run'))
     if "relay" in config:
         command = relay_command(config)
         os.execvp(command[0], command)
@@ -63,6 +74,9 @@ def main():
     env.update(CUDA_VISIBLE_DEVICES=gpu, XLA_PYTHON_CLIENT_PREALLOCATE="false", XLA_PYTHON_CLIENT_ALLOCATOR="platform", OMP_NUM_THREADS="4", JAX_COMPILATION_CACHE_DIR=config["cache_dir"])
     adapter = Path(__file__).resolve().parent
     command = [config["python"], str(adapter / "online_learner.py"), "--project", config["project"], "--bundle", config["bundle"], "--run-dir", str(root), "--port", str(config["port"]), "--recipe", "native_sync", "--seed-dir", config["seed_dir"], "--deployment-id", config["model_id"], "--rtc-delay", str(config["rtc_delay"]), "--native-batch-update", "--learner-only"]
+    if 'edit_scale' in config:
+        from sampling_config import edit_scale as validate
+        command+=['--edit-scale',str(validate(config['edit_scale']))]
     process = subprocess.Popen(command, env=env, start_new_session=True)
     try:
         while process.poll() is None and not stop.wait(.5):

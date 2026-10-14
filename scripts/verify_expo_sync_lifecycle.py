@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import numpy as np
 p=argparse.ArgumentParser()
 for name in ('project','bundle','output','seed-dir','adapter'):p.add_argument('--'+name,type=Path,required=True)
-p.add_argument('--resume',action='store_true');p.add_argument('--rtc-delay',type=int,default=2);p.add_argument('--native-batch-update',action='store_true');a=p.parse_args()
+p.add_argument('--edit-scale',type=float);p.add_argument('--learner-only',action='store_true');p.add_argument('--restore-only',action='store_true');p.add_argument('--resume',action='store_true');p.add_argument('--rtc-delay',type=int,default=2);p.add_argument('--native-batch-update',action='store_true');a=p.parse_args()
 if 'verification' not in a.output.parts:raise ValueError('Use a dedicated verification directory')
 if a.resume:
  if not (a.output/'lifecycle.json').exists():raise ValueError('Missing first-stage verification')
@@ -16,13 +16,20 @@ from native_online import source_path
 source_path(a.project)
 from online_learner import Learner
 from episode_journal import EpisodeJournal
-args=SimpleNamespace(project=a.project,bundle=a.bundle,run_dir=a.output/'run',batch_size=64,capacity=500000,warmup_steps=0,steps_per_update=30,max_updates=0,recipe='native_sync',seed_dir=a.seed_dir,rtc_delay=a.rtc_delay,native_batch_update=a.native_batch_update)
+args=SimpleNamespace(project=a.project,bundle=a.bundle,run_dir=a.output/'run',batch_size=64,capacity=500000,warmup_steps=0,steps_per_update=30,max_updates=0,recipe='native_sync',seed_dir=a.seed_dir,rtc_delay=a.rtc_delay,native_batch_update=a.native_batch_update,edit_scale=a.edit_scale,learner_only=a.learner_only)
 l=Learner(args)
 print('LOADED',l.save_status(),flush=True)
+if a.edit_scale is not None:
+ assert l.agent.edit_scale==l.config.edit_scale==a.edit_scale
+ if a.learner_only:assert l.actor_manifest['identity']['edit_scale']==a.edit_scale
 start=l.meta['updates']
 assert start==(1 if a.resume else 0)
 assert l.meta['completed_episodes']==(11 if a.resume else 0)
 assert l.meta['actor_updates']==start and l.meta['critic_updates']==20*start
+if a.restore_only:
+ assert a.resume
+ result=dict(passed=True,restored=l.save_status(),checkpoint=l.meta['checkpoint'],actor_identity=l.actor_manifest['identity'])
+ (a.output/'restore-only.json').write_text(json.dumps(result,indent=2));print(result,flush=True);raise SystemExit(0)
 with np.load(a.bundle.parent/'common/dev_observation.npz',allow_pickle=False) as z:obs={k:z[k].copy() for k in ('state','left_wrist_image','right_wrist_image')}
 j=EpisodeJournal(args.run_dir/'episodes')
 def episode(outcome,n):
@@ -55,5 +62,5 @@ cache=l.infer('/precache',{**obs,'episode_uuid':np.asarray(identity),'prefix':np
 selected=l.infer('/select',{**obs,'episode_uuid':np.asarray(identity),'precached':np.asarray(cache['precached']),'delay':0,'actor_version':start+1})
 assert np.isfinite(selected['actions']).all()
 l.cancel_start(identity)
-result=dict(passed=True,robot_execution=False,synthetic_online_episodes=True,seed_episodes=25,version=l.meta['updates'],actor_updates=l.meta['actor_updates'],critic_updates=l.meta['critic_updates'],completed_episodes=l.meta['completed_episodes'],metrics=l.metrics)
+result=dict(passed=True,edit_scale=float(l.agent.edit_scale),robot_execution=False,synthetic_online_episodes=True,seed_episodes=25,version=l.meta['updates'],actor_updates=l.meta['actor_updates'],critic_updates=l.meta['critic_updates'],completed_episodes=l.meta['completed_episodes'],metrics=l.metrics)
 (a.output/('resume.json' if a.resume else 'lifecycle.json')).write_text(json.dumps(result));print(result,flush=True)

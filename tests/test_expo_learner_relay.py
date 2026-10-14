@@ -16,3 +16,15 @@ def test_relay_is_loopback_only_and_quotes_remote_paths():
 def test_invalid_relay_rejected(field,value):
  c=config();c['relay'][field]=value
  with pytest.raises(ValueError):module.relay_command(c)
+
+
+def test_named_profile_requires_explicit_allowlist_and_fixed_port(tmp_path):
+ import json
+ profile=tmp_path/'edit001.json';profile.write_text(json.dumps({'port':18443,'edit_scale':.01}))
+ c=config();c['profiles']={'edit001':str(profile)}
+ assert module.selected_profile(c,'run') is c
+ assert module.selected_profile(c,'run edit001')['edit_scale']==.01
+ for command in ('run ../../etc/passwd','run unknown','run edit001; id','run edit001 extra'):
+  with pytest.raises(ValueError):module.selected_profile(c,command)
+ profile.write_text(json.dumps({'port':18444}))
+ with pytest.raises(ValueError):module.selected_profile(c,'run edit001')

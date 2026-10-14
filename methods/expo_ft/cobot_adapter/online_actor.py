@@ -21,15 +21,16 @@ class Actor:
         self.args=args;self.rtc_delay=args.rtc_delay;self.aligned=True
         self.active=None;self.phase='loading';self.error=None
         self.meta={'updates':-1};self.lock=threading.Lock()
-        self.agent,_,_=load_native(args.bundle,args.rtc_delay,aligned=True)
+        self.edit_scale=getattr(args,"edit_scale",None)
+        self.agent,_,_=load_native(args.bundle,args.rtc_delay,aligned=True,edit_scale=self.edit_scale)
         self.agent=strip_training(self.agent)
-        self.identity=contract(args.bundle,args.project,args.rtc_delay)
+        self.identity=contract(args.bundle,args.project,args.rtc_delay,self.edit_scale)
         self.install(args.snapshot)
 
     def status(self):
         return dict(ready=self.phase in ('ready','rollout'),phase=self.phase,error=self.error,active_episode=self.active,
                     actor_version=self.meta['updates'],deployment_id=self.args.model_id,rtc_delay=self.rtc_delay,
-                    update_layout='native_full_batch',compute_host='Cobot',training_enabled=False,step=2000)
+                    update_layout='native_full_batch',compute_host='Cobot',training_enabled=False,step=2000,edit_scale=float(self.agent.edit_scale))
 
     def install(self,directory):
         if self.active:raise ValueError('Cannot replace Actor during an episode')
@@ -73,6 +74,7 @@ def main():
     p=argparse.ArgumentParser()
     for name in ('project','bundle','snapshot-root','snapshot'):p.add_argument('--'+name,type=Path,required=True)
     p.add_argument('--model-id',required=True);p.add_argument('--rtc-delay',type=int,default=5);p.add_argument('--port',type=int,default=8043)
+    p.add_argument('--edit-scale',type=float)
     args=p.parse_args();source_path(args.project);actor=Actor(args)
     class Handler(BaseHTTPRequestHandler):
         disable_nagle_algorithm=True

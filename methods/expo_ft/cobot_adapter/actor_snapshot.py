@@ -10,7 +10,7 @@ import numpy as np
 from online_protocol import atomic_json
 
 
-def contract(bundle,project,delay):
+def contract(bundle,project,delay,edit_scale=None):
     digest=hashlib.sha256()
     for directory in ('expo_ft','configs'):
         for source in sorted((Path(project)/directory).rglob('*.py')):
@@ -18,7 +18,11 @@ def contract(bundle,project,delay):
     for name in ('train_pi_robo.py','scripts/dynamic_pick/run_server.sh'):
         digest.update((Path(project)/name).read_bytes())
     for name in ('deployment.json','norm_stats.json'):digest.update((Path(bundle)/name).read_bytes())
-    return dict(source_bundle_sha256=digest.hexdigest(),rtc_delay=int(delay),recipe='native_sync',N=32,format=1)
+    identity=dict(source_bundle_sha256=digest.hexdigest(),rtc_delay=int(delay),recipe='native_sync',N=32,format=1)
+    from sampling_config import edit_scale as validate
+    scale=validate(edit_scale)
+    if scale is not None and scale!=.1:identity['edit_scale']=scale
+    return identity
 
 
 def trees(agent):

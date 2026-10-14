@@ -88,7 +88,7 @@ class OnlineRuntime(RemoteSupport, Runtime):
             directory=self.start_remote()
             return [self.remote['python'],str(Path(__file__).with_name('online_actor.py')),
                 '--project',self.remote['native_project'],'--bundle',str(self.args.bundle),'--model-id',self.args.model_id,
-                '--snapshot-root',str(self.actor_root),'--snapshot',str(directory),'--port',str(self.args.port),'--rtc-delay',str(self.args.rtc_delay)]
+                '--snapshot-root',str(self.actor_root),'--snapshot',str(directory),'--port',str(self.args.port),'--rtc-delay',str(self.args.rtc_delay)]+(['--edit-scale',str(self.remote['edit_scale'])] if 'edit_scale' in self.remote else [])
         command=[str(self.args.project/'.venv/bin/python'),str(Path(__file__).with_name('online_learner.py')),
                 '--project',str(self.args.project),'--bundle',str(self.args.bundle),
                 '--run-dir',str(self.args.run_dir),'--port',str(self.args.port),'--rtc-delay',str(self.args.rtc_delay)]
