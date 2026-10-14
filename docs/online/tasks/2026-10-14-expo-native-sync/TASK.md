@@ -1,6 +1,6 @@
 # EXPO 原仓库同步 Online 对齐 · 2026-10-14
 
-状态：用户最新要求 Cobot 本地推理、A6000 仅 Learner；隔离验证和正式源码安装已通过，最终暂停加载等待本次专用 SSH key 的正式启动命令切换授权。A6000 原生整批更新/恢复通过，分批增强不采用，远端动作推理因 Wi-Fi 延迟未通过而撤回。Cobot 不运行训练。
+状态：用户最新要求 Cobot 本地推理、A6000 仅 Learner；隔离验证和正式源码安装已通过，专用 SSH key 正式切换已获准并完成；最终暂停加载排队等待 A6000 评测释放显卡。A6000 原生整批更新/恢复通过，分批增强不采用，远端动作推理因 Wi-Fi 延迟未通过而撤回。Cobot 不运行训练。
 
 用户授权按新传入的 train_pi_robo.py / train_pi_robo_async.py 对齐并交付可用于 Web rollout/HIL 的 Online 版本；采用同步 recipe。用户明确确认 realtime_expo 整批示教成功，允许使用 TRAIN 前25回合。
 
@@ -75,3 +75,13 @@ RL728de33/Webaa5d24a已串行合入main/push；保留另一对话a32707f的Stage
 自动审批拒绝包含安装及authorized_keys调整的组合命令，未返回具体理由；该组合未执行。随后独立源码安装成功。专用EXPO key仍指向已结束的测试启动器，尚未切正式配置；已经向用户明确请求仅修改该key固定命令并收紧permitopen为18443的授权，等待回复。不能将当前文件可用状态描述成正式Online服务已加载。
 
 唯一下一步：获准后切换专用SSH key（不改其他key），用正式profile加载模型并保持暂停，验证seed25/3301、online0、Critic0、Actor0与本地version0、Session启停及published0，再释放现场负责人给用户。真实rollout/HIL仍由操作员验收。正式证据已保存outputs/expo-native-remote-20261014/verification/，没有合成Replay进入正式online目录。
+
+## 2026-10-14 20:04 后：SSH 激活完成，按用户要求等待显卡
+
+用户明确批准专用key切换，A6000固定启动命令已指向正式remote_launcher.py/profile.json，仅允许localhost18443转发；其他key逐行保持。回执outputs/expo-native-remote-20261014/verification/ssh-activation.json。自动审批阻塞已解除。
+
+当前两张A6000均运行qizhou的Isaac Sim评测，每张约15GB；未停止或修改它们。用户明确选择“等评测自行结束”。正式Learner完整更新峰值约33GB，继续保留独占GPU启动保护。
+
+已启动本任务等待器PID3328687（A6000），最多等待6小时：仅当某卡持续60秒没有计算进程、现场模型/Session/录制/GPU均空闲，才选该卡并启动ROS master、请求Web正式模型暂停加载，验证seed25/3301、online0、更新0、本地版本0、Session启停、HTTP Range与发布0。脚本不启动机械臂、相机、Episode、录制或运动；任何冲突/错误停止并留报告。等待器脚本与状态在outputs/expo-native-remote-20261014/verification/{wait_and_activate.py,accept_paused_field.py,activation-status.json,production-acceptance.json}，最后一项仅完成尝试后存在。
+
+当前尚未正式加载，不能开始Online。继续任务先查activation-status.json与真实现场；ready_paused仍只表示软件暂停验收，真实rollout/HIL由操作员完成。不要重复启动等待器；若其他对话需要切模型，先明确取消本任务的等待器。
