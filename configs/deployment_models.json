@@ -905,7 +905,7 @@
     },
     {
       "id": "expo-plug-left-2cam-native-remote-2000",
-      "label": "?????? ? EXPO Online????? / A6000???",
+      "label": "左臂拔插插头 · EXPO Online（本地推理 / A6000学习）",
       "kind": "vla",
       "family": "EXPO",
       "runtime_adapter": "expo_online",
