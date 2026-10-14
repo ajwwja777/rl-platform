@@ -80,7 +80,19 @@ class Learner:
         self.rebuild()
         if 'replay_rng' in self.meta:
             self.buffer.rng=jax.numpy.asarray(self.meta['replay_rng'],dtype=jax.numpy.uint32)
-        with np.load(args.bundle.parent/'common/dev_observation.npz',allow_pickle=False) as z:
+        self.warm_inference()
+        self.phase='ready'
+        self.save_status()
+        # Completed journal with a lost finish RPC is recovered exactly once.
+        pending=[p.parent.name for p in (self.root/'episodes').glob('*/finished.json')
+                 if p.parent.name not in self.meta['accepted']]
+        if pending:
+            self.phase='updating'
+            self.save_status()
+            threading.Thread(target=self.recover,args=(pending,),daemon=True).start()
+
+    def warm_inference(self):
+        with np.load(self.args.bundle.parent/'common/dev_observation.npz',allow_pickle=False) as z:
             obs={k:z[k].copy() for k in ('state','left_wrist_image','right_wrist_image')}
         # Compile both native inference paths before exposing readiness.
         saved_rng=self.agent.rng
@@ -97,15 +109,6 @@ class Learner:
             actions,self.agent,info=self.agent.sample_actions(dict(obs),precached=np.asarray(cached),delay=d,only_base_actions=False)
             assert np.isfinite(np.asarray(actions)).all()
         self.agent=self.agent.replace(rng=saved_rng)
-        self.phase='ready'
-        self.save_status()
-        # Completed journal with a lost finish RPC is recovered exactly once.
-        pending=[p.parent.name for p in (self.root/'episodes').glob('*/finished.json')
-                 if p.parent.name not in self.meta['accepted']]
-        if pending:
-            self.phase='updating'
-            self.save_status()
-            threading.Thread(target=self.recover,args=(pending,),daemon=True).start()
 
     def update_progress(self,phase,step):
         if phase=='critic':self.meta['critic_updates']=step
@@ -236,6 +239,7 @@ class Learner:
                 self.meta['actor_updates']=int(self.agent.actor_train_state.step)
                 self.save_status()
             if self.meta['updates'] != previous_updates:
+                self.warm_inference()
                 # Use a fresh disk step even after an interrupted uncommitted save.
                 disk_step=max([int(p.name) for p in (self.root/'checkpoints').glob('*') if p.name.isdigit()] or [0])+1
                 save(self.root/'checkpoints',self.agent,self.updater,disk_step)
@@ -297,6 +301,7 @@ def main():
     source_path(args.project)
     learner=Learner(args)
     class Handler(BaseHTTPRequestHandler):
+        disable_nagle_algorithm=True
         def log_message(self,*args):pass
         def send(self,status,value):
             body=json.dumps(value,allow_nan=False).encode();self.send_response(status)
@@ -329,13 +334,8 @@ def main():
                     method={'/episode/start':learner.begin,'/episode/end':learner.finish,'/episode/cancel-start':learner.cancel_start}[self.path]
                     result=method(payload['episode_uuid'])
                 elif self.path in ('/precache','/select'):
-                    if self.headers.get('Content-Encoding')=='deflate':
-                        import zlib
-                        decoder=zlib.decompressobj()
-                        body=decoder.decompress(body,2*1024*1024)
-                        if not decoder.eof or decoder.unconsumed_tail or decoder.unused_data:raise ValueError('Invalid compressed inference body')
-                    elif self.headers.get('Content-Encoding','identity')!='identity':raise ValueError('Unsupported encoding')
-                    with np.load(io.BytesIO(body),allow_pickle=False) as archive:data={k:archive[k].copy() for k in archive.files}
+                    from wire import decode
+                    data=decode(body,self.headers.get('Content-Encoding','identity'))
                     started=time.monotonic()
                     result=learner.infer(self.path,data)
                     result['compute_seconds']=time.monotonic()-started
