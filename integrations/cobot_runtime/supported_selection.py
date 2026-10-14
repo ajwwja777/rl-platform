@@ -26,10 +26,12 @@ def resolve(model_id,root=ROOT,models_root=None):
     if base not in run.parents or 'candidates'not in run.parts:raise ValueError('Candidate path must remain isolated')
     profile=run/'profile.json';config=run/'online.yaml'
     if not profile.is_file()or not config.is_file():raise ValueError('Prepare supported runtime before loading')
-    return dict(profile=str(profile),config=str(config),run=str(run))
+    platform=row.get("learner_platform", "inherit")
+    if platform not in {"cpu", "cuda", "inherit"}:raise ValueError("Invalid supported Learner platform")
+    return dict(profile=str(profile),config=str(config),run=str(run),learner_platform=platform)
 
 if __name__=='__main__':
     import sys
     value=resolve(sys.argv[1]if len(sys.argv)>1 else'')
     if value:
-        for key in ['profile','config','run']:print(value[key])
+        for key in ['profile','config','run','learner_platform']:print(value[key])

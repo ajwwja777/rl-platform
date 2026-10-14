@@ -38,7 +38,7 @@ RLT_CONFIG="$ROOT/configs/rlt/plug_v3_yyshadow/online_rl.yaml"
 [[ "$MODE" == frozen ]] && RLT_CONFIG="$ROOT/configs/rlt/plug_v3_yyshadow/online_rl_frozen.yaml"
 # Optional project-owned experiment; original model registrations stay unchanged.
 EXPERIMENT_RUN=""
-unset COBOT_RLT_EXPERIMENT_PROFILE COBOT_RLT_SUPPORTED_PROFILE
+unset COBOT_RLT_EXPERIMENT_PROFILE COBOT_RLT_SUPPORTED_PROFILE COBOT_RLT_LEARNER_PLATFORM
 profile_values=""
 if [[ "$MODE" == online ]]; then
   profile_values=$(PYTHONPATH="$ROOT" /usr/bin/python3 -m integrations.cobot_runtime.experiment_profiles "${COBOT_DEPLOYMENT_MODEL_ID:-}")
@@ -60,6 +60,7 @@ if [[ "$MODE" == online ]]; then
     export COBOT_RLT_SUPPORTED_PROFILE="${supported_fields[0]}"
     RLT_CONFIG="${supported_fields[1]}"
     EXPERIMENT_RUN="${supported_fields[2]}"
+    export COBOT_RLT_LEARNER_PLATFORM="${supported_fields[3]:-inherit}"
     export COBOT_RLT_EXECUTION_PROFILE=async_rtc50
     export COBOT_RLT_HOLD_RIGHT_GRIPPER=1
     export COBOT_RLT_REPLAY_ACTION_PRECISION=float32
