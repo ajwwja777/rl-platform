@@ -5,11 +5,31 @@ import json
 import os
 from pathlib import Path
 import signal
+import shlex
+import re
 import subprocess
 import sys
 import threading
 import time
 
+
+
+def relay_command(config):
+    relay = config['relay']
+    destination = relay['destination']
+    if not re.fullmatch(r'[A-Za-z0-9_.-]+@[A-Za-z0-9.-]+', destination):
+        raise ValueError('Invalid fixed Learner relay destination')
+    for key in ('launcher', 'profile'):
+        if not Path(relay[key]).is_absolute():
+            raise ValueError('Learner relay paths must be absolute')
+    local_port, remote_port = int(config['port']), int(relay['port'])
+    if not all(1024 <= port <= 65535 for port in (local_port, remote_port)):
+        raise ValueError('Invalid Learner relay port')
+    remote = shlex.join(['/usr/bin/python3', relay['launcher'], '--config', relay['profile']])
+    return ['ssh', '-T', '-o', 'BatchMode=yes', '-o', 'ExitOnForwardFailure=yes',
+            '-o', 'ServerAliveInterval=3', '-o', 'ServerAliveCountMax=2',
+            '-o', 'ConnectTimeout=8', '-L',
+            '127.0.0.1:%d:127.0.0.1:%d' % (local_port, remote_port), destination, remote]
 
 def main():
     parser = argparse.ArgumentParser()
@@ -18,6 +38,9 @@ def main():
     config = json.loads(args.config.read_text())
     if os.environ.get("SSH_ORIGINAL_COMMAND", "run") != "run":
         raise ValueError("Only the configured EXPO run is allowed")
+    if "relay" in config:
+        command = relay_command(config)
+        os.execvp(command[0], command)
     root = Path(config["run_dir"])
     root.mkdir(parents=True, exist_ok=True)
     owner = (root / "owner.lock").open("a")

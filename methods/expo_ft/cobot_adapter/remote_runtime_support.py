@@ -64,7 +64,7 @@ class RemoteSupport:
 
     def remote_online_status(self):
         value = dict(self.remote_status)
-        value["compute_host"] = "Learner A6000 / Actor Cobot"
+        value["compute_host"] = "Learner %s / Actor Cobot" % self.remote.get("learner_host", "A6000")
         value["served_actor_version"] = self.local_actor_version
         if value.get("ready") and value.get("actor_version") != self.local_actor_version:
             value.update(ready=False,phase="publishing")
