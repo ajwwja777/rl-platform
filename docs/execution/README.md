@@ -95,4 +95,4 @@
 
 独立EXPO2000/左臂7D/两腕/10Hz RTC-SFT已通过原生GPU推理与Web暂停加载，默认不训练。复用现有受管理模型采集/评测、HIL及标签入口，接管使旧动作失效；现场Start/HIL/归位尚待用户短轮验收。记录：[任务与证据](tasks/2026-10-13-expo-web/TASK.md)。
 
-- [2026-10-14 Teacher5 Learner崩溃](tasks/2026-10-14-teacher5-learner-crash/TASK.md)：相机真实流健康而Learner SIGSEGV触发连带退出；保留原始失败worker证据，避免用ROS清理异常解释主故障。底层原因和现场恢复未完成。
+- [2026-10-14 Teacher5 Learner崩溃](tasks/2026-10-14-teacher5-learner-crash/TASK.md)：相机真实流健康而Learner SIGSEGV触发连带退出；保留原始失败worker证据，避免用ROS清理异常解释主故障。已完成仅Teacher5 Learner改CPU的正式18更新及保存重载，见[恢复结果](tasks/2026-10-14-teacher5-learner-crash/RESULT.md)；GPU底层原因仍未确定。
