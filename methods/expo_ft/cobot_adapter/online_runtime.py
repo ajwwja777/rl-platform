@@ -96,7 +96,9 @@ class OnlineRuntime(RemoteSupport, Runtime):
 
     def array_rpc(self,path,**values):
         stream=io.BytesIO();np.savez(stream,**values)
-        request=Request('http://127.0.0.1:%d%s'%(self.args.port,path),data=stream.getvalue(),headers={'Content-Type':'application/octet-stream'})
+        import zlib
+        payload=zlib.compress(stream.getvalue(),1) if self.remote else stream.getvalue()
+        request=Request('http://127.0.0.1:%d%s'%(self.args.port,path),data=payload,headers={'Content-Type':'application/octet-stream', 'Content-Encoding':'deflate' if self.remote else 'identity'})
         with self.rpc.open(request,timeout=30) as response:return json.load(response)
 
     def infer(self,observation,prefix):

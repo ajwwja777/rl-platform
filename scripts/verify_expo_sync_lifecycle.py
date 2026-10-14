@@ -5,7 +5,7 @@ from types import SimpleNamespace
 import numpy as np
 p=argparse.ArgumentParser()
 for name in ('project','bundle','output','seed-dir','adapter'):p.add_argument('--'+name,type=Path,required=True)
-p.add_argument('--resume',action='store_true');p.add_argument('--rtc-delay',type=int,default=2);a=p.parse_args()
+p.add_argument('--resume',action='store_true');p.add_argument('--rtc-delay',type=int,default=2);p.add_argument('--native-batch-update',action='store_true');a=p.parse_args()
 if 'verification' not in a.output.parts:raise ValueError('Use a dedicated verification directory')
 if a.resume:
  if not (a.output/'lifecycle.json').exists():raise ValueError('Missing first-stage verification')
@@ -16,7 +16,7 @@ from native_online import source_path
 source_path(a.project)
 from online_learner import Learner
 from episode_journal import EpisodeJournal
-args=SimpleNamespace(project=a.project,bundle=a.bundle,run_dir=a.output/'run',batch_size=64,capacity=500000,warmup_steps=0,steps_per_update=30,max_updates=0,recipe='native_sync',seed_dir=a.seed_dir,rtc_delay=a.rtc_delay)
+args=SimpleNamespace(project=a.project,bundle=a.bundle,run_dir=a.output/'run',batch_size=64,capacity=500000,warmup_steps=0,steps_per_update=30,max_updates=0,recipe='native_sync',seed_dir=a.seed_dir,rtc_delay=a.rtc_delay,native_batch_update=a.native_batch_update)
 l=Learner(args)
 print('LOADED',l.save_status(),flush=True)
 start=l.meta['updates']

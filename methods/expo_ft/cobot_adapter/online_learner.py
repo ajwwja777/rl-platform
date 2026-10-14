@@ -19,6 +19,7 @@ class Learner:
         import jax
         self.args=args
         self.aligned=getattr(args,'recipe','legacy')=='native_sync'
+        self.native_batch_update=bool(getattr(args,'native_batch_update',False))
         self.rtc_delay=int(getattr(args,'rtc_delay',2))
         if not 1<=self.rtc_delay<=8:raise ValueError('Invalid RTC delay')
         self.seed=None
@@ -51,6 +52,7 @@ class Learner:
             for name in ('native_online.py','memory_update.py','batch_memory.py','split_update.py','stream_sample.py','sync_schedule.py','success_seed.py','online_protocol.py','episode_journal.py','online_learner.py','stream_checkpoint.py','remote_journal.py'):
                 adapter_signature.update(Path(__file__).with_name(name).read_bytes())
             contract['adapter_source_sha256']=adapter_signature.hexdigest()
+            contract['update_layout']='native_full_batch' if self.native_batch_update else 'experimental_streamed'
         contract_path=self.root/'contract.json'
         if contract_path.exists() and json.loads(contract_path.read_text())!=contract:
             raise ValueError('Online run configuration changed; use an independent run directory')
@@ -65,7 +67,7 @@ class Learner:
             install()
         from memory_update import HostTargetUpdater
         self.updater=HostTargetUpdater(self.agent)
-        self.updater.split_batches=self.aligned
+        self.updater.split_batches=self.aligned and not self.native_batch_update
         self.updater.progress=self.update_progress
         self.agent=self.updater.prepare(self.agent)
         if self.meta['checkpoint'] is not None:
@@ -89,7 +91,10 @@ class Learner:
         actions,self.agent,info=self.agent.sample_actions(dict(obs),precached=cached,delay=self.rtc_delay)
         assert np.isfinite(np.asarray(actions)).all()
         for d in (0,self.rtc_delay):
-            actions,self.agent,info=self.agent.sample_actions(dict(obs),precached=cached,delay=d,only_base_actions=True)
+            actions,self.agent,info=self.agent.sample_actions(dict(obs),precached=np.asarray(cached),delay=d,only_base_actions=True)
+            assert np.isfinite(np.asarray(actions)).all()
+        for d in (0,self.rtc_delay):
+            actions,self.agent,info=self.agent.sample_actions(dict(obs),precached=np.asarray(cached),delay=d,only_base_actions=False)
             assert np.isfinite(np.asarray(actions)).all()
         self.agent=self.agent.replace(rng=saved_rng)
         self.phase='ready'
@@ -115,7 +120,7 @@ class Learner:
             metrics=self.metrics,updated_at=time.time(),pid=os.getpid(),batch_size=self.args.batch_size,
             warmup_steps=self.args.warmup_steps,steps_per_update=self.args.steps_per_update)
         if self.aligned:
-            value.update(recipe='native_sync',rtc_delay=self.rtc_delay,warmup_episodes=10,completed_episodes=self.meta['completed_episodes'],
+            value.update(recipe='native_sync',rtc_delay=self.rtc_delay,update_layout='native_full_batch' if self.native_batch_update else 'experimental_streamed',warmup_episodes=10,completed_episodes=self.meta['completed_episodes'],
                 warmup_remaining=max(0,10-self.meta['completed_episodes']),critic_updates=self.meta['critic_updates'],
                 utd_ratio=20,seed_episodes=25,seed_steps=self.seed['frames'],online_steps=self.meta['steps'])
         atomic_json(self.root/'status.json',value)
@@ -206,8 +211,11 @@ class Learner:
                 count=min(self.args.max_updates,self.meta['credit']//self.args.steps_per_update) if len(self.buffer)-len(self.meta['replay'])>=self.args.warmup_steps else 0
             for _ in range(count):
                 if self.aligned:
-                    from stream_sample import Batch
-                    batch=Batch(self.buffer,64*20,64)
+                    if self.native_batch_update:
+                        batch=self.buffer._convert_to_openpi_format(self.buffer.sample_jax(64*20))
+                    else:
+                        from stream_sample import Batch
+                        batch=Batch(self.buffer,64*20,64)
                     raw_actor=self.buffer.sample_jax(64,success_only=True)
                     if raw_actor is None:raise ValueError('Confirmed success seed unavailable')
                     actor_batch=self.buffer._convert_to_openpi_format(raw_actor)
@@ -281,6 +289,7 @@ def main():
     p.add_argument('--seed-dir',type=Path)
     p.add_argument('--deployment-id')
     p.add_argument('--rtc-delay',type=int,default=2)
+    p.add_argument('--native-batch-update',action='store_true')
     args=p.parse_args()
     if args.recipe=='native_sync':
         if args.seed_dir is None:p.error('native_sync requires --seed-dir')
@@ -320,8 +329,16 @@ def main():
                     method={'/episode/start':learner.begin,'/episode/end':learner.finish,'/episode/cancel-start':learner.cancel_start}[self.path]
                     result=method(payload['episode_uuid'])
                 elif self.path in ('/precache','/select'):
+                    if self.headers.get('Content-Encoding')=='deflate':
+                        import zlib
+                        decoder=zlib.decompressobj()
+                        body=decoder.decompress(body,2*1024*1024)
+                        if not decoder.eof or decoder.unconsumed_tail or decoder.unused_data:raise ValueError('Invalid compressed inference body')
+                    elif self.headers.get('Content-Encoding','identity')!='identity':raise ValueError('Unsupported encoding')
                     with np.load(io.BytesIO(body),allow_pickle=False) as archive:data={k:archive[k].copy() for k in archive.files}
+                    started=time.monotonic()
                     result=learner.infer(self.path,data)
+                    result['compute_seconds']=time.monotonic()-started
                 else:raise ValueError('Unknown EXPO endpoint')
                 self.send(200,result)
             except Exception as exc:self.send(409,{'error':str(exc)})

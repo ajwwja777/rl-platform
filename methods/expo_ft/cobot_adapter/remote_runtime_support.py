@@ -27,7 +27,7 @@ class RemoteSupport:
         return ["ssh", "-T", "-o", "BatchMode=yes", "-o", "IdentitiesOnly=yes", "-o", "ExitOnForwardFailure=yes", "-o", "ServerAliveInterval=3", "-o", "ServerAliveCountMax=2", "-o", "ConnectTimeout=8", "-i", c["identity_file"], "-L", "127.0.0.1:%d:127.0.0.1:%d" % (self.args.port, c["remote_port"]), c["destination"], "run"]
 
     def validate_server_status(self, info):
-        if self.remote and (info.get("deployment_id") != self.args.model_id or info.get("rtc_delay") != self.args.rtc_delay):
+        if self.remote and (info.get("deployment_id") != self.args.model_id or info.get("rtc_delay") != self.args.rtc_delay or info.get("update_layout") != "native_full_batch"):
             raise RuntimeError("Remote learner identity mismatch")
 
     def remote_poll(self):
