@@ -38,3 +38,7 @@
 
 A6000：outputs/expo-native-remote-20261014/verification/jitter/{report.json,actions.npz,jitter-ablation.png,cpu-tests.log,preview-http.json,install.json,web-catalogue.json}。
 Cobot：runtime/verification/expo-remote-20261014/jitter，保留脚本/日志/安装前registry；原episodes/actors只读。图用系统Python matplotlib生成（项目venv未安装，不改共享环境）。
+
+## 用户真机反馈与0.05对照
+
+用户报告0.01几乎没有抖动，并明确要求试0.05。新增独立realtime-expo-ft-edit005-preview / expo-plug-left-2cam-edit005-preview-2000，模型身份固定映射edit_scale0.05；0.01入口保留，两个入口其余候选/Q/RTC5/执行参数一致，均无Learner。源码ea56f82、50项CPU回归通过，现场三文件SHA/旧模型保持/语法检查完成，用户负责加载和真实动作对照。本批不复跑已通过的GPU链路，不声称0.05已真机平顺或Online可用。首次立即检查Web目录未命中30秒刷新周期，源码已安装，不将此当作模型加载失败；最终目录回执见同outputs的install-edit005.json。
