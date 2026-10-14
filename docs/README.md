@@ -1,5 +1,7 @@
 # RL 平台：当前进度与关键经验
 
+2026-10-14 RLT故障：[首轮后Learner崩溃](execution/tasks/2026-10-14-teacher5-learner-crash/TASK.md)。新Episode10040/18条入库后Learner重复SIGSEGV，正式更新仍8127；三路相机当前实测29.9Hz。相同数据CPU隔离18更新通过，但现场完整更新未恢复；错误归因/故障栈修复仅离线完成，暂不继续Online。
+
 2026-10-14 EXPO：[Cobot本地Actor / LFT1 Learner经LFT2中转](online/tasks/2026-10-14-expo-native-sync/TASK.md)已完成LFT1原生20Critic/1VLA、checkpoint/更新后推理及真实三机SSH/文件校验，峰值32888MiB。旧LFT2自动等待器取消；用户保留Teacher5使用/修复，未切现场模型，Web暂停加载及真机rollout待其结束后验收。
 
 2026-10-14 RLT：[Stage1证据复核](stage1/tasks/2026-10-14-evidence-reconciliation/RESULT.md)确认已有134集/19022帧分析图前向，并完成三权重CPU比较。Teacher5训练内六关节MAE1.612mrad、HIL8 1.640、原5k 1.651；单改Reference为20Hz均变差。保留Teacher5原输入合同，不作权重/现场切换；自主Online增益仍证据不足。以下加载/进程描述为各日期历史回执，不代表当前现场。

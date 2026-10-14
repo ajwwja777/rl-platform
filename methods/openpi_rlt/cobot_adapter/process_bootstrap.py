@@ -6,7 +6,23 @@ inherited; workers must install them before constructing services or Replay.
 from __future__ import annotations
 
 import functools
+import faulthandler
+import multiprocessing as mp
 import os
+
+
+def configure_worker_backend(role: str, environ=None) -> str | None:
+    """Select the small Learner backend inside its fresh child, never the Actor."""
+    environ = os.environ if environ is None else environ
+    requested = environ.get("COBOT_RLT_LEARNER_PLATFORM")
+    if role != "learner_service" or requested in {None, "inherit"}:
+        return None
+    if requested not in {"cpu", "cuda"}:
+        raise ValueError("Learner platform must be cpu or cuda")
+    environ["JAX_PLATFORMS"] = requested
+    if requested == "cpu":
+        environ["CUDA_VISIBLE_DEVICES"] = ""
+    return requested
 
 
 def initialize_process(config_path: str | None = None) -> None:
@@ -32,6 +48,11 @@ def initialize_process(config_path: str | None = None) -> None:
 
 def run_initialized_role(target, config_path, *args, **kwargs):
     """Importable spawn target; no service or model is created by the bootstrap."""
+    # Preserve Python/native-extension context if a fresh worker dies by signal.
+    faulthandler.enable(all_threads=True)
+    selected = configure_worker_backend(mp.current_process().name)
+    if selected is not None:
+        print(f"[rlt-worker] role=learner_service requested_platform={selected}", flush=True)
     initialize_process(config_path)
     return target(*args, **kwargs)
 

@@ -14,3 +14,11 @@ def test_registered_runtime_is_fresh_and_isolated(tmp_path):
     run=tmp_path/'history/candidates/supported_online_20261006_runtime_v4';run.mkdir(parents=True)
     for name in ['online.yaml','profile.json']:(run/name).write_text('{}')
     assert resolve('plug-v3-supported-online',models_root=tmp_path)['run']==str(run)
+    assert resolve('plug-v3-supported-online',models_root=tmp_path)['learner_platform']=='inherit'
+
+
+def test_teacher5_selects_cpu_only_for_learner(tmp_path):
+    run=tmp_path/'history/candidates/teacher5_8127_runtime_20261013'
+    run.mkdir(parents=True)
+    for name in ['online.yaml','profile.json']:(run/name).write_text('{}')
+    assert resolve('plug-v3-teacher5-online',models_root=tmp_path)['learner_platform']=='cpu'

@@ -851,6 +851,7 @@
     },
     {
       "id": "plug-v3-teacher5-online",
+      "learner_platform": "cpu",
       "label": "插孔 · Teacher5 8127（分批 Online）",
       "kind": "rlt",
       "mode": "online",
