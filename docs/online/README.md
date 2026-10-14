@@ -1,6 +1,6 @@
 # Online：Replay、采样、学习与 Actor 发布
 
-2026-10-14 EXPO：[Cobot本地Actor / LFT1 Learner经LFT2中转](tasks/2026-10-14-expo-native-sync/TASK.md)已完成LFT1原生20Critic/1VLA、checkpoint/更新后推理及真实三机SSH/文件校验，峰值32888MiB。旧LFT2自动等待器取消；用户保留Teacher5使用/修复，未切现场模型，Web暂停加载及真机rollout待其结束后验收。
+2026-10-14 EXPO：[Cobot本地Actor / LFT1 Learner经LFT2中转](tasks/2026-10-14-expo-native-sync/TASK.md)正式Web暂停加载交付完成：两端ready/version0一致、25seed/3301帧、online0、Session启停/目录/健康检查通过，发布0；用户已结束Teacher5。原生20Critic/1VLA与三机传输隔离验证通过；真实rollout/HIL与成功率仍由操作员验收。
 
 [全项目进度与经验](../README.md) · 更新：2026-10-11（文档整理，无新增模型能力验证）。
 

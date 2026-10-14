@@ -1,6 +1,6 @@
 # EXPO 原仓库同步 Online 对齐 · 2026-10-14
 
-状态：LFT1 GPU0 原生完整更新与 Cobot→LFT2→LFT1 链路已验证，可承接 Learner；Cobot 本地 Actor 保持原架构。用户明确保留正在使用/修复的 Teacher5，未切现场 EXPO，也无自动切换等待器。
+状态：正式Web暂停加载交付完成。Cobot本地Actor/LFT1GPU0 Learner经LFT2中转均ready、版本0一致；Session启停与数据目录检查通过，发布0、无真实Episode。用户负责开始rollout/HIL及真机效果验收。
 
 用户授权按新传入的 train_pi_robo.py / train_pi_robo_async.py 对齐并交付可用于 Web rollout/HIL 的 Online 版本；采用同步 recipe。用户明确确认 realtime_expo 整批示教成功，允许使用 TRAIN 前25回合。
 
@@ -101,3 +101,15 @@ RL728de33/Webaa5d24a已串行合入main/push；保留另一对话a32707f的Stage
 正式入口仍为`expo-plug-left-2cam-native-remote-2000` / `realtime-expo-ft-native-remote`。加载时启动LFT1 Learner，Cobot运行本地Actor；同步学习/权重回传等待期间不开放下一回合。唯一下一步：用户结束Teacher5并允许切换后，重新核对LFT1 GPU0和现场状态，执行已有暂停加载验收；不再询问已经批准的专用SSH改动，不重跑已通过的隔离学习实验。
 
 证据（LFT2原outputs/verification）：lft1-native-result.json、lft1-final-verification.json、lft1-relay-result.json、lft1-field-preserved.json、relay-tests.log、relay-install.json、lft1-transfer.log。LFT1详细日志/完整checkpoint留本机verification，不把大文件重复复制到LFT2。LFT1该测试Learner已退出，现场Teacher5保留；Online软件整体最终交付仍受现场模型切换边界限制。
+
+## 2026-10-14 20:59：正式 Web 暂停加载交付完成
+
+用户明确说Teacher5已结束并授权切换。执行前现场Teacher5已由用户释放，model offline、Session inactive、录制idle、Cobot GPU空闲；LFT1 GPU0空闲。未再次释放旧模型，未停止其他评测任务。正式EXPO入口经Web加载：50Hz发布、RTC和滤波开启，逻辑10Hz/RTCdelay5；原已有ROS master复用，未重启硬件/相机/网页。
+
+验收：Runtime228395、Cobot inference-only Actor232063、LFT1 Learner1216617；网页phase paused、online ready，远端actor_version0与本地served_actor_version0一致。25seed/3301帧、online0、Critic0/VLA0、warmup_remaining10；正式Replay未混入隔离测试数据。本地Actor报告training_enabled=false，远端为true。manual_pause=true、runtime_fault=null、published0。Session开始/结束两次状态转换通过，最终Session inactive；未启动Episode/录制/机器人动作。真实HIL与闭环效果仍由操作员验收。
+
+正式链路Actor文件Range206与SHA再次通过；/healthz为ok、无stale_keys，三路相机ready。模型指定录制目录已通过storage/prepare，flat布局、下一回合index1、existing_indices为空：`/media/agilex/Getea1/jiaan/data/datasets/plug_left_2cam/recordings/expo-native-remote-sft2000`。准备目录未录制任何数据。
+
+记录：outputs/expo-native-remote-20261014/verification/production-acceptance.json、production-storage.json、production-acceptance-output.log；现场同名回执在runtime/verification/expo-remote-20261014。正式Learner运行/Replay/checkpoint在LFT1 `/data/LFT-W02_data/jiaan/expo-online-lft1-20261014/online`，Cobot本地journal/Actor缓存沿用已登记native_remote_sft2000_success25_20261014目录。LFT2仅中转和原有项目记录。
+
+交接给用户：网页当前已加载EXPO / realtime-expo-ft-native-remote / 2000，刷新页面后开始Session，再开始推理/采集及HIL；按真实结果结束每轮。前10有效在线回合仅收集，第11回合开始按原生预算学习；更新与权重回传期间等就绪后再下一轮。此为软件闭环与暂停加载验收，不是成功率提高或真实连续50Hz能力认证。

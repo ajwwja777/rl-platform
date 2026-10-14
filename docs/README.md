@@ -2,7 +2,7 @@
 
 2026-10-14 RLT恢复：[Teacher5 CPU Learner恢复结果](execution/tasks/2026-10-14-teacher5-learner-crash/RESULT.md)。已捕获正式GPU训练编译SIGSEGV；仅Teacher5 Learner改CPU，19回归通过/已部署，正式18更新完成8127→8145并保存重载，预算0。served4063不变/pending4072，ready暂停0命令、三相机约30Hz；用户可继续受控Online。GPU底层原因及长期rollout稳定性仍待验证。
 
-2026-10-14 EXPO：[Cobot本地Actor / LFT1 Learner经LFT2中转](online/tasks/2026-10-14-expo-native-sync/TASK.md)已完成LFT1原生20Critic/1VLA、checkpoint/更新后推理及真实三机SSH/文件校验，峰值32888MiB。旧LFT2自动等待器取消；用户保留Teacher5使用/修复，未切现场模型，Web暂停加载及真机rollout待其结束后验收。
+2026-10-14 EXPO：[Cobot本地Actor / LFT1 Learner经LFT2中转](online/tasks/2026-10-14-expo-native-sync/TASK.md)正式Web暂停加载交付完成：两端ready/version0一致、25seed/3301帧、online0、Session启停/目录/健康检查通过，发布0；用户已结束Teacher5。原生20Critic/1VLA与三机传输隔离验证通过；真实rollout/HIL与成功率仍由操作员验收。
 
 2026-10-14 RLT：[Stage1证据复核](stage1/tasks/2026-10-14-evidence-reconciliation/RESULT.md)确认已有134集/19022帧分析图前向，并完成三权重CPU比较。Teacher5训练内六关节MAE1.612mrad、HIL8 1.640、原5k 1.651；单改Reference为20Hz均变差。保留Teacher5原输入合同，不作权重/现场切换；自主Online增益仍证据不足。以下加载/进程描述为各日期历史回执，不代表当前现场。
 
