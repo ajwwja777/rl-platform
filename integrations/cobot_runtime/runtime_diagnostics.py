@@ -2,7 +2,7 @@
 import re
 
 def classify_failure(output):
-    # The final supervisor exception is a consequence. Preserve the earlier cause.
+    # Preserve actionable causes; a fatal worker signal can precede teardown errors.
     causes = [
         ("rtc_delay_exceeded", ("actual delay exceeded predicted delay", "RTC delay exceeded budget")),
         ("execution_clock_late", ("Execution clock missed its deadline",)),
@@ -15,6 +15,16 @@ def classify_failure(output):
         for line in reversed(output.splitlines()):
             if any(marker in line for marker in markers):
                 return {"code": code, "cause": line.strip()[:600]}
+    # A native fatal signal has no Python exception in the worker. The supervisor
+    # records its negative exit code, while other workers may raise during teardown.
+    # Do not report their ROS shutdown instead of the process that actually crashed.
+    fatal = re.search(
+        r"(?P<role>[a-z_]+) exited with code -(?P<signal>4|6|7|8|11)(?![0-9])",
+        output,
+    )
+    if fatal:
+        return {"code": "runtime_worker_crashed",
+                "cause": fatal.group(0)}
     lines = [line.strip() for line in output.splitlines()
              if re.match(r"^(?:[\w.]+Error|[\w.]+Exception):", line.strip())]
     return {"code": "runtime_process_exited",

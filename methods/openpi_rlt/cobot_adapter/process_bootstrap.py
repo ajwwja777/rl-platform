@@ -6,6 +6,7 @@ inherited; workers must install them before constructing services or Replay.
 from __future__ import annotations
 
 import functools
+import faulthandler
 import os
 
 
@@ -32,6 +33,8 @@ def initialize_process(config_path: str | None = None) -> None:
 
 def run_initialized_role(target, config_path, *args, **kwargs):
     """Importable spawn target; no service or model is created by the bootstrap."""
+    # Preserve Python/native-extension context if a fresh worker dies by signal.
+    faulthandler.enable(all_threads=True)
     initialize_process(config_path)
     return target(*args, **kwargs)
 

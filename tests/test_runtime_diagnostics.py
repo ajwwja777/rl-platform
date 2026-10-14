@@ -14,3 +14,26 @@ def test_unknown_failure_retains_error():
 
 def test_oom_never_mislabeled_recorder_failure():
     assert classify_failure("RuntimeError: CUDA out of memory")["code"]=="gpu_out_of_memory"
+
+
+def test_learner_segfault_is_not_ros_teardown():
+    value = classify_failure(
+        "RuntimeError: ROS shut down before Cobot RLT was armed\n"
+        "RuntimeError: learner_service exited with code -11")
+    assert value == {"code": "runtime_worker_crashed",
+                     "cause": "learner_service exited with code -11"}
+
+
+def test_orderly_sigterm_is_not_native_crash():
+    value = classify_failure(
+        "ValueError: bad configuration\n"
+        "RuntimeError: learner_service exited with code -15")
+    assert value["code"] == "runtime_process_exited"
+    assert value["cause"] == "ValueError: bad configuration"
+
+
+def test_specific_oom_remains_primary_to_abort():
+    value = classify_failure(
+        "RuntimeError: CUDA out of memory\n"
+        "RuntimeError: learner_service exited with code -6")
+    assert value["code"] == "gpu_out_of_memory"
