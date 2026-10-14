@@ -1015,6 +1015,61 @@
       "validation": "Paired recorded-observation jitter ablation passed; physical rollout acceptance pending",
       "execution_fidelity": "Frozen native32+32/Q/RTCdelay5, edit_scale0.01 vs original0.1. Cobot local inference only; no Learner/Replay/online updates; optional50Hz/filter and HIL.",
       "collection_directory_policy": "model"
+    },
+    {
+      "id": "expo-plug-left-2cam-edit005-preview-2000",
+      "label": "左臂拔插插头 · EXPO低扰动0.05预览（不学习）",
+      "kind": "vla",
+      "family": "EXPO",
+      "runtime_adapter": "expo_left",
+      "mode": "evaluation",
+      "checkpoint": "/home/agilex/xiqing/models/expo-ft/plug_left_2cam/rtc_sft_20261013/step_2000",
+      "normalization": "/home/agilex/xiqing/models/expo-ft/plug_left_2cam/rtc_sft_20261013/step_2000/norm_stats.json",
+      "step": 2000,
+      "task": "plug_left_2cam",
+      "training_method": "realtime-expo-ft-edit005-preview",
+      "control_hz": 10,
+      "active_arm": "left",
+      "camera_keys": [
+        "left_wrist_image",
+        "right_wrist_image"
+      ],
+      "prompt": "Unplug the black plug from the bottom socket of the power strip and insert it into the top socket.",
+      "entry_relative": "scripts/expo_edit005_preview_up.sh",
+      "required": [
+        "/home/agilex/xiqing/projects/expo-ft/.venv/bin/python",
+        "/home/agilex/xiqing/models/expo-ft/plug_left_2cam/rtc_sft_20261013/step_2000/checkpoints/2000/params",
+        "/home/agilex/xiqing/models/expo-ft/plug_left_2cam/rtc_sft_20261013/step_2000/norm_stats.json",
+        "/home/agilex/jiaan/data/expo_ft/plug_left_2cam/native_remote_sft2000_success25_20261014/actors/0/manifest.json",
+        "/home/agilex/jiaan/project/rl-platform/methods/expo_ft/cobot_adapter/frozen_preview.py"
+      ],
+      "checkpoint_type": "frozen_native_expo_initial_actor",
+      "resumable_training": false,
+      "integration_level": "managed_runtime",
+      "io_contract": "expo-left-7d-two-wrist-10hz",
+      "evaluation_allowed": true,
+      "capabilities": {
+        "load": true,
+        "ready": true,
+        "start": true,
+        "pause": true,
+        "resume": true,
+        "stop": true,
+        "unload": true,
+        "logs": true,
+        "pid": true,
+        "capture": true,
+        "hil": true,
+        "evaluate": true,
+        "train": false
+      },
+      "data_directories": {
+        "collection": "/media/agilex/Getea1/jiaan/data/datasets/plug_left_2cam/recordings/expo-edit005-preview",
+        "evaluation": "/media/agilex/Getea1/jiaan/data/evaluations/plug_left_2cam/expo-edit005-preview"
+      },
+      "validation": "User-requested edit_scale0.05 preview; CPU identity checks passed; physical rollout acceptance pending",
+      "execution_fidelity": "Frozen native32+32/Q/RTCdelay5, edit_scale0.05 vs original0.1. Cobot local inference only; no Learner/Replay/online updates; optional50Hz/filter and HIL.",
+      "collection_directory_policy": "model"
     }
   ]
 }

@@ -7,20 +7,27 @@ import numpy as np
 
 ADAPTER=Path(__file__).resolve().parents[1]/'methods/expo_ft/cobot_adapter'
 sys.path.insert(0,str(ADAPTER))
-from frozen_preview import PreviewRuntime
+from frozen_preview import PreviewRuntime,preview_scale
 
 class FrozenPreviewTests(unittest.TestCase):
     def runtime(self):
         value=object.__new__(PreviewRuntime)
-        value.args=SimpleNamespace(model_id='preview')
+        value.args=SimpleNamespace(model_id='expo-plug-left-2cam-edit001-preview-2000')
         value.episode='test'
         return value
     def test_rejects_online_or_wrong_scale_identity(self):
         runtime=self.runtime()
-        status=dict(deployment_id='preview',actor_version=0,rtc_delay=5,edit_scale=.01,training_enabled=False,frozen_preview=True)
+        status=dict(deployment_id='expo-plug-left-2cam-edit001-preview-2000',actor_version=0,rtc_delay=5,edit_scale=.01,training_enabled=False,frozen_preview=True)
         runtime.validate_server_status(status)
         for key,value in [('training_enabled',True),('actor_version',1),('edit_scale',.1),('rtc_delay',2),('frozen_preview',False)]:
             with self.subTest(key=key),self.assertRaises(RuntimeError):runtime.validate_server_status({**status,key:value})
+    def test_preview_scales_are_pinned_to_model_identity(self):
+        self.assertEqual(preview_scale('expo-plug-left-2cam-edit001-preview-2000'),.01)
+        runtime=self.runtime();runtime.args.model_id='expo-plug-left-2cam-edit005-preview-2000'
+        status=dict(deployment_id=runtime.args.model_id,actor_version=0,rtc_delay=5,edit_scale=.05,training_enabled=False,frozen_preview=True)
+        runtime.validate_server_status(status)
+        with self.assertRaises(RuntimeError):runtime.validate_server_status({**status,'edit_scale':.01})
+        with self.assertRaises(ValueError):preview_scale('unknown')
     def test_selection_uses_fresh_observation(self):
         runtime=self.runtime();calls=[]
         runtime.observation=lambda:{'state':np.full(7,9.)}

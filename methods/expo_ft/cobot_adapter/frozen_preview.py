@@ -1,4 +1,4 @@
-"""Frozen native EXPO edit=.01 preview; no Learner, Replay or weight updates.
+"""Frozen native EXPO edit=.01/.05 preview; no Learner, Replay or weight updates.
 
 Uses the version0 Actor cache read-only. The original .1 Online entry is unchanged.
 The candidate keeps native32+32/Q/RTC5 and the shared execution/HIL gate.
@@ -14,7 +14,14 @@ from urllib.request import Request
 import numpy as np
 from ros_runtime import Runtime
 
-SCALE=.01
+PREVIEW_SCALES={
+    'expo-plug-left-2cam-edit001-preview-2000':.01,
+    'expo-plug-left-2cam-edit005-preview-2000':.05,
+}
+
+def preview_scale(model_id):
+    try:return PREVIEW_SCALES[model_id]
+    except KeyError:raise ValueError('Unknown frozen EXPO preview identity')
 
 
 class PreviewRuntime(Runtime):
@@ -30,12 +37,12 @@ class PreviewRuntime(Runtime):
 
     def validate_server_status(self,info):
         if (info.get('deployment_id')!=self.args.model_id or info.get('actor_version')!=0 or
-            info.get('rtc_delay')!=5 or info.get('edit_scale')!=SCALE or
+            info.get('rtc_delay')!=5 or info.get('edit_scale')!=preview_scale(self.args.model_id) or
             info.get('training_enabled') is not False or info.get('frozen_preview') is not True):
             raise RuntimeError('Frozen EXPO preview identity mismatch')
 
     def status_extra(self):
-        return {'frozen_preview':True,'edit_scale':SCALE,'rtc_delay':5,'training_enabled':False}
+        return {'frozen_preview':True,'edit_scale':preview_scale(self.args.model_id),'rtc_delay':5,'training_enabled':False}
 
     def array_rpc(self,path,**values):
         from wire import encode
@@ -63,7 +70,7 @@ def serve(args):
     native_args=argparse.Namespace(bundle=args.bundle,project=args.native_project,
         snapshot=args.snapshot,snapshot_root=args.snapshot.parent,rtc_delay=5,model_id=args.model_id)
     actor=Actor(native_args)
-    actor.agent=actor.agent.replace(edit_scale=SCALE)
+    actor.agent=actor.agent.replace(edit_scale=preview_scale(args.model_id))
     actor.warm_inference()
     actor.active=args.episode;actor.phase='rollout'
     class Handler(BaseHTTPRequestHandler):
@@ -75,7 +82,7 @@ def serve(args):
             self.end_headers();self.wfile.write(body)
         def do_GET(self):
             if self.path not in ('/ready','/status'):return self.send(404,{'error':'not_found'})
-            self.send(200,{**actor.status(),'frozen_preview':True,'edit_scale':SCALE})
+            self.send(200,{**actor.status(),'frozen_preview':True,'edit_scale':preview_scale(args.model_id)})
         def do_POST(self):
             if self.path not in ('/precache','/select'):return self.send(404,{'error':'Frozen preview has no training or installation endpoint'})
             if not actor.lock.acquire(blocking=False):return self.send(409,{'error':'Actor busy'})
@@ -86,7 +93,7 @@ def serve(args):
                 self.send(200,actor.infer(self.path,data))
             except Exception as exc:self.send(409,{'error':str(exc)})
             finally:actor.lock.release()
-    print('EXPO frozen edit=.01 preview ready; no Learner/Replay/ROS publishers in server',flush=True)
+    print('EXPO frozen edit=%s preview ready; no Learner/Replay/ROS publishers in server' % preview_scale(args.model_id),flush=True)
     ThreadingHTTPServer(('127.0.0.1',args.port),Handler).serve_forever()
 
 
@@ -96,7 +103,7 @@ def main():
     for name in ('bundle','project','native-project','snapshot'):p.add_argument('--'+name,type=Path,required=True)
     p.add_argument('--model-id',required=True);p.add_argument('--port',type=int,default=8043)
     p.add_argument('--episode',default=str(uuid.uuid4()));p.add_argument('--shadow',action='store_true')
-    args=p.parse_args();args.step=2000;args.rtc_delay=5
+    args=p.parse_args();preview_scale(args.model_id);args.step=2000;args.rtc_delay=5
     if args.role=='server':return serve(args)
     import rospy
     runtime=PreviewRuntime(args,rospy)
