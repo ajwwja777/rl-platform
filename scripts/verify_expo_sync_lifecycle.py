@@ -16,6 +16,7 @@ from native_online import source_path
 source_path(a.project)
 from online_learner import Learner
 from episode_journal import EpisodeJournal
+from online_protocol import atomic_json
 args=SimpleNamespace(project=a.project,bundle=a.bundle,run_dir=a.output/'run',batch_size=64,capacity=500000,warmup_steps=0,steps_per_update=30,max_updates=0,recipe='native_sync',seed_dir=a.seed_dir,rtc_delay=a.rtc_delay,native_batch_update=a.native_batch_update,edit_scale=a.edit_scale,learner_only=a.learner_only)
 l=Learner(args)
 print('LOADED',l.save_status(),flush=True)
@@ -35,7 +36,11 @@ j=EpisodeJournal(args.run_dir/'episodes')
 def episode(outcome,n):
  identity=str(uuid.uuid4());before=l.meta['updates'];l.begin(identity);j.begin(identity,before)
  for i in range(n+2):j.sample(obs,obs['state'].copy(),100+i*.1,i<n//2)
- j.finish(identity,outcome);l.finish(identity)
+ j.finish(identity,outcome)
+ if a.learner_only:
+  path=args.run_dir/'episodes'/identity/'finished.json'
+  meta=json.loads(path.read_text());meta['rollout_rng']=np.asarray(l.agent.rng).tolist();atomic_json(path,meta)
+ l.finish(identity)
  deadline=time.monotonic()+1800
  while l.phase=='updating':
   try:l.begin(str(uuid.uuid4()))

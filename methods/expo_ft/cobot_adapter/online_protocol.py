@@ -17,12 +17,15 @@ def episode_id(value):
 def atomic_json(path, value):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(path.name + ".tmp")
-    with temporary.open("w") as stream:
-        json.dump(value, stream, allow_nan=False)
-        stream.flush()
-        os.fsync(stream.fileno())
-    os.replace(temporary, path)
+    temporary = path.with_name(path.name + "." + uuid.uuid4().hex + ".tmp")
+    try:
+        with temporary.open("x") as stream:
+            json.dump(value, stream, allow_nan=False)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        if temporary.exists():temporary.unlink()
     directory_fd=os.open(str(path.parent),os.O_DIRECTORY)
     try:os.fsync(directory_fd)
     finally:os.close(directory_fd)

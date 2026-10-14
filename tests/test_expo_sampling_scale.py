@@ -26,3 +26,19 @@ def test_remote_rejects_different_scale():
  remote.validate_server_status(info)
  for value in (.1,None):
   with pytest.raises(RuntimeError,match='scale'):remote.validate_server_status({**info,'edit_scale':value})
+
+
+def test_concurrent_status_writes_use_distinct_temporary_files(tmp_path,monkeypatch):
+ import os,threading
+ from concurrent.futures import ThreadPoolExecutor
+ from online_protocol import atomic_json
+ barrier=threading.Barrier(2);replace=os.replace
+ def overlap(source,target):
+  barrier.wait(timeout=5);return replace(source,target)
+ monkeypatch.setattr(os,'replace',overlap)
+ path=tmp_path/'status.json'
+ with ThreadPoolExecutor(max_workers=2) as pool:
+  jobs=[pool.submit(atomic_json,path,{'writer':i,'values':[i]*100}) for i in range(2)]
+  for job in jobs:job.result(timeout=10)
+ value=json.loads(path.read_text());assert value['values']==[value['writer']]*100
+ assert not list(tmp_path.glob('*.tmp'))
