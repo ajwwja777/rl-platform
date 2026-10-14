@@ -93,7 +93,11 @@ class HostTargetUpdater:
         return self.agent_type(**{name:(None if name in ('target_actor_params','_infer_cache') else getattr(agent,name)) for name in self.fields})
 
     def update(self,agent,batch,utd_ratio=1,actor_batch=None):
-        agent,info=donated_update(agent,batch,utd_ratio,actor_batch)
+        if getattr(self,'split_batches',False):
+            from split_update import update
+            agent,info=update(agent,batch,utd_ratio,actor_batch,progress=getattr(self,'progress',None))
+        else:
+            agent,info=donated_update(agent,batch,utd_ratio,actor_batch)
         if agent.train_base_actor:
             # Bound host memory as well: never copy another full VLA onto CPU.
             current=agent.actor.get_params(agent.actor_train_state).filter(self.trainable)

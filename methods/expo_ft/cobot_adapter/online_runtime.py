@@ -72,9 +72,12 @@ class OnlineRuntime(Runtime):
         return {'online':value,'episode_uuid':self.episode}
 
     def policy_command(self):
-        return [str(self.args.project/'.venv/bin/python'),str(Path(__file__).with_name('online_learner.py')),
+        command=[str(self.args.project/'.venv/bin/python'),str(Path(__file__).with_name('online_learner.py')),
                 '--project',str(self.args.project),'--bundle',str(self.args.bundle),
                 '--run-dir',str(self.args.run_dir),'--port',str(self.args.port)]
+        if getattr(self.args,'recipe','legacy')=='native_sync':
+            command+=['--recipe','native_sync','--seed-dir',str(self.args.seed_dir)]
+        return command
 
     def json_rpc(self,path,body):
         request=Request('http://127.0.0.1:%d%s'%(self.args.port,path),data=json.dumps(body).encode(),headers={'Content-Type':'application/json'})
@@ -136,7 +139,10 @@ def main():
     p.add_argument('--run-dir',type=Path,required=True);p.add_argument('--step',type=int,default=2000)
     p.add_argument('--model-id',required=True);p.add_argument('--port',type=int,default=8043)
     p.add_argument('--control-port',type=int,default=8044);p.add_argument('--shadow',action='store_true')
+    p.add_argument('--recipe',choices=('legacy','native_sync'),default='legacy')
+    p.add_argument('--seed-dir',type=Path)
     args=p.parse_args()
+    if args.recipe=='native_sync' and args.seed_dir is None:p.error('native_sync requires --seed-dir')
     import rospy
     runtime=OnlineRuntime(args,rospy)
     for sig in (signal.SIGINT,signal.SIGTERM):signal.signal(sig,lambda *_:runtime.stop.set())

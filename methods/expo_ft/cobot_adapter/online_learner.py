@@ -18,6 +18,11 @@ class Learner:
     def __init__(self, args):
         import jax
         self.args=args
+        self.aligned=getattr(args,'recipe','legacy')=='native_sync'
+        self.seed=None
+        if self.aligned:
+            from success_seed import seed_manifest
+            self.seed=seed_manifest(args.seed_dir)
         self.lock=threading.Lock()
         self.active=None
         self.phase='loading'
@@ -36,15 +41,30 @@ class Learner:
             for source in sorted((args.project/directory).rglob('*.py')):
                 source_signature.update(str(source.relative_to(args.project)).encode());source_signature.update(source.read_bytes())
         contract=dict(native_source_sha256=source_signature.hexdigest(),bundle=str(args.bundle.resolve()),bundle_metadata_sha256=signature.hexdigest(),batch_size=args.batch_size,capacity=args.capacity,warmup_steps=args.warmup_steps,steps_per_update=args.steps_per_update,max_updates=args.max_updates,rtc_delay=2,schema=1)
+        if self.aligned:
+            for name in ('train_pi_robo.py','scripts/dynamic_pick/run_server.sh'):
+                source_signature.update((args.project/name).read_bytes())
+            contract.update(native_source_sha256=source_signature.hexdigest(),recipe='native_sync',schema=2,utd_ratio=20,seed_manifest=self.seed,rtc_delay=2)
+            adapter_signature=hashlib.sha256()
+            for name in ('native_online.py','memory_update.py','batch_memory.py','split_update.py','stream_sample.py','sync_schedule.py','success_seed.py','online_protocol.py','episode_journal.py','online_learner.py'):
+                adapter_signature.update(Path(__file__).with_name(name).read_bytes())
+            contract['adapter_source_sha256']=adapter_signature.hexdigest()
         contract_path=self.root/'contract.json'
         if contract_path.exists() and json.loads(contract_path.read_text())!=contract:
             raise ValueError('Online run configuration changed; use an independent run directory')
         atomic_json(contract_path,contract)
         self.meta=json.loads(self.meta_path.read_text()) if self.meta_path.exists() else dict(
             checkpoint=None,updates=0,accepted=[],replay=[],steps=0,credit=0,actor_updates=0)
-        self.agent,self.config,self.prompt=load_native(args.bundle,2,resume=False)
+        self.meta.setdefault('completed_episodes',0)
+        self.meta.setdefault('critic_updates',0)
+        self.agent,self.config,self.prompt=load_native(args.bundle,2,resume=False,aligned=self.aligned)
+        if self.aligned:
+            from batch_memory import install
+            install()
         from memory_update import HostTargetUpdater
         self.updater=HostTargetUpdater(self.agent)
+        self.updater.split_batches=self.aligned
+        self.updater.progress=self.update_progress
         self.agent=self.updater.prepare(self.agent)
         if self.meta['checkpoint'] is not None:
             from stream_checkpoint import restore
@@ -80,21 +100,33 @@ class Learner:
             self.save_status()
             threading.Thread(target=self.recover,args=(pending,),daemon=True).start()
 
+    def update_progress(self,phase,step):
+        if phase=='critic':self.meta['critic_updates']=step
+        if phase=='actor':self.meta['actor_updates']=step
+        self.save_status()
+
     def save_status(self):
         value=dict(ready=self.phase in ('ready','rollout'),phase=self.phase,error=self.error,
             active_episode=self.active,actor_version=self.meta['updates'],learner_step=self.meta['updates'],
-            actor_updates=self.meta['actor_updates'],replay_steps=max(0,len(self.buffer)-len(self.meta['replay'])),
+            actor_updates=self.meta['actor_updates'],replay_steps=max(0,len(self.buffer)-(0 if self.aligned else len(self.meta['replay']))),
             accepted_episodes=len(self.meta['accepted']),training_enabled=True,
             metrics=self.metrics,updated_at=time.time(),pid=os.getpid(),batch_size=self.args.batch_size,
             warmup_steps=self.args.warmup_steps,steps_per_update=self.args.steps_per_update)
+        if self.aligned:
+            value.update(recipe='native_sync',warmup_episodes=10,completed_episodes=self.meta['completed_episodes'],
+                warmup_remaining=max(0,10-self.meta['completed_episodes']),critic_updates=self.meta['critic_updates'],
+                utd_ratio=20,seed_episodes=25,seed_steps=self.seed['frames'],online_steps=self.meta['steps'])
         atomic_json(self.root/'status.json',value)
         return value
 
     def rebuild(self):
         self.buffer.clear()
+        if self.seed:
+            from success_seed import insert_seed
+            insert_seed(self.buffer,self.args.seed_dir,self.seed)
         for identity in self.meta['replay']:
             _,data=read_journal(self.root/'episodes',identity)
-            insert_episode(self.buffer,data)
+            insert_episode(self.buffer,data,terminal_observation=not self.aligned)
 
     def begin(self, identity):
         identity=episode_id(identity)
@@ -154,26 +186,43 @@ class Learner:
         accepted=data is not None and info.get('training_eligible',True) and info['outcome'] in ('success','failure')
         if accepted:
             self.meta['replay'].append(identity)
-            sizes={x:json.loads((self.root/'episodes'/x/'finished.json').read_text())['count']+1 for x in self.meta['replay']}
-            while sum(sizes[x] for x in self.meta['replay'])>self.args.capacity:
+            sizes={x:json.loads((self.root/'episodes'/x/'finished.json').read_text())['count']+(0 if self.aligned else 1) for x in self.meta['replay']}
+            evicted=False
+            while sum(sizes[x] for x in self.meta['replay'])+(self.seed['frames'] if self.seed else 0)>self.args.capacity:
                 self.meta['replay'].pop(0)
-            self.rebuild()  # Whole episodes, chronological; never sample across ring wrap.
-            self.meta['steps']+=len(data['actions'])
-            self.meta['credit']+=len(data['actions'])
-            count=min(self.args.max_updates,self.meta['credit']//self.args.steps_per_update) if len(self.buffer)-len(self.meta['replay'])>=self.args.warmup_steps else 0
+                evicted=True
+            if self.aligned and not evicted:
+                insert_episode(self.buffer,data,terminal_observation=False)
+            else:self.rebuild()  # Whole episodes, chronological; never sample across ring wrap.
+            if self.aligned:
+                from sync_schedule import Schedule
+                schedule,count=Schedule(self.meta['completed_episodes'],self.meta['steps'],self.meta['credit']).finish(len(data['actions']))
+                self.meta.update(completed_episodes=schedule.completed_episodes,steps=schedule.env_steps,credit=schedule.credit)
+            else:
+                self.meta['steps']+=len(data['actions'])
+                self.meta['credit']+=len(data['actions'])
+                count=min(self.args.max_updates,self.meta['credit']//self.args.steps_per_update) if len(self.buffer)-len(self.meta['replay'])>=self.args.warmup_steps else 0
             for _ in range(count):
-                batch=valid_batch(self.buffer,self.args.batch_size)
-                if batch is None:break
-                actor_batch=valid_batch(self.buffer,self.args.batch_size,success_only=True)
-                # Native success-only Actor waits for a real successful episode.
+                if self.aligned:
+                    from stream_sample import Batch
+                    batch=Batch(self.buffer,64*20,64)
+                    raw_actor=self.buffer.sample_jax(64,success_only=True)
+                    if raw_actor is None:raise ValueError('Confirmed success seed unavailable')
+                    actor_batch=self.buffer._convert_to_openpi_format(raw_actor)
+                    del raw_actor
+                else:
+                    batch=valid_batch(self.buffer,self.args.batch_size)
+                    if batch is None:break
+                    actor_batch=valid_batch(self.buffer,self.args.batch_size,success_only=True)
                 self.agent=self.agent.replace(train_base_actor=actor_batch is not None)
-                self.agent,metrics=self.updater.update(self.agent,batch,1,actor_batch)
+                self.agent,metrics=self.updater.update(self.agent,batch,20 if self.aligned else 1,actor_batch)
                 jax.block_until_ready(self.agent)
                 self.metrics={k:float(np.asarray(v)) for k,v in metrics.items() if np.asarray(v).size==1}
                 if not all(np.isfinite(v) for v in self.metrics.values()):raise ValueError('Non-finite native learner metrics')
                 self.agent=self.agent.replace(train_base_actor=True)
                 self.meta['updates']+=1
-                self.meta['credit']-=self.args.steps_per_update
+                if not self.aligned:self.meta['credit']-=self.args.steps_per_update
+                self.meta['critic_updates']=int(self.agent.critic.step)
                 self.meta['actor_updates']=int(self.agent.actor_train_state.step)
                 self.save_status()
             if self.meta['updates'] != previous_updates:
@@ -211,9 +260,9 @@ class Learner:
             return dict(precached=np.asarray(cache).tolist(),delay=len(prefix),actor_version=version)
         if int(data['actor_version'])!=version:raise ValueError('Stale actor version')
         cached=data['precached']
-        if cached.shape!=(8,16,7) or not np.isfinite(cached).all():raise ValueError('Invalid cached candidates')
+        if cached.shape!=(self.agent.N,16,7) or not np.isfinite(cached).all():raise ValueError('Invalid cached candidates')
         actions,self.agent,info=self.agent.sample_actions(dict(obs),precached=cached,delay=int(data['delay']),
-            only_base_actions=version==0)
+            only_base_actions=(version==0 and not self.aligned))
         actions=np.asarray(actions)
         if actions.shape!=(8,7) or not np.isfinite(actions).all():raise ValueError('Non-finite native EXPO output')
         return dict(actions=actions.tolist(),actor_version=version)
@@ -226,7 +275,13 @@ def main():
     p.add_argument('--batch-size',type=int,default=4);p.add_argument('--capacity',type=int,default=6000)
     p.add_argument('--warmup-steps',type=int,default=64);p.add_argument('--steps-per-update',type=int,default=25)
     p.add_argument('--max-updates',type=int,default=8)
-    args=p.parse_args();source_path(args.project)
+    p.add_argument('--recipe',choices=('legacy','native_sync'),default='legacy')
+    p.add_argument('--seed-dir',type=Path)
+    args=p.parse_args()
+    if args.recipe=='native_sync':
+        if args.seed_dir is None:p.error('native_sync requires --seed-dir')
+        args.batch_size=64;args.capacity=500000;args.warmup_steps=0;args.steps_per_update=30;args.max_updates=0
+    source_path(args.project)
     learner=Learner(args)
     class Handler(BaseHTTPRequestHandler):
         def log_message(self,*args):pass

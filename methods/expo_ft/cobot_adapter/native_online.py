@@ -14,7 +14,7 @@ def source_path(project):
         sys.path.insert(0, str(path))
 
 
-def configuration(bundle, delay):
+def configuration(bundle, delay, aligned=False):
     from configs.model.realtime_expo_ft_pi_config import get_config
     from configs.openpi.cobot_pi05 import CONFIG_NAME, register
     register()
@@ -23,12 +23,19 @@ def configuration(bundle, delay):
     config.pi05_assets_dir = str(bundle)
     config.pi05_asset_id = "."
     config.pi05_weight_loader_path = str(bundle / "checkpoints/2000/params")
+    if aligned:
+        config.N=32
+        config.n_edit_samples=32
+        config.filter_N=32
+        config.filter_n_edit=1
+        config.edit_scale=0.1
+        config.valids_keep_terminal_windows=True
     config.delay = delay
     config.critic_camera_keys = CAMERAS
     return config
 
 
-def load_native(bundle, delay=4, resume=False):
+def load_native(bundle, delay=4, resume=False, aligned=False):
     import jax
     import openpi.training.sharding as sharding
     from configs.task.cobot_plug import get_config as task_config
@@ -39,7 +46,7 @@ def load_native(bundle, delay=4, resume=False):
         raise ValueError("EXPO online requires the verified left-arm10Hz/H16 bundle")
     if jax.default_backend() != "gpu" or jax.device_count() != 1:
         raise RuntimeError("Reserve exactly one GPU for native EXPO online")
-    config = configuration(bundle, delay)
+    config = configuration(bundle, delay, aligned)
     mesh = sharding.make_mesh(1)
     data = jax.sharding.NamedSharding(mesh, jax.sharding.PartitionSpec(sharding.DATA_AXIS))
     replicated = jax.sharding.NamedSharding(mesh, jax.sharding.PartitionSpec())
@@ -60,9 +67,10 @@ def replay_buffer(config, prompt, capacity=12000):
                                 8, 42, delay=config.delay, critic_camera_keys=CAMERAS)
 
 
-def insert_episode(buffer,data):
+def insert_episode(buffer,data,terminal_observation=True):
     from online_protocol import transitions,KEYS
     for row in transitions(data):buffer.insert(row)
+    if not terminal_observation:return
     # Native Replay obtains s[t+r] from the next stored row. This observed final
     # state exposes the last complete reward window without waiting for another
     # episode. Its own action window is a truncation and is never sampled.
