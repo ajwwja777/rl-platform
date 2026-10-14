@@ -1,5 +1,7 @@
 # RL 平台：当前进度与关键经验
 
+2026-10-14 RLT：[Teacher5 8234离线接续检查](online/tasks/2026-10-11-online-learning-evidence/TEACHER5_PREONLINE_8234.md)：两套重复DEV保持门槛通过、149状态叶/双RNG/8vs4+4恢复精确、64输入导出差1.19e-7、14回归通过。Actor4117独立接续包已备，现场未晋升，EXPO保持；新DEV min-Q残差和单集HIL偏好仍不充分，不能声称自主收益。下次受控Online前仅沿既有切换做现场身份核验。
+
 2026-10-14 EXPO最新：[edit0.01 Online](online/tasks/2026-10-14-expo-native-sync/EDIT001_ONLINE.md)已在Web暂停加载交付，Cobot本地推理/LFT2 GPU1学习；60CPU、完整20Critic/1VLA、新进程恢复和更新后本地Actor通过。25seed/3301、online0、更新0、版本0一致，Session/传输/目录检查通过，发布0。用户反馈0.01预览近乎不抖、0.05仍抖；Online实际收益待验收。
 
 2026-10-14 RLT：[Teacher5首批真实Online审计](online/tasks/2026-10-11-online-learning-evidence/TEACHER5_FIRST_ONLINE_BATCH.md)：恢复后3集2成功/1失败、89条入库/89更新/45Actor，最新8234/4117未发布；执行仍8127/4063。新增3集实际Critic/Actor采样4.55%/4.10%，新TRAIN回报残差下降，重复DEV平均拟合保持；无新Actor自主增益证明。用户说明抓持相对位置有变化；现场随后已交EXPO，数据/结论分开。

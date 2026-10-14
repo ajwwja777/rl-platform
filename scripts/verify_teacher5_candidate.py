@@ -29,7 +29,13 @@ cfg=RLTOnlineRLConfig(**dict(payload['rl_config'],action_norm_stats_path=str(pac
 actor,critic,run=build_components(cfg,profile);adapter=ActionRepresentationAdapter.from_config(cfg)
 def state(d):return trainer.RLTTrainState(**{k:trainer._tree_to_jax(v) for k,v in d.items()},actor_tx=optax.adam(cfg.actor_lr),critic_tx=optax.adam(cfg.critic_lr))
 initial=state(payload['state']);rows=read(package/'replay/replay_journal.pkl')
-assert len(rows)==3623
+assert rows, 'Candidate Replay is empty'
+keys=[tuple(int(r[k]) for k in ['collection_phase_id','episode_id','step_id']) for r in rows]
+assert len(keys)==len(set(keys)), 'Duplicate Replay identities'
+pending=pickle.loads((package/'pending_actor/actor_snapshot.pkl').read_bytes())
+served=pickle.loads((package/'actor_snapshot/actor_snapshot.pkl').read_bytes())
+assert pending['version']==int(initial.actor_version)
+for a,b in zip(jax.tree.leaves(pending['actor_params']),jax.tree.leaves(initial.actor_params)):np.testing.assert_array_equal(a,b)
 native=object.__new__(trainer.LearnerService);native._checkpoint_dir=str(package/'checkpoints');native._rl_config=cfg
 native._state=native._load_latest_checkpoint();native._write_status=lambda progress:None
 for a,b in zip(jax.tree.leaves(native.state),jax.tree.leaves(initial)):np.testing.assert_array_equal(a,b)
@@ -54,15 +60,20 @@ leaves=0
 for k in payload['state']:
  for x,y in zip(jax.tree.leaves(getattr(direct,k)),jax.tree.leaves(getattr(restored,k))):np.testing.assert_array_equal(x,y);leaves+=1
 assert rd==rh+rr and sd==sr
-obj=object.__new__(ActorService);obj._rl_config=cfg;obj._action_adapter=adapter;obj._wrapper=RLTPolicyInferenceWrapper(cfg);obj._lock=threading.Lock();obj._actor_params=None;obj._actor_version=-1;obj._rng=jax.random.PRNGKey(0);obj._snapshot_path=str(package/'actor_snapshot/actor_snapshot.pkl');obj._logged_missing_params=False;obj._try_reload_snapshot()
-assert obj.actor_param_version==4063
+obj=object.__new__(ActorService);obj._rl_config=cfg;obj._action_adapter=adapter;obj._wrapper=RLTPolicyInferenceWrapper(cfg);obj._lock=threading.Lock();obj._actor_params=None;obj._actor_version=-1;obj._rng=jax.random.PRNGKey(0);obj._snapshot_path=str(package/'pending_actor/actor_snapshot.pkl');obj._logged_missing_params=False;obj._try_reload_snapshot()
+assert obj.actor_param_version==int(initial.actor_version)
 maxerr=0.
-for i in np.linspace(0,len(rows)-1,32,dtype=int):
+for i in np.linspace(0,len(rows)-1,64,dtype=int):
  r=rows[i];req=ActorRequest(z_rl=r['z_rl'],proprio=r['proprio'],ref_chunk=r['ref_chunk'],deterministic=True,request_id=str(i),episode_id=int(r['episode_id']),step_id=int(r['step_id']))
  response=obj.infer(req)
  norm=adapter.normalize_ref_chunk(req.ref_chunk,req.proprio);a=actor.sample_action(initial.actor_params,jax.random.PRNGKey(0),jnp.asarray(req.z_rl)[None],jnp.asarray(req.proprio)[None],jnp.asarray(norm)[None],deterministic=True)
  expected=adapter.denormalize_to_abs_chunk(np.asarray(a)[0],req.proprio);maxerr=max(maxerr,float(np.max(np.abs(response.refined_chunk-expected))))
 assert maxerr<1e-6
+# A live Actor ignores older versions; rollback must start a fresh instance.
+obj._snapshot_path=str(package/'actor_snapshot/actor_snapshot.pkl');obj._try_reload_snapshot()
+assert obj.actor_param_version==int(initial.actor_version)
+obj._actor_params=None;obj._actor_version=-1;obj._try_reload_snapshot()
+assert obj.actor_param_version==served['version']
 assert protected=={str(f):sha(f) for f in package.rglob('*') if f.is_file()}
-result=dict(status='verified_software_only',candidate=str(package),checkpoint_step=8127,actor_version=4063,native_budget=budgets,full_state_leaves_exact=leaves,resume_8_vs_4_plus_4_exact=True,both_sampler_rngs_and_all_8_receipts_exact=True,native_actor32_max_abs_error=maxerr,read_only_candidate_sha256=protected,limits=['CPU native methods, no Actor/Replay/Learner services instantiated','No Stage1 GPU forward or robot motion','No autonomous improvement claim'])
+result=dict(status='verified_software_only',candidate=str(package),checkpoint_step=int(initial.global_step),actor_version=int(initial.actor_version),served_version=int(served['version']),replay_rows=len(rows),pending_actor_matches_checkpoint=True,live_rollback_requires_fresh_actor=True,native_budget=budgets,full_state_leaves_exact=leaves,resume_8_vs_4_plus_4_exact=True,both_sampler_rngs_and_all_8_receipts_exact=True,native_actor_probe_count=64,native_actor_max_abs_error=maxerr,read_only_candidate_sha256=protected,limits=['CPU native methods, no Actor/Replay/Learner services instantiated','No Stage1 GPU forward or robot motion','No autonomous improvement claim'])
 output.write_text(json.dumps(result,indent=2));print(json.dumps({k:v for k,v in result.items() if k!='read_only_candidate_sha256'}))
