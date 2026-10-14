@@ -4,6 +4,8 @@
 
 追溯原始示范、转换/质检、真实加载器、归一化、Stage1 checkpoint 和表征；与 Warmup/Online 的输入合同衔接。
 
+2026-10-14：[全量历史证据复核与候选时间合同](tasks/2026-10-14-evidence-reconciliation/RESULT.md)完成140缓存校验和三权重CPU对照。134条是分析图训练内前向；服务路径仅3集，不能混称全量服务认证。Teacher5保持原合同拟合略优，单独切20Hz Reference变差约20.75%，未作切换。
+
 ## 现状与边界
 
 - 历史结构/训练入口见 [数据训练 SOP](DATA_TRAINING_SOP.md) 与 [Stage0/Stage1 审计](tasks/2026-09-23-plug-v3-yyshadow-stage0-stage1/TASK.md)。这是历史证据，本次没有重训或复跑模型。
@@ -38,3 +40,5 @@
 - [input-snapshot-verification-20261005](../../outputs/input-snapshot-verification-20261005/REPORT.md)
 - [stage1-actor-chain-20261005](../../outputs/stage1-actor-chain-20261005/REPORT.md)
 - [stage1-input-snapshot-model-20261005](../../outputs/stage1-input-snapshot-model-20261005/REPORT.md)
+
+- [offline-model-selection-20261005 全量历史模型诊断](../../outputs/offline-model-selection-20261005/index.html)
