@@ -73,3 +73,5 @@ Cobot4090 原生完整 EXPO 推理通过，完整更新 batch2/UTD1 两种分配
 ## 2026-10-13 EXPO 单卡 Online 接入
 
 新增独立 EXPO Online 网页选项，Cobot 单张4090上串行 rollout/HIL 与原生学习，完整更新/保存/恢复及合成回合续训通过。未改原固定SFT模型或RLT默认，尚不代表真机效果提升。详细状态、路径和验证边界：[EXPO Online 交付](online/tasks/2026-10-13-expo-online/RESULT.md)。
+
+2026-10-14 EXPO：[初始Online抖动诊断](online/tasks/2026-10-14-expo-native-sync/JITTER.md)定位0.1编辑扰动为固定观测动作粗糙度主要来源；独立0.01本地预览已网页登记，不依赖Learner、不学习。原Online保留；真机平顺性和低扰动Online尚待验收，不以离线改善代替交付成功。

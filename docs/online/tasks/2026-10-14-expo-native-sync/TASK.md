@@ -1,6 +1,8 @@
 # EXPO 原仓库同步 Online 对齐 · 2026-10-14
 
-状态：正式Web暂停加载交付完成。Cobot本地Actor/LFT1GPU0 Learner经LFT2中转均ready、版本0一致；Session启停与数据目录检查通过，发布0、无真实Episode。用户负责开始rollout/HIL及真机效果验收。
+最新：用户报告Online抖动而SFT平滑；已完成配对离线诊断并交付独立edit0.01本地预览，真机待验收，原Online仍0.1且当前加载受LFT1GPU占用阻塞。见[JITTER](JITTER.md)。
+
+历史交付状态：正式Web暂停加载交付完成。Cobot本地Actor/LFT1GPU0 Learner经LFT2中转均ready、版本0一致；Session启停与数据目录检查通过，发布0、无真实Episode。用户负责开始rollout/HIL及真机效果验收。
 
 用户授权按新传入的 train_pi_robo.py / train_pi_robo_async.py 对齐并交付可用于 Web rollout/HIL 的 Online 版本；采用同步 recipe。用户明确确认 realtime_expo 整批示教成功，允许使用 TRAIN 前25回合。
 
