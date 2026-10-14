@@ -58,3 +58,13 @@ def test_partial_actor_file_resumes_with_range_and_hash(tmp_path):
         assert not (result/'actor-0.download').exists()
         c.download_actor();assert len(ranges)==1
     finally:server.shutdown();server.server_close()
+
+
+def test_status_reports_actual_selected_devices_and_keeps_publication_gate():
+ c=RemoteSupport();c.remote={'learner_host':'LFT2 A6000 GPU1'};c.local_actor_version=5;c.transfer=None
+ c.remote_status={'ready':True,'phase':'ready','actor_version':6,'learner_devices':2,'visible_gpus':'1,0'}
+ result=c.remote_online_status()
+ assert result['compute_host']=='Learner LFT2 A6000 GPU 1,0 / Actor Cobot'
+ assert result['phase']=='publishing' and not result['ready']
+ c.local_actor_version=6
+ assert c.remote_online_status()['ready']

@@ -69,7 +69,10 @@ class RemoteSupport:
 
     def remote_online_status(self):
         value = dict(self.remote_status)
-        value["compute_host"] = "Learner %s / Actor Cobot" % self.remote.get("learner_host", "A6000")
+        host=self.remote.get("learner_host", "A6000")
+        if value.get('learner_devices') and value.get('visible_gpus'):
+            host=re.sub(r'\s*GPU[0-9, ]+$','',host)+' GPU '+value['visible_gpus']
+        value["compute_host"] = "Learner %s / Actor Cobot" % host
         value["served_actor_version"] = self.local_actor_version
         if value.get("ready") and value.get("actor_version") != self.local_actor_version:
             value.update(ready=False,phase="publishing")

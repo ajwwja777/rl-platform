@@ -1,4 +1,4 @@
-"""Single-GPU native EXPO: episode-pinned inference and synchronous updates."""
+"""Single-host native EXPO: episode-pinned inference and synchronous updates."""
 import argparse
 import io
 import json
@@ -21,6 +21,10 @@ class Learner:
         self.aligned=getattr(args,'recipe','legacy')=='native_sync'
         self.native_batch_update=bool(getattr(args,'native_batch_update',False))
         self.learner_only=bool(getattr(args,'learner_only',False))
+        self.num_devices=int(getattr(args,'num_devices',1))
+        if self.num_devices not in (1,2):raise ValueError('EXPO supports one or two Learner devices')
+        if self.num_devices==2 and not (self.learner_only and self.aligned and self.native_batch_update):
+            raise ValueError('Dual GPU requires native full-batch remote Learner')
         self.rtc_delay=int(getattr(args,'rtc_delay',2))
         from sampling_config import edit_scale as validate
         self.edit_scale=validate(getattr(args,'edit_scale',None))
@@ -53,7 +57,7 @@ class Learner:
                 source_signature.update((args.project/name).read_bytes())
             contract.update(native_source_sha256=source_signature.hexdigest(),recipe='native_sync',schema=2,utd_ratio=20,seed_manifest=self.seed,rtc_delay=self.rtc_delay)
             adapter_signature=hashlib.sha256()
-            for name in ('native_online.py','sampling_config.py','memory_update.py','batch_memory.py','split_update.py','stream_sample.py','sync_schedule.py','success_seed.py','online_protocol.py','episode_journal.py','online_learner.py','stream_checkpoint.py','remote_journal.py'):
+            for name in ('device_layout.py','native_online.py','sampling_config.py','memory_update.py','batch_memory.py','split_update.py','stream_sample.py','sync_schedule.py','success_seed.py','online_protocol.py','episode_journal.py','online_learner.py','stream_checkpoint.py','remote_journal.py'):
                 adapter_signature.update(Path(__file__).with_name(name).read_bytes())
             contract['adapter_source_sha256']=adapter_signature.hexdigest()
             contract['update_layout']='native_full_batch' if self.native_batch_update else 'experimental_streamed'
@@ -67,12 +71,13 @@ class Learner:
             checkpoint=None,updates=0,accepted=[],replay=[],steps=0,credit=0,actor_updates=0)
         self.meta.setdefault('completed_episodes',0)
         self.meta.setdefault('critic_updates',0)
-        self.agent,self.config,self.prompt=load_native(args.bundle,self.rtc_delay,resume=False,aligned=self.aligned,edit_scale=self.edit_scale)
+        self.agent,self.config,self.prompt=load_native(args.bundle,self.rtc_delay,resume=False,aligned=self.aligned,edit_scale=self.edit_scale,num_devices=self.num_devices)
         if self.aligned:
             from batch_memory import install
             install()
         from memory_update import HostTargetUpdater
         self.updater=HostTargetUpdater(self.agent)
+        self.updater.cache_inference=not self.learner_only
         self.updater.split_batches=self.aligned and not self.native_batch_update
         self.updater.progress=self.update_progress
         self.agent=self.updater.prepare(self.agent)
@@ -81,7 +86,7 @@ class Learner:
             self.agent=restore(self.root/'checkpoints',self.agent,self.updater,self.meta['checkpoint'])
         if 'agent_rng' in self.meta:
             self.agent=self.agent.replace(rng=jax.device_put(np.asarray(self.meta['agent_rng'],np.uint32),self.agent.rng.sharding))
-        self.agent=self.agent.cache_infer_params()
+        if not self.learner_only:self.agent=self.agent.cache_infer_params()
         self.buffer=replay_buffer(self.config,self.prompt,args.capacity)
         self.rebuild()
         if 'replay_rng' in self.meta:
@@ -138,6 +143,8 @@ class Learner:
                 warmup_remaining=max(0,10-self.meta['completed_episodes']),critic_updates=self.meta['critic_updates'],
                 utd_ratio=20,seed_episodes=25,seed_steps=self.seed['frames'],online_steps=self.meta['steps'])
         value['edit_scale']=float(self.agent.edit_scale)
+        value['learner_devices']=self.num_devices
+        value['visible_gpus']=os.environ.get('CUDA_VISIBLE_DEVICES','')
         atomic_json(self.root/'status.json',value)
         return value
 
@@ -315,6 +322,7 @@ def main():
     p.add_argument('--rtc-delay',type=int,default=2)
     p.add_argument('--native-batch-update',action='store_true')
     p.add_argument('--learner-only',action='store_true')
+    p.add_argument('--num-devices',type=int,choices=(1,2),default=1)
     p.add_argument('--edit-scale',type=float)
     args=p.parse_args()
     if args.recipe=='native_sync':
