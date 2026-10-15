@@ -87,6 +87,10 @@ def limited_plan(actions, anchor, smoothing=False):
 
 
 def execution_options(raw):
+    if isinstance(raw, dict) and 'expo' in raw:
+        from online_options import normalize
+        normalize(raw['expo'])
+        raw = {key: value for key, value in raw.items() if key != 'expo'}
     if not raw or raw == {"enabled": False}:
         return {"publish_hz": 10, "rtc": True, "smoothing": False}
     if set(raw) != {"enabled", "publish_hz", "rtc", "smoothing"} or raw["enabled"] is not True:

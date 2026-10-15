@@ -18,6 +18,17 @@ class RemoteSupport:
         self.remote = json.loads(args.remote_config.read_text()) if getattr(args, "remote_config", None) else None
         if self.remote and (self.remote["model_id"] != args.model_id or self.remote["rtc_delay"] != args.rtc_delay):
             raise ValueError("Remote profile model identity mismatch")
+        raw = json.loads(os.environ.get('COBOT_EXECUTION_OPTIONS', '{"enabled":false}'))
+        if 'expo' in raw:
+            if not raw.get('enabled') or not self.remote or not self.remote.get('allow_online_options'):
+                raise ValueError('This runtime does not support configurable EXPO Online options')
+            from online_options import configured_run, normalize
+            selected = normalize(raw['expo'])
+            configured = configured_run({**self.remote, 'run_dir': str(args.run_dir)}, selected)
+            args.run_dir = Path(configured.pop('run_dir'))
+            args.rtc_delay = selected['rtc_delay']
+            self.remote = configured
+            self.remote['selected_online_options'] = selected
         self.remote_status = {"ready": False, "phase": "loading"}
         self.remote_seen = 0.
         self.remote_process = None
@@ -36,6 +47,11 @@ class RemoteSupport:
         launch=c.get('launch_name')
         if launch is not None and not re.fullmatch(r'[a-z][a-z0-9_]{0,31}',launch):raise ValueError('Invalid configured Learner name')
         command='run' if launch is None else 'run '+launch
+        if 'selected_online_options' in c:
+            if launch is None: raise ValueError('Configurable Online requires a named Learner profile')
+            from online_options import normalize
+            selected = normalize(c['selected_online_options'])
+            command += ' --rtc-delay %d --edit-scale %.2f' % (selected['rtc_delay'], selected['edit_scale'])
         return ["ssh", "-T", "-o", "BatchMode=yes", "-o", "IdentitiesOnly=yes", "-o", "ExitOnForwardFailure=yes", "-o", "ServerAliveInterval=3", "-o", "ServerAliveCountMax=2", "-o", "ConnectTimeout=8", "-i", c["identity_file"], "-L", "127.0.0.1:%d:127.0.0.1:%d" % (c.get("local_port",18453), c["remote_port"]), c["destination"], command]
 
     def validate_server_status(self, info):

@@ -32,15 +32,31 @@ def relay_command(config):
             '127.0.0.1:%d:127.0.0.1:%d' % (local_port, remote_port), destination, remote]
 
 def selected_profile(config, command):
-    if command=='run':return config
-    match=re.fullmatch(r'run ([a-z][a-z0-9_]{0,31})',command)
-    if not match or match[1] not in config.get('profiles',{}):
-        raise ValueError('Only a configured EXPO profile is allowed')
-    path=Path(config['profiles'][match[1]])
-    if not path.is_absolute():raise ValueError('Configured profile path must be absolute')
-    selected=json.loads(path.read_text())
-    if selected.get('port')!=config.get('port'):raise ValueError('Profile must use the restricted forward port')
+    if command == 'run': return config
+    match = re.fullmatch(r'run ([a-z][a-z0-9_]{0,31})(?: --rtc-delay ([1-8]) --edit-scale (0\.(?:0[1-9]|10)))?', command)
+    if not match or match[1] not in config.get('profiles', {}):
+        raise ValueError('Only a configured EXPO profile and bounded options are allowed')
+    path = Path(config['profiles'][match[1]])
+    if not path.is_absolute(): raise ValueError('Configured profile path must be absolute')
+    selected = json.loads(path.read_text())
+    if selected.get('port') != config.get('port'): raise ValueError('Profile must use the restricted forward port')
+    if match[2] is not None:
+        if not selected.get('allow_online_options') or 'relay' in selected:
+            raise ValueError('This Learner profile does not allow configurable Online parameters')
+        from online_options import configured_run
+        selected = configured_run(selected, dict(rtc_delay=int(match[2]), edit_scale=float(match[3])))
     return selected
+
+
+def learner_command(config, adapter):
+    command = [config['python'], str(adapter / 'online_learner.py'), '--project', config['project'],
+               '--bundle', config['bundle'], '--run-dir', config['run_dir'], '--port', str(config['port']),
+               '--recipe', 'native_sync', '--seed-dir', config['seed_dir'], '--deployment-id', config['model_id'],
+               '--rtc-delay', str(config['rtc_delay']), '--native-batch-update', '--learner-only']
+    if 'edit_scale' in config:
+        from sampling_config import edit_scale as validate
+        command += ['--edit-scale', str(validate(config['edit_scale']))]
+    return command
 
 
 def main():
@@ -73,10 +89,7 @@ def main():
         env.pop(key, None)
     env.update(CUDA_VISIBLE_DEVICES=gpu, XLA_PYTHON_CLIENT_PREALLOCATE="false", XLA_PYTHON_CLIENT_ALLOCATOR="platform", OMP_NUM_THREADS="4", JAX_COMPILATION_CACHE_DIR=config["cache_dir"])
     adapter = Path(__file__).resolve().parent
-    command = [config["python"], str(adapter / "online_learner.py"), "--project", config["project"], "--bundle", config["bundle"], "--run-dir", str(root), "--port", str(config["port"]), "--recipe", "native_sync", "--seed-dir", config["seed_dir"], "--deployment-id", config["model_id"], "--rtc-delay", str(config["rtc_delay"]), "--native-batch-update", "--learner-only"]
-    if 'edit_scale' in config:
-        from sampling_config import edit_scale as validate
-        command+=['--edit-scale',str(validate(config['edit_scale']))]
+    command = learner_command(config, adapter)
     process = subprocess.Popen(command, env=env, start_new_session=True)
     try:
         while process.poll() is None and not stop.wait(.5):
