@@ -1,5 +1,7 @@
 # Stage1：示范、训练输入与 Reference
 
+2026-10-15：[realtime_expo左臂RLT训练](tasks/2026-10-15-realtime-expo-rlt/TASK.md)。独立数据/输入准备完成，保持旧右臂资产不变；GPU训练等待双卡，不把CPU预检当训练完成。
+
 [全项目进度与经验](../README.md) · 更新：2026-10-11（文档整理，无新增模型能力验证）。
 
 追溯原始示范、转换/质检、真实加载器、归一化、Stage1 checkpoint 和表征；与 Warmup/Online 的输入合同衔接。

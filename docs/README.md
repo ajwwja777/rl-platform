@@ -1,5 +1,7 @@
 # RL 平台：当前进度与关键经验
 
+2026-10-15 新任务：[realtime_expo左臂RLT](stage1/tasks/2026-10-15-realtime-expo-rlt/TASK.md)已完成49示范/5922有效帧、44TRAIN/5DEV、左臂双腕10Hz与可变夹爪数据准备及CPU输入检查。用户确认全部成功，独立norm/加载器不含DEV；GPU训练未启动。全参数训练state62GiB+梯度15.5GiB，双卡目前被EXPO验证占用，HPC入口拒绝登录，等资源安排；无新权重或Online交付。
+
 2026-10-14 RLT：[Teacher5 8234离线接续检查](online/tasks/2026-10-11-online-learning-evidence/TEACHER5_PREONLINE_8234.md)：两套重复DEV保持门槛通过、149状态叶/双RNG/8vs4+4恢复精确、64输入导出差1.19e-7、14回归通过。Actor4117独立接续包已备，现场未晋升，EXPO保持；新DEV min-Q残差和单集HIL偏好仍不充分，不能声称自主收益。下次受控Online前仅沿既有切换做现场身份核验。
 
 2026-10-14 EXPO最新：[edit0.01 Online](online/tasks/2026-10-14-expo-native-sync/EDIT001_ONLINE.md)已在Web暂停加载交付，Cobot本地推理/LFT2 GPU1学习；60CPU、完整20Critic/1VLA、新进程恢复和更新后本地Actor通过。25seed/3301、online0、更新0、版本0一致，Session/传输/目录检查通过，发布0。用户反馈0.01预览近乎不抖、0.05仍抖；Online实际收益待验收。
