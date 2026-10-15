@@ -34,6 +34,7 @@ class AsyncExecution:
         self.health_lock = threading.RLock()
         self.health_started = None
         self.health_identity = None
+        self.q_monitor = None
         self.explorer = None
         self.exploration_collecting = lambda: False
         self.exploration_identity = {}
@@ -62,7 +63,16 @@ class AsyncExecution:
         self.segment_start = self.last_command = self.last_ref = None
         self.segment_ref_start = None
 
+    def monitor(self, method, *args, **kwargs):
+        # Optional diagnostics must never affect control authority or deadlines.
+        try:
+            if self.q_monitor is not None:
+                getattr(self.q_monitor, method)(*args, **kwargs)
+        except Exception:
+            pass
+
     def invalidate(self):
+        self.monitor("send", "gap")
         self.epoch += 1
         self.queue.reset()
         self.filter.reset()
@@ -81,6 +91,7 @@ class AsyncExecution:
         self.segment_ref_start = None
 
     def close(self):
+        self.monitor("close")
         self.invalidate()
         self.pool.shutdown(wait=True, cancel_futures=True)
         self.health_pool.shutdown(wait=True, cancel_futures=True)
@@ -290,6 +301,7 @@ class AsyncExecution:
         self.env._runtime.install_fresh_plan(self.env._runtime.snapshot().generation)
         self.env._io.set_chunk_ready(True)
         self.stats['inference_requests'] += 1
+        self.monitor('adopted', plan)
         return True
 
     def request_next(self, observation):
@@ -346,6 +358,7 @@ class AsyncExecution:
         self.anchors[step] = plan.start_features
         self.anchor_inputs[step] = input_identity
         self.stats['last_actual_delay_steps'] = delay
+        self.monitor('adopted', plan, actions)
 
     def _shift_clock(self, seconds):
         if seconds <= 1e-9:
@@ -650,6 +663,7 @@ class AsyncExecution:
                     source=int(source), actor_param_version=int(version), done=outcome is not None,
                     outcome=None if outcome is None else outcome.value, expert_mask=list(runtime.snapshot().expert_mask),
                     timestamp=float(after.timestamp), shadow=env._shadow_mode,
+                    collection_phase=env.current_phase_name().split(':', 1)[0],
                     execution_profile=self.name, logical_hz=self.config.logical_hz, publish_hz=self.config.publish_hz,
                     execution_settings=dict(logical_hz=self.config.logical_hz,
                         publish_hz=self.config.publish_hz, rtc=self.config.rtc,

@@ -565,3 +565,31 @@ def test_receipts_split_control_preparation_publish_and_record_cost(monkeypatch)
                 assert receipt['publish_duration_ms'] == pytest.approx(1.)
         assert np.diff([t for t, _ in io.published]).min() >= .02-1e-9
     finally:engine.close()
+
+
+def test_monitor_observes_only_accepted_plans_and_cannot_fault_control(monkeypatch):
+    engine,env,io,clock=setup(monkeypatch)
+    observed=[]
+    class Monitor:
+        def adopted(self,plan,actions=None):
+            observed.append(np.array(plan.action_chunk if actions is None else actions))
+            raise RuntimeError('diagnostic failure')
+        def send(self,*args,**kwargs):pass
+        def close(self):pass
+    engine.q_monitor=Monitor()
+    try:
+        assert engine.fresh_plan(io.sample().observation)
+        assert len(observed)==1
+        for _ in range(5):engine.queue.pop()
+        engine.request_next(io.sample().observation)
+        engine.future.result(timeout=2)
+        engine.accept_result()
+        assert len(observed)==2
+        # RTC committed prefix is scored as adopted, not the uncommitted Actor response.
+        np.testing.assert_array_equal(observed[1][:4],observed[0][5:9])
+        for _ in range(5):engine.queue.pop()
+        engine.request_next(io.sample().observation)
+        engine.future.result(timeout=2)
+        engine.invalidate();engine.accept_result()
+        assert len(observed)==2
+    finally:engine.close()

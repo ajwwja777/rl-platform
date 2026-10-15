@@ -55,6 +55,8 @@ def install():
         engine.backend = PlannerBackend(driver)
         from .exploration import attach
         attach(engine, driver)
+        from .q_monitor import attach as attach_monitor
+        attach_monitor(engine, driver)
         application = getattr(driver._env._io, "_session_application", None)
         if application is not None:
             status = application.status
@@ -64,7 +66,14 @@ def install():
     def episode(driver, episode_id):
         engine = driver._env._execution
         engine.set_episode(episode_id)
-        result = original_episode(driver, episode_id)
+        result = {}
+        try:
+            result = original_episode(driver, episode_id)
+        finally:
+            try:
+                engine.monitor('end', driver._env._io._session_application.status(), result)
+            except Exception:
+                pass
         result['execution'] = dict(engine.stats)
         return result
 

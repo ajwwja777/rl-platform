@@ -27,6 +27,7 @@ def configure_worker_backend(role: str, environ=None) -> str | None:
 
 def initialize_process(config_path: str | None = None) -> None:
     if config_path is not None:
+        os.environ["COBOT_RLT_MONITOR_CONFIG"] = str(config_path)
         from integrations.cobot_runtime.exploration_collection import validate_runtime
         validate_runtime(config_path)
     from .replay_precision import install_action_precision_patch
