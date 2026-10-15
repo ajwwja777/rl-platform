@@ -18,22 +18,29 @@ a.output.mkdir(parents=True,exist_ok=True)
 policy=load(a.checkpoint,a.output)
 result=dict(checkpoint=str(a.checkpoint),metadata=policy.metadata,split_note='TRAIN was used for Stage1; DEV reused in EXPO and RLT selection; no independent TEST',dataset_manifest_sha256=hashlib.sha256((a.data/'manifest.json').read_bytes()).hexdigest(),cohorts={})
 first=True
+effective_batch_size=a.batch_size
 for split in a.splits:
     dataset=ExpertDataset(a.data,split)
+    if first:
+        raw0=dataset[0]
+        single,zsingle=policy.predict_batch([raw0])
+        many,zmany=policy.predict_batch([raw0]*a.batch_size)
+        diff=np.max(np.abs(single[0]-many[0]),axis=0)
+        passed=bool(diff[:6].max()<=1e-3 and diff[6]<=1e-4)
+        result['batch_consistency']=dict(requested_batch_size=a.batch_size,
+            physical_max_abs_per_dim=diff.tolist(),token_max_abs=float(np.max(np.abs(zsingle[0]-zmany[0]))),
+            passed=passed,action='requested_batch' if passed else 'fallback_to_deployed_single_observation')
+        effective_batch_size=a.batch_size if passed else 1
+        result['effective_batch_size']=effective_batch_size
+        (a.output/'batch-consistency.json').write_text(json.dumps(result,indent=2))
+        print(json.dumps(result['batch_consistency']),flush=True)
+        first=False
     for identity in dataset.identities:
         uuid=identity['uuid'];indices=[i for i,row in enumerate(dataset.rows) if row[0]==uuid]
         predictions=[];tokens=[];targets=[];valid=[];timings=[];frame_indices=[];states=[]
-        for offset in range(0,len(indices),a.batch_size):
-            selected=indices[offset:offset+a.batch_size];raw=[dataset[i] for i in selected]
-            batch=raw+[raw[-1]]*(a.batch_size-len(raw))
-            if first:
-                single,zsingle=policy.predict_batch([raw[0]])
-                many,zmany=policy.predict_batch([raw[0]]*a.batch_size)
-                diff=np.max(np.abs(single[0]-many[0]),axis=0)
-                result['batch_single_physical_max_abs_per_dim']=diff.tolist()
-                result['batch_single_token_max_abs']=float(np.max(np.abs(zsingle[0]-zmany[0])))
-                if diff[:6].max()>1e-3 or diff[6]>1e-4:raise ValueError('batch/single prediction disagreement exceeds 1mrad/0.1mm gate')
-                first=False
+        for offset in range(0,len(indices),effective_batch_size):
+            selected=indices[offset:offset+effective_batch_size];raw=[dataset[i] for i in selected]
+            batch=raw+[raw[-1]]*(effective_batch_size-len(raw))
             start=time.perf_counter();pred,z=policy.predict_batch(batch);timings.append(time.perf_counter()-start)
             predictions.append(pred[:len(raw)]);tokens.append(z[:len(raw)])
             for i,row in zip(selected,raw):
