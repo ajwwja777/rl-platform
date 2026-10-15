@@ -2,7 +2,7 @@
 
 2026-10-15 EXPO：[5回合批量更新与双卡](online/tasks/2026-10-14-expo-native-sync/BATCH5_DUAL_GPU.md)已安装为可选入口；184CPU/102前端、真实20/1、3/5跨进程接续、单/双卡恢复及Cobot受限SSH通过。接续Online11/220Critic/11VLA/Replay5225；当前SFT1172181固定评测保持。同步批末仍等待，总梯度预算不减；双卡训练不逐位等价，真机收益待验收。
 
-2026-10-15 新任务：[realtime_expo左臂RLT](stage1/tasks/2026-10-15-realtime-expo-rlt/TASK.md)已完成49示范/5922有效帧、44TRAIN/5DEV、左臂双腕10Hz与可变夹爪数据准备及CPU输入检查。用户确认全部成功，独立norm/加载器不含DEV；GPU训练未启动。全参数训练state62GiB+梯度15.5GiB，双卡目前被EXPO验证占用，HPC入口拒绝登录，等资源安排；无新权重或Online交付。
+2026-10-15 新任务：[realtime_expo左臂RLT](stage1/tasks/2026-10-15-realtime-expo-rlt/TASK.md)：49成功人工示范，44TRAIN/5重复DEV、双腕224RGB、左臂10Hz与可变夹爪。HPC短训恢复、591帧单条评测、RTC无ROS推理通过；首个正式任务NCCL失败，4卡重试721065排队，721154依赖自动选型。93+7+5项CPU检查通过；尚无最终Stage1/Warmup或Web Online交付。[当前状态](stage1/tasks/2026-10-15-realtime-expo-rlt/STATUS.md)。
 
 2026-10-14 RLT：[Teacher5 8234离线接续检查](online/tasks/2026-10-11-online-learning-evidence/TEACHER5_PREONLINE_8234.md)：两套重复DEV保持门槛通过、149状态叶/双RNG/8vs4+4恢复精确、64输入导出差1.19e-7、14回归通过。Actor4117独立接续包已备，现场未晋升，EXPO保持；新DEV min-Q残差和单集HIL偏好仍不充分，不能声称自主收益。下次受控Online前仅沿既有切换做现场身份核验。
 

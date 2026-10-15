@@ -1,6 +1,6 @@
 # realtime_expo 左臂RLT训练（2026-10-15）
 
-状态：短训/恢复通过；首个正式作业720997初始化NCCL失败。4卡重试721065排队，单卡评测721070暴露批量推理一致性失败，正在修复。真实进度见[STATUS](STATUS.md)。未交付新Online权重。
+状态：HPC短训/恢复、部署一致单条评测及RTC推理已通过；正式4卡重试721065排队，自动多checkpoint评测721154等待前序成功。左臂双腕/10Hz执行适配93项、选型7项、专家种子5项CPU检查通过。未交付Online权重；实时入口[STATUS](STATUS.md)。
 
 ## 任务与范围
 
@@ -42,7 +42,7 @@ PY=$B/scratch/rl-platform/realtime-expo-rlt-20261015/env/bin/python
 CUDA_VISIBLE_DEVICES=0,1 XLA_PYTHON_CLIENT_MEM_FRACTION=0.90 OMP_NUM_THREADS=8 "$PY" "$W/scripts/train_realtime_expo_rlt.py" train --assets "$P" --data "$O/inputs" --output "$O/stage1" --base /data/LFT-W02_data/jiaan/scratch/cobot-realworld-rl/assets/pi05_base/params
 ```
 
-唯一下一步是完成已授权HPC四卡迁移核验/Slurm申请，再执行真实小步/保存恢复验证与正式Stage1；不足时调整batch并记录，不改算法挤单卡。之后才可提取同权重z_rl/reference、构建独立10Hz Warmup Replay、训练Actor/Critic并离线验证，最后实现独立左臂10Hz/可变夹爪的RLT部署入口。当前右臂运行器有硬编码，尚未适配，不得把本次新权重将来直接挂到右臂入口。没有自主失败样本/独立TEST，能力评估限制保留。
+下一步由已提交721065完成正式Stage1，成功后721154自动评测五候选并准备独立专家种子。短训和RTC已验证，不重复执行初次数据转换/申请；具体失败历史、当前资源和未完成交付见STATUS。后续Warmup/Online保留左臂、双腕、10Hz、可变夹爪合同，不直接挂旧右臂入口。
 
 本批HPC作业已启动，是否完成真实更新以STATUS和运行日志为准；尚无已验证新权重或现场部署，不要使用“训练完成”或“可以Online”描述。
 

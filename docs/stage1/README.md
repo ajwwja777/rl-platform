@@ -1,6 +1,6 @@
 # Stage1：示范、训练输入与 Reference
 
-2026-10-15：[realtime_expo左臂RLT训练](tasks/2026-10-15-realtime-expo-rlt/TASK.md)。独立数据/输入准备完成，保持旧右臂资产不变；GPU训练等待双卡，不把CPU预检当训练完成。
+2026-10-15：[realtime_expo左臂RLT训练](tasks/2026-10-15-realtime-expo-rlt/TASK.md)。短训/恢复、双腕单条GPU评测与RTC接口验证通过；正式4卡721065排队，自动五checkpoint比较721154等待依赖。选型固定部署一致batch1，旧右臂/EXPO与现场保持；详细失败、资源与待办见[STATUS](tasks/2026-10-15-realtime-expo-rlt/STATUS.md)。
 
 [全项目进度与经验](../README.md) · 更新：2026-10-11（文档整理，无新增模型能力验证）。
 
