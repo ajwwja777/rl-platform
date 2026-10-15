@@ -48,11 +48,24 @@ def selected_profile(config, command):
     return selected
 
 
+def select_gpus(config, is_busy):
+    candidates=config.get('gpu_candidates',[config['gpu']])
+    maximum=config.get('max_devices',1)
+    if (not isinstance(candidates,list) or not candidates or maximum not in (1,2)
+            or any(type(x) is not int or x<0 for x in candidates)
+            or len(set(candidates))!=len(candidates)):
+        raise ValueError('Invalid EXPO GPU selection')
+    free=[gpu for gpu in candidates if not is_busy(gpu)]
+    if not free:raise RuntimeError('Reserved EXPO GPUs are already in use')
+    return free[:maximum]
 def learner_command(config, adapter):
     command = [config['python'], str(adapter / 'online_learner.py'), '--project', config['project'],
                '--bundle', config['bundle'], '--run-dir', config['run_dir'], '--port', str(config['port']),
                '--recipe', 'native_sync', '--seed-dir', config['seed_dir'], '--deployment-id', config['model_id'],
                '--rtc-delay', str(config['rtc_delay']), '--native-batch-update', '--learner-only']
+    episodes=config.get('episodes_per_update',1)
+    if type(episodes) is not int or episodes<1:raise ValueError('Invalid episode batch size')
+    command += ['--episodes-per-update',str(episodes)]
     if 'edit_scale' in config:
         from sampling_config import edit_scale as validate
         command += ['--edit-scale', str(validate(config['edit_scale']))]
@@ -72,10 +85,11 @@ def main():
     root.mkdir(parents=True, exist_ok=True)
     owner = (root / "owner.lock").open("a")
     fcntl.flock(owner.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-    gpu = str(config["gpu"])
-    check = subprocess.run(["nvidia-smi", "-i", gpu, "--query-compute-apps=pid", "--format=csv,noheader,nounits"], capture_output=True, text=True, check=True, timeout=10)
-    if check.stdout.strip():
-        raise RuntimeError("Reserved EXPO GPU is already in use")
+    def is_busy(gpu):
+        check=subprocess.run(["nvidia-smi","-i",str(gpu),"--query-compute-apps=pid","--format=csv,noheader,nounits"],capture_output=True,text=True,check=True,timeout=10)
+        return bool(check.stdout.strip())
+    selected=select_gpus(config,is_busy)
+    gpu=','.join(map(str,selected))
     stop = threading.Event()
     for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
         signal.signal(sig, lambda *_: stop.set())
@@ -90,6 +104,8 @@ def main():
     env.update(CUDA_VISIBLE_DEVICES=gpu, XLA_PYTHON_CLIENT_PREALLOCATE="false", XLA_PYTHON_CLIENT_ALLOCATOR="platform", OMP_NUM_THREADS="4", JAX_COMPILATION_CACHE_DIR=config["cache_dir"])
     adapter = Path(__file__).resolve().parent
     command = learner_command(config, adapter)
+    command+=['--num-devices',str(len(selected))]
+    print('EXPO Learner CUDA_VISIBLE_DEVICES='+gpu,flush=True)
     process = subprocess.Popen(command, env=env, start_new_session=True)
     try:
         while process.poll() is None and not stop.wait(.5):

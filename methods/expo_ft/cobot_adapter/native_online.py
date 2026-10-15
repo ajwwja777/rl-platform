@@ -39,7 +39,7 @@ def configuration(bundle, delay, aligned=False, edit_scale=None):
     return config
 
 
-def load_native(bundle, delay=4, resume=False, aligned=False, edit_scale=None):
+def load_native(bundle, delay=4, resume=False, aligned=False, edit_scale=None, num_devices=1):
     import jax
     import openpi.training.sharding as sharding
     from configs.task.cobot_plug import get_config as task_config
@@ -48,8 +48,8 @@ def load_native(bundle, delay=4, resume=False, aligned=False, edit_scale=None):
     contract = json.loads((bundle / "deployment.json").read_text())
     if (contract["active_arm"], contract["control_hz"], contract["action_horizon"]) != ("left", 10, 16):
         raise ValueError("EXPO online requires the verified left-arm10Hz/H16 bundle")
-    if jax.default_backend() != "gpu" or jax.device_count() != 1:
-        raise RuntimeError("Reserve exactly one GPU for native EXPO online")
+    if num_devices not in (1, 2) or jax.default_backend() != "gpu" or jax.device_count() != num_devices:
+        raise RuntimeError("Reserve the requested one or two GPUs for native EXPO online")
     config = configuration(bundle, delay, aligned, edit_scale)
     mesh = sharding.make_mesh(1)
     data = jax.sharding.NamedSharding(mesh, jax.sharding.PartitionSpec(sharding.DATA_AXIS))
@@ -62,6 +62,8 @@ def load_native(bundle, delay=4, resume=False, aligned=False, edit_scale=None):
     agent = load_agent(42, np.zeros((224,224,6), np.float32), np.zeros((16,7), np.float32),
                        np.zeros(7, np.float32), actor, state, target, kwargs, metadata,
                        mesh, data, replicated, resume, 8, prompt, False)
+    if num_devices > 1:
+        agent = jax.device_put(agent, replicated)
     return agent, config, prompt
 
 

@@ -28,3 +28,21 @@ def test_named_profile_requires_explicit_allowlist_and_fixed_port(tmp_path):
   with pytest.raises(ValueError):module.selected_profile(c,command)
  profile.write_text(json.dumps({'port':18444}))
  with pytest.raises(ValueError):module.selected_profile(c,'run edit001')
+
+
+def test_gpu_selection_uses_only_free_candidates_and_preserves_single_default():
+ assert module.select_gpus({'gpu':1},lambda _:False)==[1]
+ c={'gpu':1,'gpu_candidates':[1,0],'max_devices':2}
+ assert module.select_gpus(c,lambda _:False)==[1,0]
+ assert module.select_gpus(c,lambda x:x==0)==[1]
+ assert module.select_gpus(c,lambda x:x==1)==[0]
+ with pytest.raises(RuntimeError):module.select_gpus(c,lambda _:True)
+
+@pytest.mark.parametrize('c',[
+ {'gpu':1,'gpu_candidates':[1,1],'max_devices':2},
+ {'gpu':1,'gpu_candidates':['0;bad'],'max_devices':2},
+ {'gpu':1,'gpu_candidates':[],'max_devices':2},
+ {'gpu':1,'gpu_candidates':[0,1],'max_devices':3},
+])
+def test_gpu_selection_rejects_ambiguous_configuration(c):
+ with pytest.raises(ValueError):module.select_gpus(c,lambda _:False)

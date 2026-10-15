@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import uuid
 import numpy as np
+from device_layout import buffer_identity
 
 
 def save(root,agent,updater,step):
@@ -12,13 +13,13 @@ def save(root,agent,updater,step):
     root=Path(root);root.mkdir(parents=True,exist_ok=True)
     destination=root/str(step)
     temporary=root/('.pending-'+str(uuid.uuid4()));temporary.mkdir()
-    frozen={x.unsafe_buffer_pointer() for x in jax.tree.leaves(agent.actor.get_params(agent.actor_train_state).filter(updater.frozen))}
+    frozen={buffer_identity(x) for x in jax.tree.leaves(agent.actor.get_params(agent.actor_train_state).filter(updater.frozen))}
     records=[]
     for section,tree in [('agent',agent.replace(_infer_cache=None)),('target',updater.target)]:
         for index,(path,value) in enumerate(jax.tree_util.tree_flatten_with_path(tree)[0]):
             if section=='agent' and not hasattr(value,'dtype'):value=jax.numpy.asarray(value)
             record=dict(section=section,index=index,path=jax.tree_util.keystr(path),shape=list(np.shape(value)),dtype=str(value.dtype) if hasattr(value,'dtype') else str(np.asarray(value).dtype))
-            if isinstance(value,jax.Array) and value.unsafe_buffer_pointer() in frozen:
+            if isinstance(value,jax.Array) and buffer_identity(value) in frozen:
                 record['seed']=True
             else:
                 name=section+'-'+str(index)+'.bin';record['file']=name
@@ -63,7 +64,7 @@ def restore(root,agent,updater,step):
                 for chunk in iter(lambda:stream.read(4*1024*1024),b''):digest.update(chunk)
             if digest.hexdigest()!=record['sha256']:raise ValueError('Checkpoint checksum mismatch')
             value=np.fromfile(filename,dtype=dtype).reshape(np.shape(template))
-            if section=='agent':value=jax.device_put(value,agent.rng.sharding);jax.block_until_ready(value)
+            if section=='agent':value=jax.device_put(value,template.sharding if isinstance(template,jax.Array) else agent.rng.sharding);jax.block_until_ready(value)
             values.append(value)
         restored[section]=jax.tree_util.tree_unflatten(structure,values)
     updater.target=restored['target']

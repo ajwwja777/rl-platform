@@ -57,6 +57,8 @@ class RemoteSupport:
     def validate_server_status(self, info):
         if self.remote and (info.get("deployment_id") != self.args.model_id or info.get("rtc_delay") != self.args.rtc_delay or info.get("update_layout") != "native_full_batch"):
             raise RuntimeError("Remote learner identity mismatch")
+        if self.remote and info.get('episodes_per_update',1)!=self.remote.get('episodes_per_update',1):
+            raise RuntimeError('Remote learner episode batch size mismatch')
         if self.remote and 'edit_scale' in self.remote and info.get('edit_scale')!=self.remote['edit_scale']:
             raise RuntimeError('Remote learner edit scale mismatch')
 
@@ -85,7 +87,10 @@ class RemoteSupport:
 
     def remote_online_status(self):
         value = dict(self.remote_status)
-        value["compute_host"] = "Learner %s / Actor Cobot" % self.remote.get("learner_host", "A6000")
+        host=self.remote.get("learner_host", "A6000")
+        if value.get('learner_devices') and value.get('visible_gpus'):
+            host=re.sub(r'\s*GPU[0-9, ]+$','',host)+' GPU '+value['visible_gpus']
+        value["compute_host"] = "Learner %s / Actor Cobot" % host
         value["served_actor_version"] = self.local_actor_version
         if value.get("ready") and value.get("actor_version") != self.local_actor_version:
             value.update(ready=False,phase="publishing")
@@ -182,6 +187,10 @@ class RemoteSupport:
         version=manifest["actor_version"]
         if type(version) is not int or version<0:raise ValueError("Invalid Actor version")
         directory=self.actor_root/str(version);directory.mkdir(parents=True,exist_ok=True)
+        if version==getattr(self,'local_actor_version',-1):
+            cached=json.loads((directory/'manifest.json').read_text())
+            if cached!=manifest:raise ValueError('Already installed Actor manifest changed')
+            return directory,manifest
         records=[record for record in manifest["records"] if not record.get("seed")]
         if sum(record["bytes"] for record in records)>3*1024**3:raise ValueError("Actor snapshot exceeds budget")
         for record in records:

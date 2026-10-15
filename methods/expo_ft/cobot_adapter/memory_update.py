@@ -1,4 +1,4 @@
-"""Single-device buffer donation around the unchanged native EXPO update.
+"""Single-host buffer donation around the unchanged native EXPO update.
 
 Native update receives self and agent; targets can initially alias online params.
 Deduplicate physical input buffers before donation, reconstruct the exact agent
@@ -7,20 +7,25 @@ The old agent MUST NOT be used after this call, including on update failure.
 """
 import jax
 import numpy as np
+from device_layout import buffer_identity
 
 _COMPILED = {}
 
 
-def donated_update(agent, batch, utd_ratio=1, actor_batch=None):
+def donated_update(agent, batch, utd_ratio=1, actor_batch=None, *, cache_inference=True):
     from expo_ft.agents.alg.realtime_expo_ft import RealTimeEXPOFTLearner
     agent = agent.replace(_infer_cache=None)
+    if len(agent.data_sharding.device_set) > 1:
+        replicated = agent.actor.replicated_sharding
+        def place(x):
+            return jax.device_put(x, agent.data_sharding if np.ndim(x) else replicated)
+        batch = jax.tree.map(place, batch)
+        actor_batch = jax.tree.map(place, actor_batch)
     leaves, structure = jax.tree_util.tree_flatten(agent)
     unique, indices, seen = [], [], {}
     for leaf in leaves:
         if isinstance(leaf, jax.Array):
-            if len(leaf.devices()) != 1:
-                raise ValueError("Donated EXPO update requires one GPU")
-            key = (leaf.unsafe_buffer_pointer(), leaf.shape, str(leaf.dtype))
+            key = buffer_identity(leaf)
         else:
             key = ('scalar',len(unique))
             leaf = jax.numpy.asarray(leaf)
@@ -37,7 +42,17 @@ def donated_update(agent, batch, utd_ratio=1, actor_batch=None):
                 current, current, critic_batch, utd_ratio, success_batch, train_actor=train_actor)
         _COMPILED[key] = jax.jit(update, donate_argnums=(0,))
     updated, info = _COMPILED[key](tuple(unique), batch, actor_batch)
-    return updated.cache_infer_params(), info
+    return (updated.cache_infer_params() if cache_inference else updated), info
+
+
+def host_ema(tau):
+    import optax
+    # Multi-device placement makes tau a donated device buffer. Capture an owned
+    # host scalar before the first update so lazy CPU compilation cannot read it
+    # after donation has invalidated the original agent.
+    tau=np.array(jax.device_get(tau),copy=True)
+    return jax.jit(lambda new,old:optax.incremental_update(new,old,tau),
+                   donate_argnums=(1,),backend='cpu')
 
 
 class HostTargetUpdater:
@@ -82,12 +97,10 @@ class HostTargetUpdater:
         frozen_target=agent.target_actor_params.filter(self.frozen)
         frozen_actor=agent.actor.get_params(agent.actor_train_state).filter(self.frozen)
         for old,current in zip(jax.tree.leaves(frozen_target),jax.tree.leaves(frozen_actor)):
-            if old.unsafe_buffer_pointer()!=current.unsafe_buffer_pointer() and not bool(jax.numpy.all(old==current)):
+            if buffer_identity(old)!=buffer_identity(current) and not bool(jax.numpy.all(old==current)):
                 raise ValueError('Frozen target Actor differs from seed; cannot share frozen weights')
         self.target=jax.tree.map(lambda x:np.array(x,copy=True),jax.device_get(agent.target_actor_params.filter(self.trainable)))
-        tau=agent.actor_tau
-        self.ema=jax.jit(lambda new,old:optax.incremental_update(new,old,tau),
-                         donate_argnums=(1,),backend='cpu')
+        self.ema=host_ema(agent.actor_tau)
 
     def prepare(self,agent):
         return self.agent_type(**{name:(None if name in ('target_actor_params','_infer_cache') else getattr(agent,name)) for name in self.fields})
@@ -97,7 +110,8 @@ class HostTargetUpdater:
             from split_update import update
             agent,info=update(agent,batch,utd_ratio,actor_batch,progress=getattr(self,'progress',None))
         else:
-            agent,info=donated_update(agent,batch,utd_ratio,actor_batch)
+            agent,info=donated_update(agent,batch,utd_ratio,actor_batch,
+                                      cache_inference=getattr(self,"cache_inference",True))
         if agent.train_base_actor:
             # Bound host memory as well: never copy another full VLA onto CPU.
             current=agent.actor.get_params(agent.actor_train_state).filter(self.trainable)
