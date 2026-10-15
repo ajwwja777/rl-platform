@@ -50,3 +50,12 @@
 `field-install.json`记录安装前后Runtime1172181与started_at不变；`field-catalog-check.txt`确认新方法available/train=true；`restricted-check.json`确认Cobot→LFT2正式受限SSH、参数d5/edit0.01/batch5、实际GPU1,0和状态11/220/11/5225。关闭自己的SSH输入后launcher终止其空闲Learner（SSH返回241对应子进程SIGTERM，为本次主动卸载），不重启当前SFT。前端HTTP实际返回含批次计数的新JS。安装备份位于Cobot `rl-platform/runtime/verification/batch5-20261015/before/`。
 
 用户完成当前固定SFT成功率测试后，释放当前模型、刷新网页，选择EXPO / realtime-expo-ft-edit001-batch5 / 2000并加载、开始Session。沿用成功/失败结束及HIL；未满5轮结束Session会保留批次，下次继续，满5轮仍需等待同步训练/权重安装完成。最后成功率与更新速度需真实批次衡量；本交付不声称学习收益已经通过。
+
+
+## 2026-10-15 Web readiness regression fix
+
+The first real batch5 Web load exposed a validation-hook bug: Runtime.start_server polls the local inference-only Actor, but RemoteSupport.validate_server_status also enforced the remote Learner episodes_per_update=5 contract. Actor status intentionally has no training batch field, so the default 1 caused a false mismatch. Earlier restricted SSH readiness verification covered the Learner only and missed this local startup path.
+
+Separate local Actor readiness validation from remote Learner validation. Both retain model/RTC/edit identity checks and now check their explicit training roles. Only remote startup and polling enforce the Learner batch contract. No checkpoint, Replay, sampling, or training contract changes. Regression coverage executes OnlineRuntime.start_server through the real inherited Runtime hook for batch1/batch5, and rejects wrong remote batch on both startup and polling. Full EXPO CPU suite: 188 passed (one existing JAX deprecation warning). Actual paused Web load verification follows installation; no robot episode is started by the verifier.
+
+2026-10-15 actual Web load passed after SHA256-verified installation (fix05299bd, integration ef025d3). Failed runtime released and same batch5 entry loaded through Web API. Runtime1252867 paused/model_ready=true, session_active=false; local Actor training_enabled=false/version11. Remote Learner2288698 ready on LFT2 GPU1,0 (2 devices), episodes_per_update=5, collected0/remaining5. Critic220/VLA11/Replay5225 unchanged. No episode, inference resume, or robot motion requested. 188 CPU tests passed. Evidence: outputs/expo-native-remote-20261014/verification/edit001-online/batch5/readiness-fix-field.json and readiness-fix-tests.log; Cobot runtime/verification/batch5-20261015/readiness-fix-install.json. User can start Session on the loaded model; real rollout/HIL quality acceptance remains user-operated.

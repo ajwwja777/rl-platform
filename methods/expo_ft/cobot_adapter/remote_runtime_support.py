@@ -54,20 +54,32 @@ class RemoteSupport:
             command += ' --rtc-delay %d --edit-scale %.2f' % (selected['rtc_delay'], selected['edit_scale'])
         return ["ssh", "-T", "-o", "BatchMode=yes", "-o", "IdentitiesOnly=yes", "-o", "ExitOnForwardFailure=yes", "-o", "ServerAliveInterval=3", "-o", "ServerAliveCountMax=2", "-o", "ConnectTimeout=8", "-i", c["identity_file"], "-L", "127.0.0.1:%d:127.0.0.1:%d" % (c.get("local_port",18453), c["remote_port"]), c["destination"], command]
 
+    def validate_identity(self, info, role):
+        if info.get("deployment_id") != self.args.model_id or info.get("rtc_delay") != self.args.rtc_delay or info.get("update_layout") != "native_full_batch":
+            raise RuntimeError("%s identity mismatch" % role)
+        if 'edit_scale' in self.remote and info.get('edit_scale') != self.remote['edit_scale']:
+            raise RuntimeError('%s edit scale mismatch' % role)
+
     def validate_server_status(self, info):
-        if self.remote and (info.get("deployment_id") != self.args.model_id or info.get("rtc_delay") != self.args.rtc_delay or info.get("update_layout") != "native_full_batch"):
-            raise RuntimeError("Remote learner identity mismatch")
-        if self.remote and info.get('episodes_per_update',1)!=self.remote.get('episodes_per_update',1):
+        # Runtime.start_server polls the local inference-only Actor, not the Learner.
+        if self.remote:
+            self.validate_identity(info, 'Local Actor')
+            if info.get('training_enabled') is not False:
+                raise RuntimeError('Local Actor role mismatch')
+
+    def validate_remote_status(self, info):
+        self.validate_identity(info, 'Remote learner')
+        if info.get('training_enabled') is not True:
+            raise RuntimeError('Remote learner role mismatch')
+        if info.get('episodes_per_update', 1) != self.remote.get('episodes_per_update', 1):
             raise RuntimeError('Remote learner episode batch size mismatch')
-        if self.remote and 'edit_scale' in self.remote and info.get('edit_scale')!=self.remote['edit_scale']:
-            raise RuntimeError('Remote learner edit scale mismatch')
 
     def remote_poll(self):
         while not self.stop.wait(.5):
             try:
                 with self.rpc.open("http://127.0.0.1:%d/status" % self.remote.get("local_port",18453), timeout=5 if self.transfer else 1) as response:
                     value = json.load(response)
-                self.validate_server_status(value)
+                self.validate_remote_status(value)
                 self.remote_status = value
                 self.remote_seen = time.monotonic()
             except RuntimeError as exc:
@@ -241,7 +253,7 @@ class RemoteSupport:
             if time.monotonic()>deadline:raise TimeoutError('Remote Learner load timed out')
             try:
                 with self.rpc.open('http://127.0.0.1:%d/status'%port,timeout=2) as response:value=json.load(response)
-                self.validate_server_status(value)
+                self.validate_remote_status(value)
                 if value['ready']:
                     self.remote_status=value
                     return self.download_actor()[0]

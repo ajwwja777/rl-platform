@@ -22,10 +22,10 @@ def test_default_actor_contract_preserved_and_candidate_isolated(tmp_path):
 
 def test_remote_rejects_different_scale():
  remote=RemoteSupport();remote.remote={'edit_scale':.01};remote.args=SimpleNamespace(model_id='test',rtc_delay=5)
- info=dict(deployment_id='test',rtc_delay=5,update_layout='native_full_batch',edit_scale=.01)
- remote.validate_server_status(info)
+ info=dict(deployment_id='test',rtc_delay=5,update_layout='native_full_batch',edit_scale=.01,training_enabled=True)
+ remote.validate_remote_status(info)
  for value in (.1,None):
-  with pytest.raises(RuntimeError,match='scale'):remote.validate_server_status({**info,'edit_scale':value})
+  with pytest.raises(RuntimeError,match='scale'):remote.validate_remote_status({**info,'edit_scale':value})
 
 
 def test_concurrent_status_writes_use_distinct_temporary_files(tmp_path,monkeypatch):
