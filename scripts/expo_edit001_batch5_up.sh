@@ -18,4 +18,4 @@ source /home/agilex/cobot_magic/Piper_ros_private-ros-noetic/devel/setup.bash
 set -u
 exec /usr/bin/python3 "$root/methods/expo_ft/cobot_adapter/online_runtime.py" \
  --bundle "$bundle" --project "$project" --run-dir "$run_dir" --model-id "$model" \
- --recipe native_sync --rtc-delay 5 --remote-config "$profile"
+ --recipe native_sync --rtc-delay 5 --remote-config "$profile" --gripper-feedback

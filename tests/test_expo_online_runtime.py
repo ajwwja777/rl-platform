@@ -127,3 +127,29 @@ def test_remote_batch_mismatch_rejected_on_both_status_paths(monkeypatch, path):
         remote.remote_poll()
         assert errors == ['Remote learner episode batch size mismatch']
         assert remote.remote_status['phase'] == 'fault'
+
+
+def test_feedback_execution_provenance_survives_episode_finish(runtime):
+    runtime.args.gripper_feedback=True
+    identity=str(uuid4());post(runtime,'/episode/start',episode_uuid=identity)
+    started=json.loads((runtime.journal.root/identity/'started.json').read_text())
+    assert started['execution_profile']=='gripper_feedback_v1'
+    assert started['actor_version']==4
+    post(runtime,'/episode/end',episode_uuid=identity,outcome='failure')
+    finished=json.loads((runtime.journal.root/identity/'finished.json').read_text())
+    assert finished['execution_profile']=='gripper_feedback_v1'
+    assert finished['outcome']=='failure'
+
+
+def test_corrected_coordinator_command_is_recorded_without_relimiting(runtime):
+    import numpy as np
+    runtime.args.gripper_feedback=True
+    identity=str(uuid4());post(runtime,'/episode/start',episode_uuid=identity)
+    obs={'state':np.array([0.]*6+[.027]),'left_wrist_image':np.ones((180,320,3),np.uint8)*10,'right_wrist_image':np.ones((180,320,3),np.uint8)*20}
+    corrected=np.array([0.]*6+[.031],np.float32)
+    runtime.journal.sample(obs,corrected,1.,False)
+    runtime.journal.sample(obs,corrected,1.1,False)
+    with np.load(runtime.journal.root/identity/'000000.npz') as data:
+        np.testing.assert_array_equal(data['actions'],corrected)
+        assert data['state'][6]==pytest.approx(.027)
+    post(runtime,'/episode/end',episode_uuid=identity,outcome='failure')

@@ -69,7 +69,7 @@ def fixture(monkeypatch, takeover_after=None):
     mod=importlib.util.module_from_spec(spec);spec.loader.exec_module(mod)
     v,calls,published=mod._loop_fixture(monkeypatch,delay=5,takeover_after=takeover_after)
     v.args=SimpleNamespace(model_id='expo-plug-actor11-gripper-feedback')
-    for name in ('make_plan','prepare_plan','interpolate_command'):
+    for name in ('feedback_enabled','make_plan','prepare_plan','interpolate_command'):
         setattr(v,name,MethodType(getattr(PreviewRuntime,name),v))
     state=SimpleNamespace(position=[0]*6+[.027],header=SimpleNamespace(stamp=SimpleNamespace(to_sec=lambda:0.)))
     v.samples['state']=(state,100.)
@@ -99,3 +99,18 @@ def test_preview_rejects_wrong_version_or_training_identity():
     v.validate_server_status(s)
     for key,bad in [('actor_version',0),('training_enabled',True),('edit_scale',.05)]:
         with pytest.raises(RuntimeError):v.validate_server_status({**s,key:bad})
+
+@pytest.mark.parametrize('enabled',[False,True])
+def test_online_full_loop_uses_opt_in_and_matching_rtc_prefix(monkeypatch,enabled):
+    from online_runtime import OnlineRuntime
+    from gripper_feedback import FeedbackExecution
+    v,calls,published=fixture(monkeypatch)
+    v.__class__=OnlineRuntime
+    v.args=SimpleNamespace(model_id='expo-plug-left-2cam-edit001-batch5-2000',gripper_feedback=enabled)
+    for name in ('feedback_enabled','make_plan','prepare_plan','interpolate_command'):
+        delattr(v,name)
+    v.resolve_inference=lambda value:value
+    v.run()
+    assert len(published)==16
+    assert published[0][6]==pytest.approx(.029 if enabled else .002)
+    np.testing.assert_allclose(calls[1],np.asarray(published)[[7,9,11,13,15]],atol=1e-7)

@@ -11,12 +11,13 @@ from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 from urllib.request import Request
 import numpy as np
 from ros_runtime import Runtime
+from gripper_feedback import FeedbackExecution
 from episode_journal import EpisodeJournal
-from online_protocol import episode_id
+from online_protocol import episode_id, atomic_json
 from remote_runtime_support import RemoteSupport
 
 
-class OnlineRuntime(RemoteSupport, Runtime):
+class OnlineRuntime(FeedbackExecution, RemoteSupport, Runtime):
     def __init__(self,args,ros):
         self.remote_init(args)
         self.journal=EpisodeJournal(args.run_dir/'episodes')
@@ -47,7 +48,7 @@ class OnlineRuntime(RemoteSupport, Runtime):
                         if (runtime.journal.root/identity).exists() and not runtime.journal.active:
                             raise ValueError('Episode already exists; recover its outcome before restarting')
                         value=runtime.json_rpc('/episode/start',{'episode_uuid':identity})
-                        runtime.journal.begin(identity,value['actor_version'])
+                        runtime.begin_journal(identity,value['actor_version'])
                         runtime.episode=identity
                     elif self.path=='/episode/end':
                         if not runtime.gate.paused:raise ValueError('Pause before finishing an episode')
@@ -70,6 +71,14 @@ class OnlineRuntime(RemoteSupport, Runtime):
         threading.Thread(target=self.collect,daemon=True).start()
         if self.remote:threading.Thread(target=self.remote_poll,daemon=True).start()
 
+    def begin_journal(self, identity, version):
+        with self.journal.lock:
+            value = self.journal.begin(identity, version)
+            if self.feedback_enabled():
+                self.journal.active['execution_profile'] = 'gripper_feedback_v1'
+                atomic_json(self.journal.root/identity/'started.json', self.journal.active)
+            return value
+
     def start_server(self):
         super().start_server()
         if self.remote:
@@ -78,7 +87,7 @@ class OnlineRuntime(RemoteSupport, Runtime):
             threading.Thread(target=self.upload_episode,args=(self.transfer['episode_uuid'],),daemon=True).start()
 
     def status_extra(self):
-        if self.remote:return {'online':self.remote_online_status(),'episode_uuid':self.episode}
+        if self.remote:return {'online':self.remote_online_status(),'episode_uuid':self.episode, 'gripper_feedback':self.feedback_enabled(), 'execution_profile':'gripper_feedback_v1' if self.feedback_enabled() else 'gripper_previous_command_v1'}
         try:value=json.loads((self.args.run_dir/'status.json').read_text())
         except (OSError,ValueError):value={'phase':'loading','ready':False}
         return {'online':value,'episode_uuid':self.episode}
@@ -172,6 +181,7 @@ def main():
     p.add_argument('--seed-dir',type=Path)
     p.add_argument('--remote-config',type=Path)
     p.add_argument('--rtc-delay',type=int,default=2)
+    p.add_argument('--gripper-feedback',action='store_true')
     args=p.parse_args()
     if args.recipe=='native_sync' and args.seed_dir is None and args.remote_config is None:p.error('native_sync requires --seed-dir')
     import rospy
