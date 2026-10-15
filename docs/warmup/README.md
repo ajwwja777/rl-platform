@@ -6,6 +6,8 @@
 
 ## 现状与边界
 
+- 2026-10-15 [realtime_expo先采Reference再Warmup](tasks/2026-10-15-reference-rollout-first/TASK.md)：纯专家7k只保留对照，不能代替含真实rollout的初始化。用户要求先收集新Reference数据，本次不再训练。
+
 - 5k、rollout-only20k、experts+rollout20k 的选择依据见下方 9 月 24 日任务；初始固定 5k 不等于后续 Supported7000 或 HIL8 7281。
 - 外部 Episode holdout 已反复参与选型，按 DEV 使用；没有因此获得独立 TEST。后续候选当前状态见 [Online](../online/README.md)。
 - 本次未修改训练方式/比例、未重训；历史训练结果与每组配置以任务原文及 manifest 为准。

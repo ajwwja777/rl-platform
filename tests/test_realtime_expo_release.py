@@ -43,3 +43,44 @@ def test_release_pickle_uses_public_numpy_constructors():
     assert b'numpy._core' not in encoded
     restored=pickle.loads(encoded)
     for key in data:np.testing.assert_array_equal(restored[key],data[key])
+
+
+def test_reference_collects_without_loading_trained_actor_or_expert_seed(tmp_path):
+    root=fixture(tmp_path)
+    stage=root/'stage1'
+    actor=root/'frozen/actor_snapshot/actor_snapshot.pkl'
+    actor.write_bytes(b'not a pickle; Reference must not load this')
+    result=prepare_runtime(root,'reference',stage,root/'reference.yaml')
+    cfg=yaml.safe_load((root/'reference.yaml').read_text())
+    runtime=cfg['runtime']
+    assert result['actor_bypassed'] and not result['training_enabled']
+    assert not Path(runtime['actor_service']['snapshot_path']).exists()
+    assert Path(runtime['replay']['journal_path']).parent != root/'frozen'
+    assert not Path(runtime['replay']['journal_path']).exists()
+    assert runtime['env_driver']['actor_deterministic']
+    assert cfg['experiment']['rl']['freeze_after_warmup']
+    assert actor.read_bytes()==b'not a pickle; Reference must not load this'
+
+
+def test_reference_rejects_actor_selection_and_contaminated_placeholder(tmp_path):
+    root=fixture(tmp_path)
+    with pytest.raises(ValueError,match='registered Stage1'):
+        prepare_runtime(root,'reference',root/'frozen/actor_snapshot/actor_snapshot.pkl',root/'reference.yaml')
+    target=root.parent/'reference_rollouts_20261015/unused_actor/actor_snapshot.pkl'
+    target.parent.mkdir(parents=True,exist_ok=True)
+    target.write_bytes(b'accidentally trained')
+    with pytest.raises(ValueError,match='uninitialized'):
+        prepare_runtime(root,'reference',root/'stage1',root/'reference.yaml')
+
+
+def test_reference_and_expert_comparison_registry_are_frozen_and_isolated():
+    models=json.loads((Path(__file__).parents[1]/'configs/deployment_models.json').read_text())
+    if isinstance(models,dict):models=models['models']
+    selected={m['mode']:m for m in models if m['id'].startswith('realtime-expo-rlt-')}
+    assert set(selected)=={'reference','frozen'}
+    ref,actor=selected['reference'],selected['frozen']
+    assert ref['checkpoint']==ref['base_checkpoint']==actor['base_checkpoint']
+    assert ref['camera_keys']==actor['camera_keys']==['left_wrist_0_rgb','right_wrist_0_rgb']
+    assert ref['data_directories']['collection']!=actor['data_directories']['collection']
+    assert ref['execution_profile']==actor['execution_profile']
+    assert not any(m['training_enabled'] or m['capabilities']['train'] for m in selected.values())

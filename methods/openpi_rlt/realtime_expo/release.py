@@ -58,7 +58,9 @@ def build(source,seed,destination,installed_root,stage1,step,template):
 
 def prepare_runtime(bundle,mode,snapshot,target):
     bundle,snapshot,target=map(Path,(bundle,snapshot,target));m=json.loads((bundle/'release.json').read_text())
-    if mode not in ('frozen','online') or m['contract']!=CONTRACT or m['cameras']!=['left_wrist_0_rgb','right_wrist_0_rgb']:raise ValueError('invalid task/mode/cameras')
+    if mode not in ('reference','frozen','online') or m['contract']!=CONTRACT or m['cameras']!=['left_wrist_0_rgb','right_wrist_0_rgb']:raise ValueError('invalid task/mode/cameras')
+    if mode=='reference':
+        return prepare_reference_runtime(bundle,m,snapshot,target)
     roots=[bundle/'frozen/actor_snapshot/actor_snapshot.pkl',bundle/'online/actor_snapshot/actor_snapshot.pkl']
     if snapshot.resolve() not in [p.resolve() for p in roots] or (mode=='online' and snapshot.resolve()!=roots[1].resolve()):raise ValueError('selected Actor outside this release')
     if not (Path(m['stage1'])/'params').is_dir():raise FileNotFoundError('Stage1 params missing')
@@ -77,6 +79,37 @@ def prepare_runtime(bundle,mode,snapshot,target):
         if cp['progress']['warmup_ready_adds_total']!=m['replay_seed']['adds_total']:raise ValueError('online budget anchor changed')
     target.parent.mkdir(parents=True,exist_ok=True);tmp=target.with_suffix('.tmp');tmp.write_text(yaml.safe_dump(config,sort_keys=False));tmp.replace(target)
     return m
+
+
+def prepare_reference_runtime(bundle,manifest,snapshot,target):
+    """Collect pure Stage1 rollout into a fresh journal; never seed expert Replay."""
+    stage=Path(manifest['stage1'])
+    if snapshot.resolve()!=stage.resolve() or not (stage/'params').is_dir():
+        raise ValueError('Reference must select the registered Stage1 checkpoint')
+    norm=bundle/'frozen/action_norm_stats.json'
+    if hashlib.sha256(norm.read_bytes()).hexdigest()!=manifest['norm_sha256']:
+        raise ValueError('normalization identity mismatch')
+    config=yaml.safe_load((bundle/'frozen.yaml').read_text())
+    r=config['runtime']
+    if r['env_driver']['control_frequency_hz']!=10 or r['env_driver']['replay_feature_batch_size']!=1:
+        raise ValueError('task clock/feature inference mismatch')
+    # Outside the trained release: existing expert seed and trained assets stay intact.
+    root=bundle.parent/'reference_rollouts_20261015'
+    unused_actor=root/'unused_actor/actor_snapshot.pkl'
+    if unused_actor.exists():
+        raise ValueError('Reference Actor path must remain uninitialized')
+    config['experiment']['rl'].update(freeze_after_warmup=True,action_norm_stats_path=str(norm))
+    r['actor_service']['snapshot_path']=str(unused_actor)
+    r.setdefault('learner_service',{}).update(
+        checkpoint_dir=str(root/'unused_checkpoints'),actor_snapshot_path=str(unused_actor))
+    r.setdefault('replay',{}).update(journal_path=str(root/'replay_journal.pkl'),sample_strategy='uniform',seed=42)
+    r['env_driver']['actor_deterministic']=True
+    r.setdefault('monitoring',{}).update(wandb_run_name='realtime-expo-rlt-reference',wandb_dir=str(root/'wandb'))
+    target.parent.mkdir(parents=True,exist_ok=True)
+    tmp=target.with_suffix('.tmp')
+    tmp.write_text(yaml.safe_dump(config,sort_keys=False))
+    tmp.replace(target)
+    return dict(manifest,mode='reference',training_enabled=False,actor_bypassed=True)
 
 if __name__=='__main__':
     ap=argparse.ArgumentParser();ap.add_argument('operation',choices=['check']);ap.add_argument('bundle',type=Path);ap.add_argument('mode');ap.add_argument('snapshot',type=Path);ap.add_argument('target',type=Path)

@@ -4,13 +4,13 @@ ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 export COBOT_RLT_PROJECT_ROOT="$ROOT"
 source "$ROOT/scripts/environment.sh"
 MODE="${1:-frozen}"
-[[ "$MODE" == frozen || "$MODE" == online ]] || { echo "frozen or online required" >&2; exit 2; }
+[[ "$MODE" == reference || "$MODE" == frozen ]] || { echo "Only Reference collection and expert-only frozen comparison are released. Online awaits rollout-informed Warmup." >&2; exit 2; }
 MACHINE_PY="$ROOT/envs/stage1/bin/python"
 ONLINE_PY="$ROOT/envs/online/bin/python"
 BUNDLE="/home/agilex/jiaan/data/rlt/realtime_expo/release_20261015"
 export PYTHONPATH="$ROOT:$ROOT/third_party/openpi-rlt/rlt_online_rl/src:$ROOT/third_party/openpi-rlt/packages/openpi-client/src${PYTHONPATH:+:$PYTHONPATH}"
 RLT_CONFIG="$ROOT/runtime/realtime-expo/$MODE.yaml"
-"$ONLINE_PY" -m methods.openpi_rlt.realtime_expo.release check "$BUNDLE" "$MODE" "${COBOT_EVAL_SNAPSHOT:?selected Actor required}" "$RLT_CONFIG"
+"$ONLINE_PY" -m methods.openpi_rlt.realtime_expo.release check "$BUNDLE" "$MODE" "${COBOT_EVAL_SNAPSHOT:?selected checkpoint required}" "$RLT_CONFIG"
 checkpoint="/home/agilex/jiaan/data/rlt/realtime_expo/stage1_4999"
 RUN="$ROOT/outputs/rlt/plug_v3_yyshadow"
 TASK_RUN="$ROOT/outputs/realtime-expo-runtime/$MODE/online"
@@ -133,11 +133,17 @@ export COBOT_RLT_TASK5_MAX_TIMESTEPS=3000 COBOT_RLT_MAX_EPISODE_STEPS=0
 export COBOT_RLT_SESSION_UI=1 COBOT_RLT_SESSION_UI_PORT="$SESSION_PORT" COBOT_RLT_SHADOW=0
 export COBOT_RLT_JOINT_STEP_LIMIT=0.03 COBOT_RLT_GRIPPER_STEP_LIMIT=0.004
 export COBOT_RLT_TRACE_DIR="$TASK_RUN/traces"
+export COBOT_RLT_EVALUATION_TRACE_DIR="$ROOT/outputs/realtime-expo-runtime/$MODE/evaluation-traces"
 export COBOT_RLT_ACTOR_URL=http://127.0.0.1:9131 COBOT_RLT_REPLAY_URL=http://127.0.0.1:9132
 export RLT_OUTPUT_DIR="$TASK_RUN" COBOT_RLT_LEARNER_STATUS_PATH="$TASK_RUN/metrics/learner_status.json"
 export RLT_ACTOR_READY_TIMEOUT_SEC=180 RLT_REPLAY_READY_TIMEOUT_SEC=120
 unset RLT_ALLOW_UNINITIALIZED_ACTOR
-if [[ "$MODE" == frozen ]]; then export RLT_DISABLE_LEARNER=1; else unset RLT_DISABLE_LEARNER; fi
+export RLT_DISABLE_LEARNER=1
+if [[ "$MODE" == reference ]]; then
+  export RLT_ALLOW_UNINITIALIZED_ACTOR=1
+  export COBOT_RLT_COLLECTION_PHASE=warmup
+  export COBOT_RLT_MIN_ONLINE_ACTOR_VERSION=2147483647
+fi
 cd "$ROOT"
 exec env CUDA_VISIBLE_DEVICES=0 XLA_PYTHON_CLIENT_PREALLOCATE=false OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=4 \
  "$ONLINE_PY" -u -m methods.openpi_rlt.scripts.online_role --upstream-root "$ROOT/third_party/openpi-rlt" \

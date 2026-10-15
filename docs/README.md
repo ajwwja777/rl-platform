@@ -1,5 +1,7 @@
 # RL 平台：当前进度与关键经验
 
+2026-10-15 用户纠正：[Reference先采集/Warmup顺序修正](warmup/tasks/2026-10-15-reference-rollout-first/TASK.md)。现7k仅专家示范训练，撤下该任务Online入口；新增纯Reference4999与7k冻结对照，先采rollout再Warmup。本次不再训练，现场状态以任务回执为准。
+
 2026-10-15 RLT真机反馈后复核：[新双腕RLT抖动诊断](execution/tasks/2026-10-15-realtime-expo-rlt-jitter/ANALYSIS.md)。50Hz/RTC/EMA实际开启、固定Actor3500无探索；7k在重复DEV的chunk内关节粗糙度为Reference2.60倍（Episode bootstrap95%2.21–3.11），单集803发布无>40ms断档。连续性门槛遗漏已记录；RLT普通Stage1/推理RTC与EXPO训练RTC不同，因果仍需单因素。暂不把当前7k视为真机平顺验收通过；本批未改现场/训练资产。
 
 2026-10-15 EXPO：[5回合批量更新与双卡](online/tasks/2026-10-14-expo-native-sync/BATCH5_DUAL_GPU.md)已安装为可选入口；184CPU/102前端、真实20/1、3/5跨进程接续、单/双卡恢复及Cobot受限SSH通过。接续Online11/220Critic/11VLA/Replay5225；当前SFT1172181固定评测保持。同步批末仍等待，总梯度预算不减；双卡训练不逐位等价，真机收益待验收。
