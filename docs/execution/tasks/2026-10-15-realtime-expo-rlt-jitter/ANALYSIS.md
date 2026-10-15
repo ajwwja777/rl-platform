@@ -1,0 +1,42 @@
+# realtime_expo Frozen jitter: evidence before more Online
+
+2026-10-15 /root. Status: diagnosis complete with a verified offline Actor continuity regression; no field configuration, model, Replay, service or robot changes. No new training or GPU inference. User reports marked jitter and about30% success with50Hz/RTC/EMA. Earlier no-motion delivery is software readiness only; physical smoothness acceptance has now failed by operator report.
+
+## Verified findings
+
+1. Actual Cobot Web GET `/api/deployment/status`, process environments353814/354169/354023 and the recorded trace agree: realtime-expo-rlt-frozen, Stage14999, Warmup7000/Actor3500, deterministic, Learner disabled, no exploration, logical10Hz/publication50Hz, RTC=true, first-order EMA tau0.08s, replan5, max-delay4. The paused Session counters reset; zero emitted/deadline counters in an ended Session are NOT historical no-motion/deadline evidence.
+2. Same saved float32 deployed-input predictions show a real within-chunk Actor continuity regression. Whole-Episode equal-weight joint temporal second-difference RMS (mrad per logical sample squared): TRAIN44 Reference4.6028 / Actor7k9.8847; reusedDEV5 Reference3.8888 / Actor7k10.1138. Paired whole-Episode bootstrap95% Actor/Reference ratio: TRAIN2.148 [2.018,2.297], DEV2.601 [2.214,3.109]. These are smoothness proxies, not TCP error/physical acceleration or independent TEST. All sampled C10 windows contain valid actions. No differences are calculated across separate or overlapping windows.
+3. DEV mean sign reversals with both neighboring increments exceeding1mrad: Reference0.203 / Actor7k2.742 per joint per C10. TRAIN0.253 /2.670. Small pointwise imitation error does not ensure a temporally smooth chunk. Earlier selection lacked this continuity criterion; this was a verification omission, not evidence that export/serialization was wrong.
+4. Checkpoint sweep does not resolve this merely by switching to10k: DEV roughness Actor50022.4485,1k16.8789,2k14.2648,3k12.4206,5k10.9772,7k10.1138,10k10.2069 mrad; Reference3.8888. Existing checkpoints all above Reference. No new checkpoint promoted.
+5. One actual frozen autonomous-failure collection trace has161 logical rows /803 publications, version3500 throughout, no HIL/exploration. Publication intervals min/median/p95/max20.232/20.440/20.861/21.816ms; zero gaps>40ms.32 inference requests (31RTC), median139.31/p95153.83/max161.22ms. On this run, timing stalls are not the observed leading explanation. This is NOT a general real-time guarantee or evidence about all subsequent evaluated Episodes.
+6. In that trace, queued Reference vs Actor second-difference RMS: J2 22.82->30.60mrad, J3 12.29->19.59mrad, J6 7.57->12.94mrad. Both layers have motion variation; the reference is already conditioned on prior Actor plans by RTC, so it is NOT the counterfactual pure-Stage1 trajectory. Cannot assign all jitter to Actor or conclude bypassing it will solve insertion.
+7. Actual15 stored RLT evaluations:5success/10failure, none marked intervened. Actual15 EXPO RTC-SFT2000 evaluation records in the comparison directory also5/15 and no intervention. These are separate, nonrandomized morning/evening runs; locations, starting poses and grasp comparability unknown. They do not establish equal policies or contradict the operator's smoothness observation. The directory named test is NOT an independent statistical TEST protocol. Additional collection/start/abort records are not silently pooled into these15.
+
+## Mechanism evidence and limits
+
+Native trainer.py lines245-251 ALREADY includes temporal delta tracking: squared difference between Actor and target adjacent SIX-JOINT increments in physical radians. It is incorrect to say no temporal penalty exists. At step7000 weighted BC0.048194, weighted Q0.057504, weighted delta0.000624; physical-radian delta and normalized-action BC use different scales. Small scalar loss is a diagnostic clue, NOT proof of a small gradient or the sole root cause. Reference dropout0.5 and Q-driven corrections are additional unisolated hypotheses. Critic is not directly scoring/choosing a new action on robot execution; the frozen Actor can carry training-induced roughness.
+
+RLT Stage1 uses H50 ordinary flow training plus RLT representation; seed manifest records rtc_prefix_supported=false, and train_rlt / compute_loss_with_prefix have no previous-action conditioning. Here prefix means vision/language token prefix, not training-time RTC. Deployment uses VLA RTC sampler on the Stage1 Reference, then a downstream Actor; committed prefix protection remains in async_execution.py. EXPO native deployment loader and bundled resolved_metadata confirm RTCLearner, LoRA, H16, p1_use_prefix_conditioning=true, train max prefix10, runtime2-step prefix/200ms and8-step output. Thus enabling RTC on both Web entries does not make training or execution identical. RTC training mismatch is a hypothesis for the remaining Reference/closed-loop problem, not yet an isolated causal result.
+
+The actual trace also shows a J5 feedback plateau around1.22rad while requested commands stay higher. Contact, physical limit or another actuator constraint require separate evidence; do not tune the hardware or label it an established limit fault from this trace.
+
+## Decision and minimum next comparisons (proposals, not performed)
+
+Current7k should not be treated as physically accepted for expanding Online collection. Do not expect learning to automatically repair a rough action generator, and do not simply increase EMA. Existing production entries are preserved for controlled diagnosis/rollback.
+
+Highest-information next offline comparison: same initialization, data/order, seeds, updates, optimizer and execution contract; change only Warmup Q weight0.1->0 to separate Q-driven roughness from supervised Actor fitting. Evaluate continuity, TRAIN/reusedDEV imitation mean/tails and gripper separately; do not select on Q rise alone. Then, separately, normalize temporal-increment loss consistently with action scale / measure component gradients before selecting a new delta coefficient; do not conflate delta and Q changes. Reference dropout is a later single-factor comparison if still needed.
+
+Pure Stage1 bypass under the same executor is a useful controlled physical baseline only AFTER recording full per-step evidence; current Reference trace is not this counterfactual. RTC-conditioned Stage1 training is a subsequent, more expensive controlled experiment if pure Reference itself remains rough. No automatic field switch or new training was conducted in this diagnosis.
+
+## Data identities / configuration / commands / evidence
+
+A6000 analysis baseline main c385d74, isolated branch audit/realtime-expo-rlt-jitter-20261015; actual field hashes saved for async_execution.py, policy.py, left_arm_env.py and launcher. Earlier delivered source243ffdc +9e05361; current source identity receipt takes precedence over historical commit summaries. Fixed upstream8cef77e.
+
+All artifacts: `/data/LFT-W02_data/jiaan/jiaan/projects/rl-platform/outputs/realtime-expo-rlt-jitter-20261015/`.
+- `episode_1792064655221835006_failure.jsonl` SHA256148e44c6bd8df6eaf80ffd96c0d1acac83f1fb9cc1362eec7205ee9562cc8c0c; source `/home/agilex/jiaan/project/rl-platform/outputs/realtime-expo-runtime/frozen/online/traces/`.
+- `field-identities-results.jsonl`: raw Web result records, process env and source hashes; `deployment-status.json`, `field-logs.txt`.
+- `trace-analysis.json`, `trace-arrays.npz`, `action-chain.png`, `roughness-timing.png`.
+- `offline-roughness.json`, `paired-episode-summary.json`, `offline-roughness.png`, `loss-step7000.json`, `expo-source-config.txt`.
+- `evidence-sha256.json`: per-file size/SHA for analysis snapshot.
+
+Reproduce CPU analysis using `/data/LFT-W02_data/jiaan/jiaan/scratch/rl-platform/realtime-expo-rlt-20261015/env/bin/python` with the output scripts in order: `analyze_trace.py`, `offline_roughness.py`, `finalize_analysis.py`. Sources are unchanged original warmup-seed journals and warmup-native-10k saved deployed actions under sibling `outputs/realtime-expo-rlt-20261015/`. Later deployment evaluations contain only outcome/start/end images, so their continuous actions/video cannot be reconstructed. Evaluation numeric tracing was not enabled; record this as a delivery observability gap. Reports and figures stay on A6000, no laptop project files created.

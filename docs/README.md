@@ -1,5 +1,7 @@
 # RL 平台：当前进度与关键经验
 
+2026-10-15 RLT真机反馈后复核：[新双腕RLT抖动诊断](execution/tasks/2026-10-15-realtime-expo-rlt-jitter/ANALYSIS.md)。50Hz/RTC/EMA实际开启、固定Actor3500无探索；7k在重复DEV的chunk内关节粗糙度为Reference2.60倍（Episode bootstrap95%2.21–3.11），单集803发布无>40ms断档。连续性门槛遗漏已记录；RLT普通Stage1/推理RTC与EXPO训练RTC不同，因果仍需单因素。暂不把当前7k视为真机平顺验收通过；本批未改现场/训练资产。
+
 2026-10-15 EXPO：[5回合批量更新与双卡](online/tasks/2026-10-14-expo-native-sync/BATCH5_DUAL_GPU.md)已安装为可选入口；184CPU/102前端、真实20/1、3/5跨进程接续、单/双卡恢复及Cobot受限SSH通过。接续Online11/220Critic/11VLA/Replay5225；当前SFT1172181固定评测保持。同步批末仍等待，总梯度预算不减；双卡训练不逐位等价，真机收益待验收。
 
 2026-10-15 新任务：[realtime_expo左臂RLT](stage1/tasks/2026-10-15-realtime-expo-rlt/TASK.md)：49成功人工示范，44TRAIN/5重复DEV、双腕224RGB、左臂10Hz与可变夹爪。HPC短训恢复、591帧单条评测、RTC无ROS推理通过；首个正式任务NCCL失败，4卡重试721065排队，721154依赖自动选型。93+7+5项CPU检查通过；尚无最终Stage1/Warmup或Web Online交付。[当前状态](stage1/tasks/2026-10-15-realtime-expo-rlt/STATUS.md)。
