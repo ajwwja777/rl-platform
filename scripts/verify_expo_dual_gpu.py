@@ -6,6 +6,7 @@ p=argparse.ArgumentParser()
 for name in ('project','bundle','seed-dir','output','adapter'):p.add_argument('--'+name,type=Path,required=True)
 p.add_argument('--num-devices',type=int,choices=(1,2),required=True)
 p.add_argument('--restore',type=Path)
+p.add_argument('--initial-only',action='store_true')
 a=p.parse_args()
 if 'verification' not in a.output.parts or a.output.exists():raise ValueError('Fresh verification output required')
 a.output.mkdir(parents=True)
@@ -45,6 +46,17 @@ else:
     result[str(i)]=v[idx].astype(np.float32)
   return result
  before=samples(agent)
+ if a.initial_only:
+  import hashlib
+  def hashes(tree):
+   result=[]
+   for path,x in jax.tree_util.tree_flatten_with_path(tree)[0]:
+    x=np.asarray(x)
+    result.append(dict(path=str(path),shape=list(x.shape),dtype=str(x.dtype),sha256=hashlib.sha256(x.tobytes()).hexdigest()))
+   return result
+  np.savez(a.output/'initial.npz',**before)
+  (a.output/'inputs.json').write_text(json.dumps(dict(agent=hashes(agent),critic_batch=hashes(batch),actor_batch=hashes(actor_batch),rng=np.asarray(agent.rng).tolist())))
+  event('initial_verified');raise SystemExit(0)
  event('update_start')
  t=time.monotonic();agent,metrics=u.update(agent,batch,20,actor_batch);jax.block_until_ready(agent)
  metrics={k:float(np.asarray(v)) for k,v in metrics.items() if np.asarray(v).size==1}

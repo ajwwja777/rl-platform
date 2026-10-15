@@ -27,7 +27,8 @@ def test_missing_and_extra_keys_rejected():
         with pytest.raises(ValueError): options.normalize(values)
 
 
-def test_browser_choices_reach_both_real_launch_commands_and_status_guard(tmp_path, monkeypatch):
+@pytest.mark.parametrize('episodes',[1,5])
+def test_browser_choices_reach_both_real_launch_commands_and_status_guard(tmp_path, monkeypatch, episodes):
     import sys, json
     from types import SimpleNamespace
     adapter = path.parent
@@ -37,7 +38,7 @@ def test_browser_choices_reach_both_real_launch_commands_and_status_guard(tmp_pa
     from online_runtime import OnlineRuntime
     original = dict(model_id='expo', rtc_delay=5, edit_scale=.01, allow_online_options=True,
                     run_dir=str(tmp_path/'learner'), port=18443, python='/python', project='/native',
-                    bundle='/bundle', seed_dir='/seed', gpu=1)
+                    bundle='/bundle', seed_dir='/seed', gpu=1, episodes_per_update=episodes)
     learner_profile=tmp_path/'learner.json';learner_profile.write_text(json.dumps(original))
     root_config={'port':18443,'profiles':{'edit001':str(learner_profile)}}
     profile={**original, 'launch_name':'edit001','identity_file':'/key','destination':'owner@host',
@@ -62,9 +63,10 @@ def test_browser_choices_reach_both_real_launch_commands_and_status_guard(tmp_pa
         if not default:
             assert args.run_dir.name.endswith(options.suffix(dict(rtc_delay=delay,edit_scale=scale)))
             assert learner['run_dir'].endswith(options.suffix(dict(rtc_delay=delay,edit_scale=scale)))
-        info=dict(deployment_id='expo',rtc_delay=delay,edit_scale=scale,update_layout='native_full_batch')
+        info=dict(deployment_id='expo',rtc_delay=delay,edit_scale=scale,update_layout='native_full_batch',episodes_per_update=episodes)
+        assert lc[lc.index('--episodes-per-update')+1]==str(episodes)
         runtime.validate_server_status(info)
-        for bad in ({**info,'rtc_delay':9},{**info,'edit_scale':.99}):
+        for bad in ({**info,'rtc_delay':9},{**info,'edit_scale':.99},{**info,'episodes_per_update':6}):
             with pytest.raises(RuntimeError):runtime.validate_server_status(bad)
     assert json.loads(learner_profile.read_text())==original
 

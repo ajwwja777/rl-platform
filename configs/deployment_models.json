@@ -1194,7 +1194,7 @@
       "data_directories": {
         "collection": "/media/agilex/Getea1/jiaan/data/datasets/plug_left_2cam/recordings/expo-edit001-batch5"
       },
-      "validation": "Batch5 candidate; isolated validation in progress. Field rollout/HIL acceptance pending.",
+      "validation": "184 CPU / 102 frontend checks; native dual-GPU20Critic/1VLA and batch5 cross-process lifecycle passed. Single/dual training trajectories are not bitwise identical. Field rollout/HIL acceptance pending.",
       "execution_fidelity": "Native batch scheduling: 5 eligible episodes per update trigger; batch64/UTD20/interval30 unchanged. Continue committed Online11; default edit0.01/RTC5. Free dual GPU preferred, one free GPU fallback.",
       "online_run_dir": "/home/agilex/jiaan/data/expo_ft/plug_left_2cam/native_remote_edit001_batch5_20261015",
       "collection_directory_policy": "model",
