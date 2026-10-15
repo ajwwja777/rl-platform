@@ -1,3 +1,17 @@
+## Delivery integration progress (2026-10-15T18:57:47)
+
+Verified: Stage1 selected 4999; native Warmup 10,000 CPU updates completed in 317.6 seconds. Checkpoints 500/1000/2000/3000/5000/7000/10000 evaluated. Current descriptive reused-DEV selection is 7000 (44 TRAIN Episodes / 5 DEV Episodes, no TEST). Deployed float32 single-input evaluation: DEV joint MAE 18.7425 mrad vs Reference 18.8040; gripper 4.6135 mm vs Reference 3.7101. This is NOT autonomous-success evidence; gripper retention remains a limitation. Delta-weight-only 0 control is in progress before final selection.
+
+Verified: native exported Actor matches deployed evaluator exactly on 32 inputs; a copied offline branch starts with zero pending budget, synthetic 50 arrivals earn exactly 50 updates, step7050/checkpoint/history saved, Actor3525 observed, all restored state leaves exactly equal. No production Replay or robot used.
+
+Resolved: replay float16 reference vs deployed float32 reference caused max448 microrad difference in the first export comparison; retained the original failure and reevaluated all candidates with actual deployed inputs. NumPy2 pickle namespace was incompatible with field NumPy1.26.4; release serialization now uses public ndarray constructors without dtype/value changes. Field native unpickle and 13-file SHA validation passed.
+
+Implementation: independent left-arm 2-wrist Stage1 server, task launcher, frozen/Online configurations and separate Replay roots; no middle/head model input; native 10Hz logical time, optional shared 50Hz/RTC/EMA publication. Online UTD1, Actor every2 updates, save/publish/history every50. Existing right-arm RLT and EXPO unchanged. Web routing and loaded/published identity are task-specific.
+
+CPU regression: 71 RL/data/async tests, 4 release-isolation guards, 11 Web routing/directory tests passed. Stage1 selected parameter/asset copy verified from HPC to A6000; Cobot large transfer still running. No new model entry installed yet, no paused field load yet. Next: finish comparison, serial Git merge/push, SHA-guarded field source install, no-motion loading validation.
+
+Evidence root: `/data/LFT-W02_data/jiaan/jiaan/projects/rl-platform/outputs/realtime-expo-rlt-20261015/` (`warmup-native-10k/`, `release-native-validation.json`, `release-bundle-cobot-portable-sha256.json`, `release-*-tests*.log`). All prior status below is historical.
+
 # HPC训练与交付状态
 
 2026-10-15 18:26 CST 实时核验：721065正式5000更新完成（55分17秒，退出0），721154完整五checkpoint评测/选型/专家种子完成（31分52秒，退出0），GPU已释放。在已比较1000/2000/3000/4000/4999中，4999按预登记DEV指标选中，无指标冲突；DEV完整Episode等权C10六关节MAE18.741mrad、夹爪MAE3.486mm（非TCP误差），仍是重复DEV模仿代理指标，不是自主成功证据或全局最优。551条TRAIN专家transition、62条DEV单独保存；未开始Warmup训练，也未登记Web新RLT，当前不可交付Online。小报告和两张图已取回A6000 outputs/realtime-expo-rlt-20261015/stage1-comparison/；未复制整份权重。下一步：复核选型/专家种子，完成Warmup多checkpoint与恢复/导出验证，再做独立Web入口和现场无动作验收。

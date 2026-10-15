@@ -21,7 +21,7 @@ raise SystemExit(0 if ok else 1)
 PY
 then
   cmd=$(tr '\0' ' ' <"/proc/$pid/cmdline")
-  [[ "$cmd" == *"plug_v3_yyshadow.serve_stage1"* ]] || { echo "登记 PID 已不属于 plug_v3，拒绝停止" >&2; exit 2; }
+  [[ "$cmd" == *"plug_v3_yyshadow.serve_stage1"* || "$cmd" == *"realtime_expo.serve_stage1"* ]] || { echo "登记 PID 已不属于 plug_v3，拒绝停止" >&2; exit 2; }
   kill -TERM -- "-$pid"
   for _ in {1..100}; do kill -0 "$pid" 2>/dev/null || break; sleep .2; done
   kill -0 "$pid" 2>/dev/null && { echo "模型仍在退出中" >&2; exit 1; }

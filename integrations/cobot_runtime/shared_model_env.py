@@ -131,6 +131,8 @@ def create_shared_env():
     if contract == 'realtime_expo_left_2cam_10hz':
         from methods.openpi_rlt.realtime_expo.left_arm_env import create_left_arm_online_env
         factory = create_left_arm_online_env
+        from .profile_storage import validate_root
+        collection_root = lambda phase: validate_root(os.environ['COBOT_RLT_TASK5_DATA_ROOT'])
     elif contract:
         raise ValueError('Unknown RLT task contract: '+contract)
     original = task5_client.Task5Client
