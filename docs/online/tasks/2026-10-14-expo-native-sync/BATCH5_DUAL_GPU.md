@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-实现已提交，184 CPU、102 前端回归通过；真实双卡完成20 Critic/1 VLA和checkpoint/Actor导出。批量3/5退出→新进程补齐5/5更新→双卡恢复通过；已有Online11恢复与反向双卡→单卡恢复、现场静态安装仍进行中，尚未切换现场模型。
+已安装为网页可选入口；184 CPU、102前端回归、真实双卡20 Critic/1 VLA、批量跨进程恢复及两方向跨GPU数恢复通过。已有Online11在双卡恢复后189个导出Actor叶身份保持，Critic220/VLA11、Replay5225、本批0/5。通过Cobot实际受限SSH启动GPU1,0的Learner并验证ready，再正常关闭连接；0新增更新、0机器人命令。当前现场仍为原RTC-SFT2000/Runtime1172181，未加载新模式、未重启Web或硬件。首轮真实batch5 rollout/HIL及收益由用户测试结束后验收。
 
 ## 调度与保留项
 
@@ -40,3 +40,13 @@
 ## 输入与数值核对
 
 单/双卡初始33叶Critic batch、33叶VLA batch的shape/dtype/SHA完全一致，682个agent叶中所有网络、优化器、RNG数组一致；6处Python标量在device_put后显示为int32/float32（单卡host为int64/float64），JAX默认32位计算。更新后RNG一致，但训练输出不逐位相同：最后Critic loss差约0.00606、VLA loss差3.11e-6，最大报告指标差0.556为filter_critic_grad_norm；642叶抽样参数/优化器增量最大差0.0363。未将这一检查称为单/双卡数值等价通过，差异具体来源尚未定位；双卡沿用原生全局batch及损失/更新函数，需独立真机收益验收。原单卡可用性和状态可恢复性另行验证，不能用双卡资源数代替效果验收。
+
+## 安装与交付回执
+
+运行代码RL `b269415`（含e8e1cd8/979cb5f）、Web `5e7a9a5`先提交push，再在模型操作锁内逐项校验旧/新SHA安装11个文件。保留并合入其他对话的Online参数控件和RLT训练文档。新Cobot profile、A6000受限launcher命名profile均已登记；原逐回合run仅做已审计adapter身份迁移，checkpoint2、Replay、优化器/计数不变，原contract留备份。新batch5接续目录独立元数据，Cobot复用经压缩SHA校验的不可变Actor11文件。
+
+真实验证：10有效热身、unknown/aborted排除；3/5提交后退出、重启补第4轮不训练、第5轮20/1并一次导出；再在双卡恢复保持1/20/1。独立双卡训练checkpoint反向单卡恢复后189个Actor原始SHA逐一相同。生产接续仅恢复不训练，189叶与原Online11快照相同。输入/更新差异详见上节，不将双卡数学轨迹称为逐位等价。
+
+`field-install.json`记录安装前后Runtime1172181与started_at不变；`field-catalog-check.txt`确认新方法available/train=true；`restricted-check.json`确认Cobot→LFT2正式受限SSH、参数d5/edit0.01/batch5、实际GPU1,0和状态11/220/11/5225。关闭自己的SSH输入后launcher终止其空闲Learner（SSH返回241对应子进程SIGTERM，为本次主动卸载），不重启当前SFT。前端HTTP实际返回含批次计数的新JS。安装备份位于Cobot `rl-platform/runtime/verification/batch5-20261015/before/`。
+
+用户完成当前固定SFT成功率测试后，释放当前模型、刷新网页，选择EXPO / realtime-expo-ft-edit001-batch5 / 2000并加载、开始Session。沿用成功/失败结束及HIL；未满5轮结束Session会保留批次，下次继续，满5轮仍需等待同步训练/权重安装完成。最后成功率与更新速度需真实批次衡量；本交付不声称学习收益已经通过。
