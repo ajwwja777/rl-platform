@@ -57,6 +57,16 @@ def test_partial_actor_file_resumes_with_range_and_hash(tmp_path):
         assert (result/'actor-0.gz').read_bytes()==payload
         assert not (result/'actor-0.download').exists()
         c.download_actor();assert len(ranges)==1
+        c.local_actor_version=2
+        # Installed identical manifests require no payload read/hash or download.
+        import actor_snapshot
+        original=actor_snapshot.digest_file
+        actor_snapshot.digest_file=lambda path:pytest.fail('Unchanged Actor must not be rehashed')
+        try:
+            c.download_actor();assert len(ranges)==1
+            manifest['identity']={'changed':True}
+            with pytest.raises(ValueError,match='manifest changed'):c.download_actor()
+        finally:actor_snapshot.digest_file=original
     finally:server.shutdown();server.server_close()
 
 

@@ -40,3 +40,21 @@ def test_migration_refuses_unsafe_or_unverified_state(tmp_path,monkeypatch,failu
  if failure=='updating':(root/'status.json').write_text(json.dumps({'phase':'updating'}))
  with pytest.raises(ValueError):m.migrate(root,prev,current)
  assert json.loads((root/'contract.json').read_text())==old
+
+
+def test_batch_continuation_keeps_source_and_resumes_committed_state(tmp_path,monkeypatch):
+ import sys
+ sys.path.insert(0,str(Path(__file__).parents[1]/'scripts'))
+ from fork_expo_batch_run import fork
+ root,prev,current,old=fixture(tmp_path,monkeypatch)
+ meta=json.loads((root/'committed.json').read_text());meta['completed_episodes']=12
+ (root/'committed.json').write_text(json.dumps(meta))
+ before={str(p.relative_to(root)):p.read_bytes() for p in root.rglob('*') if p.is_file()}
+ target=tmp_path/'batch5';receipt=fork(root,target,prev,current)
+ assert receipt['version']==5 and receipt['episodes_per_update']==5
+ assert json.loads((target/'committed.json').read_text())=={**meta,'episodes_since_update':0}
+ for name,value in before.items():assert (root/name).read_bytes()==value
+ assert (target/'checkpoints/1/state.bin').stat().st_ino==(root/'checkpoints/1/state.bin').stat().st_ino
+ assert (target/'committed.json').stat().st_ino!=(root/'committed.json').stat().st_ino
+ assert json.loads((target/'contract.json').read_text())['episodes_per_update']==5
+ with pytest.raises(ValueError):fork(root,target,prev,current)

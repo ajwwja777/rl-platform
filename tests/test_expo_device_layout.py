@@ -106,3 +106,13 @@ def test_donated_native_adapter_handles_replicated_aliases(monkeypatch):
  np.testing.assert_allclose(result.weights,np.arange(4)-1)
  np.testing.assert_allclose(result.target,np.arange(4)-.1,rtol=1e-6,atol=1e-6)
  assert len(result.weights.devices())==2
+
+
+def test_host_target_ema_survives_donation_of_replicated_tau():
+ from memory_update import host_ema
+ rep,_=layout();tau=jax.device_put(np.float32(.005),rep)
+ ema=host_ema(tau)
+ jax.jit(lambda x:x+1,donate_argnums=(0,))(tau).block_until_ready()
+ assert tau.is_deleted()
+ actual=ema(jnp.asarray([2.,4.]),jnp.asarray([1.,3.]))
+ np.testing.assert_allclose(actual,[1.005,3.005],rtol=1e-7)

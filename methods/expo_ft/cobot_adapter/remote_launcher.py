@@ -63,6 +63,9 @@ def learner_command(config, adapter):
                '--bundle', config['bundle'], '--run-dir', config['run_dir'], '--port', str(config['port']),
                '--recipe', 'native_sync', '--seed-dir', config['seed_dir'], '--deployment-id', config['model_id'],
                '--rtc-delay', str(config['rtc_delay']), '--native-batch-update', '--learner-only']
+    episodes=config.get('episodes_per_update',1)
+    if type(episodes) is not int or episodes<1:raise ValueError('Invalid episode batch size')
+    command += ['--episodes-per-update',str(episodes)]
     if 'edit_scale' in config:
         from sampling_config import edit_scale as validate
         command += ['--edit-scale', str(validate(config['edit_scale']))]

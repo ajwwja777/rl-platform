@@ -45,6 +45,16 @@ def donated_update(agent, batch, utd_ratio=1, actor_batch=None, *, cache_inferen
     return (updated.cache_infer_params() if cache_inference else updated), info
 
 
+def host_ema(tau):
+    import optax
+    # Multi-device placement makes tau a donated device buffer. Capture an owned
+    # host scalar before the first update so lazy CPU compilation cannot read it
+    # after donation has invalidated the original agent.
+    tau=np.array(jax.device_get(tau),copy=True)
+    return jax.jit(lambda new,old:optax.incremental_update(new,old,tau),
+                   donate_argnums=(1,),backend='cpu')
+
+
 class HostTargetUpdater:
     """Keep trainable target-Actor EMA on CPU; share invariant frozen weights.
 
@@ -90,9 +100,7 @@ class HostTargetUpdater:
             if buffer_identity(old)!=buffer_identity(current) and not bool(jax.numpy.all(old==current)):
                 raise ValueError('Frozen target Actor differs from seed; cannot share frozen weights')
         self.target=jax.tree.map(lambda x:np.array(x,copy=True),jax.device_get(agent.target_actor_params.filter(self.trainable)))
-        tau=agent.actor_tau
-        self.ema=jax.jit(lambda new,old:optax.incremental_update(new,old,tau),
-                         donate_argnums=(1,),backend='cpu')
+        self.ema=host_ema(agent.actor_tau)
 
     def prepare(self,agent):
         return self.agent_type(**{name:(None if name in ('target_actor_params','_infer_cache') else getattr(agent,name)) for name in self.fields})
