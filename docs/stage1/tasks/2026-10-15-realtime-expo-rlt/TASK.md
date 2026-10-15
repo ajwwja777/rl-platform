@@ -1,6 +1,6 @@
 # realtime_expo 左臂RLT训练（2026-10-15）
 
-状态：数据只读提取/逐文件SHA、分集加载、TRAIN归一化、CPU输入验证已完成；完整GPU训练尚未启动，无新checkpoint或Online交付。资源阻塞：A6000双卡正在被EXPO独立双卡验证占用，HPC3登录返回pam_slurm_adopt拒绝；未停止其他任务。已向用户询问双卡安排，未收到安排前不占用冲突资源。
+状态：数据/CPU输入验证完成；用户已授权HPC 4或8卡。Slurm四卡作业720997于2026-10-15 11:33:43启动在ACD1-33，先执行真实小步/保存恢复门禁，通过后自动正式5000更新。训练/评估结果仍待核验，无Online交付。最新入口见[STATUS](STATUS.md)与[REMOTE](REMOTE.md)。
 
 ## 任务与范围
 
@@ -42,6 +42,6 @@ PY=$B/scratch/rl-platform/realtime-expo-rlt-20261015/env/bin/python
 CUDA_VISIBLE_DEVICES=0,1 XLA_PYTHON_CLIENT_MEM_FRACTION=0.90 OMP_NUM_THREADS=8 "$PY" "$W/scripts/train_realtime_expo_rlt.py" train --assets "$P" --data "$O/inputs" --output "$O/stage1" --base /data/LFT-W02_data/jiaan/scratch/cobot-realworld-rl/assets/pi05_base/params
 ```
 
-唯一下一步是协调双卡训练资源，再执行真实小步/保存恢复验证与正式Stage1；不足时调整batch并记录，不改算法挤单卡。之后才可提取同权重z_rl/reference、构建独立10Hz Warmup Replay、训练Actor/Critic并离线验证，最后实现独立左臂10Hz/可变夹爪的RLT部署入口。当前右臂运行器有硬编码，尚未适配，不得把本次新权重将来直接挂到右臂入口。没有自主失败样本/独立TEST，能力评估限制保留。
+唯一下一步是完成已授权HPC四卡迁移核验/Slurm申请，再执行真实小步/保存恢复验证与正式Stage1；不足时调整batch并记录，不改算法挤单卡。之后才可提取同权重z_rl/reference、构建独立10Hz Warmup Replay、训练Actor/Critic并离线验证，最后实现独立左臂10Hz/可变夹爪的RLT部署入口。当前右臂运行器有硬编码，尚未适配，不得把本次新权重将来直接挂到右臂入口。没有自主失败样本/独立TEST，能力评估限制保留。
 
-本批没有GPU训练/新权重/现场部署；不要使用“训练完成”或“可以Online”描述。资源确认期间可恢复文件齐全，没有自动等待GPU后启动的后台任务。
+本批HPC作业已启动，是否完成真实更新以STATUS和运行日志为准；尚无已验证新权重或现场部署，不要使用“训练完成”或“可以Online”描述。
