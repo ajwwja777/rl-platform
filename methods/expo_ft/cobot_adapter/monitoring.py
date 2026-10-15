@@ -59,7 +59,9 @@ _capture = threading.local()
 
 def install_selection_observer(module):
     """Observe existing JIT outputs. Return the exact original result; no extra RNG/Q call."""
-    original = module._jitted_fast_select
+    original = getattr(module, '_jitted_fast_select', None)
+    if original is None:
+        return  # Legacy actors without candidate Q remain fully operational.
     if getattr(original, '_expo_monitoring', False):
         return
     def observed(*args, **kwargs):

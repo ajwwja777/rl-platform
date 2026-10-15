@@ -81,10 +81,12 @@ class RemoteSupport:
                     value = json.load(response)
                 self.validate_remote_status(value)
                 monitoring = value.pop('monitoring', None)
-                if monitoring is not None:
+                revision = (monitoring or {}).get('updated_at')
+                if monitoring is not None and revision != getattr(self, '_monitoring_revision', object()):
                     try:
                         from monitoring import write_json
                         write_json(self.args.run_dir / 'telemetry' / 'learner.json', monitoring)
+                        self._monitoring_revision = revision
                     except (OSError, ValueError):
                         pass  # Observability must never pause the robot or learner.
                 self.remote_status = value
