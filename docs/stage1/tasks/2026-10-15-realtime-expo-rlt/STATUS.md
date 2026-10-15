@@ -1,5 +1,7 @@
 # HPC训练与交付状态
 
+2026-10-15 16:09 CST 实时核验：721065已于15:59:32启动，ACD1-19，4GPU/48CPU/384GB，实际最长到19:59:32（4小时）。三次collective门禁后进入stage1-run2-train，日志16:09:06到553/5000更新，稳定约1.7更新/秒；最近step500的loss0.4598（VLA0.0145、RLT0.4453）、grad_norm6.9533，均有限。暂无最终checkpoint/模型能力结论。按当前吞吐剩约44分钟，不含后续保存和评测排队；721154仍等待afterok依赖。先前排队预计时间均为历史，已被本次实际启动取代。
+
 2026-10-15 继续核对：正式训练重试721065仍排队；**尚无可交付的新Online权重**。HPC登录使用jhe724@hpc3login.hpc.hkust-gz.edu.cn，不沿用旧IP别名。
 
 HPC输出：/data/user/jhe724/jiaan/research-workspace/projects/rl-platform/outputs/realtime-expo-rlt-20261015
