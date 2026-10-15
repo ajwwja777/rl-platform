@@ -102,12 +102,15 @@ class RolloutHistory:
         self.points = deque(maxlen=1500)
         self.dirty = False
         self.version = None
+        self.pending = []
 
     def selected(self, active, payload):
         if not active or not finite(payload.get('selected_q')):
             return
         with self.lock:
             if active['episode_uuid'] != self.identity:
+                if self.identity and self.points:
+                    self.pending.append(dict(schema=1, episode_uuid=self.identity, actor_version=self.version, points=list(self.points)))
                 self.identity = active['episode_uuid']
                 self.version = payload['actor_version']
                 self.points.clear()
@@ -122,6 +125,18 @@ class RolloutHistory:
             value = dict(schema=1, episode_uuid=self.identity, actor_version=self.version,
                          points=list(self.points))
             self.dirty = False
+            pending, self.pending = self.pending, []
+        # All archive I/O stays on the existing telemetry flush thread.
+        try:
+            import runpy
+            archive = runpy.run_path(str(Path(__file__).resolve().parents[3]/'integrations/cobot_runtime/rollout_archive.py'))
+            for snapshot in [*pending, value]:
+                archive['save_snapshot'](self.path.parent.parent, snapshot)
+        except Exception:
+            # Retry complete snapshots later; telemetry failure never changes control.
+            with self.lock:
+                self.pending = pending + [value] + self.pending
+                self.dirty = True
         write_json(self.path, value)
 
 

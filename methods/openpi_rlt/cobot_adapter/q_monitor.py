@@ -115,8 +115,10 @@ def worker(events, root, config_path, parent_pid):
                 f.write(json.dumps(summary, allow_nan=False)+'\n')
         current.update(points=list(points), dropped_points=event.get('dropped', 0), updated_at=time.time())
         try:
+            from integrations.cobot_runtime.rollout_archive import save_snapshot
+            save_snapshot(root.parent, current)
             write_json(root/'rollout.json', current)
-        except OSError:
+        except Exception:
             pass  # Monitoring storage cannot stop the actor/executor.
 
 
