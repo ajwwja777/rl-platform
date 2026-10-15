@@ -14,10 +14,10 @@ from online_runtime import OnlineRuntime,Runtime
 @pytest.fixture
 def runtime(tmp_path,monkeypatch):
     def initialize(self,args,ros):
-        self.args=args;self.ros=ros;self.options={'rtc':True};self.gate=SimpleNamespace(paused=True)
+        self.stop=threading.Event();self.args=args;self.ros=ros;self.options={'rtc':True};self.gate=SimpleNamespace(paused=True)
         self.joint_type=object;self.lock=threading.RLock();self.save=lambda:None
     monkeypatch.setattr(Runtime,'__init__',initialize)
-    monkeypatch.setattr(Runtime,'close',lambda self:None)
+    monkeypatch.setattr(Runtime,'close',lambda self:self.stop.set())
     monkeypatch.setattr(OnlineRuntime,'collect',lambda self:None)
     value=OnlineRuntime(SimpleNamespace(run_dir=tmp_path,model_id='expo-test',control_port=0),SimpleNamespace(Subscriber=lambda *a,**k:None))
     value.events=[]
