@@ -1,3 +1,9 @@
+## Final offline candidate (2026-10-15T19:04:24)
+
+Verified: original delta10 Warmup7000 remains selected. Single-factor delta0 comparison completed 10k updates and deployed-input evaluation: selected7k DEV joint18.7913mrad/gripper4.6126mm vs native18.7425mrad/4.6135mm. No meaningful gripper-retention improvement; no algorithm default changed. Comparison and limits: outputs/realtime-expo-rlt-20261015/warmup-single-factor-comparison.json.
+
+Verified on Cobot CPU/NumPy1.26.4: portable release loads, Actor3500 (Learner7000), 32 deployed-input outputs exactly match A6000, zero ports/publishers/robot commands. 99 final RL CPU tests and 11 Web tests passed. Stage1 large copy remains in progress; Web activation and paused runtime acceptance remain pending. Source65ac7d4 and Webc500d3b were serially merged/pushed, preserving concurrent EXPO and chart changes.
+
 ## Delivery integration progress (2026-10-15T18:57:47)
 
 Verified: Stage1 selected 4999; native Warmup 10,000 CPU updates completed in 317.6 seconds. Checkpoints 500/1000/2000/3000/5000/7000/10000 evaluated. Current descriptive reused-DEV selection is 7000 (44 TRAIN Episodes / 5 DEV Episodes, no TEST). Deployed float32 single-input evaluation: DEV joint MAE 18.7425 mrad vs Reference 18.8040; gripper 4.6135 mm vs Reference 3.7101. This is NOT autonomous-success evidence; gripper retention remains a limitation. Delta-weight-only 0 control is in progress before final selection.

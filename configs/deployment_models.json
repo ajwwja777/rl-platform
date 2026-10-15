@@ -1346,7 +1346,7 @@
       "deterministic": true,
       "checkpoint_type": "resumable_checkpoint_with_actor_export",
       "resumable_training": true,
-      "task": "plug_insertion",
+      "task": "plug_left_2cam",
       "integration_level": "preserved_runtime",
       "io_contract": "rlt-left-arm-2cam-10hz",
       "stage1_step": 4999,
@@ -1380,7 +1380,9 @@
       ],
       "online_run_root": "/home/agilex/jiaan/project/rl-platform/outputs/realtime-expo-runtime/frozen",
       "online_config": "/home/agilex/jiaan/project/rl-platform/runtime/realtime-expo/frozen.yaml",
-      "recording": "two wrist model inputs; complete episode recording"
+      "recording": "two wrist model inputs; complete episode recording",
+      "active_arm": "left",
+      "collection_directory_policy": "model"
     },
     {
       "id": "realtime-expo-rlt-online",
@@ -1402,7 +1404,7 @@
       "deterministic": false,
       "checkpoint_type": "resumable_checkpoint_with_actor_export",
       "resumable_training": true,
-      "task": "plug_insertion",
+      "task": "plug_left_2cam",
       "integration_level": "preserved_runtime",
       "io_contract": "rlt-left-arm-2cam-10hz",
       "stage1_step": 4999,
@@ -1436,7 +1438,9 @@
       ],
       "online_run_root": "/home/agilex/jiaan/project/rl-platform/outputs/realtime-expo-runtime/online",
       "online_config": "/home/agilex/jiaan/project/rl-platform/runtime/realtime-expo/online.yaml",
-      "recording": "two wrist model inputs; complete episode recording"
+      "recording": "two wrist model inputs; complete episode recording",
+      "active_arm": "left",
+      "collection_directory_policy": "model"
     }
   ]
 }
