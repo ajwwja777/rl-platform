@@ -126,6 +126,13 @@ def create_shared_env():
 
     from .exploration_collection import selected, recording_root
     collection_root = recording_root if selected() else selected_root
+    factory = create_right_arm_online_env
+    contract = os.environ.get('COBOT_RLT_TASK_CONTRACT', '')
+    if contract == 'realtime_expo_left_2cam_10hz':
+        from methods.openpi_rlt.realtime_expo.left_arm_env import create_left_arm_online_env
+        factory = create_left_arm_online_env
+    elif contract:
+        raise ValueError('Unknown RLT task contract: '+contract)
     original = task5_client.Task5Client
     phase = os.environ.get("COBOT_RLT_COLLECTION_PHASE", "online")
 
@@ -135,7 +142,7 @@ def create_shared_env():
 
     task5_client.Task5Client = lifecycle
     try:
-        env = create_right_arm_online_env()
+        env = factory()
     finally:
         task5_client.Task5Client = original
 

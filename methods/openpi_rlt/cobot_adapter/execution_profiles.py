@@ -21,8 +21,8 @@ class ExecutionProfile:
     smoothing_order: int = 1
 
     def __post_init__(self):
-        if self.logical_hz != 20 or self.publish_hz not in (20, 30, 40, 50):
-            raise ValueError('Current RLT Actor/Replay require logical20; choose publication20/30/40/50')
+        if self.logical_hz not in (10,20) or self.publish_hz not in (20, 30, 40, 50):
+            raise ValueError('RLT Actor/Replay require explicit logical10 or logical20; choose publication20/30/40/50')
         if type(self.replan_after_steps) is not int or type(self.max_delay_steps) is not int:
             raise ValueError('RTC horizons must be integers')
         if not 0 < self.max_delay_steps < 10-self.replan_after_steps or self.replan_after_steps < 1:
@@ -55,22 +55,23 @@ def normalize_options(options):
 
 
 def describe_execution(model, root=ROOT):
+    logical_hz = 10 if model.get('io_contract') == 'rlt-left-arm-2cam-10hz' else 20
     options = model.get('execution_options')
     if options is not None:
         options = normalize_options(options)
     if options and options['enabled']:
-        result = {**options, 'logical_hz': 20, 'profile': 'user_options', 'asynchronous': True}
+        result = {**options, 'logical_hz': logical_hz, 'profile': 'user_options', 'asynchronous': True}
         if model.get('id') == SMOOTH_MODEL_ID:
             candidate_profile(ExecutionProfile(publish_hz=options['publish_hz'],rtc=options['rtc'],smoothing_tau_sec=.08 if options['smoothing'] else 0.), SMOOTH_MODEL_ID)
             result.update(smoothing_order=2,smoothing_tau_sec=.12)
         return result
     name = model.get('execution_profile', 'faithful20')
     if name == 'faithful20':
-        return dict(enabled=False, publish_hz=model.get('control_hz', 20), logical_hz=20,
+        return dict(enabled=False, publish_hz=model.get('control_hz', 20), logical_hz=logical_hz,
                     rtc=False, smoothing=False, profile=name, asynchronous=False)
     registry = json.loads((Path(root)/'configs/execution_profiles.json').read_text())
     profile = candidate_profile(ExecutionProfile(**registry['profiles'][name]),model.get('id'))
-    return dict(enabled=False, publish_hz=profile.publish_hz, logical_hz=20,
+    return dict(enabled=False, publish_hz=profile.publish_hz, logical_hz=logical_hz,
                 rtc=profile.rtc, smoothing=profile.smoothing_tau_sec > 0,
                 profile=name, asynchronous=True, smoothing_order=profile.smoothing_order,
                 smoothing_tau_sec=profile.smoothing_tau_sec)
@@ -78,11 +79,13 @@ def describe_execution(model, root=ROOT):
 
 def selected_profile(root=ROOT, environ=None):
     environ = os.environ if environ is None else environ
+    logical_hz=int(environ.get('COBOT_RLT_LOGICAL_HZ','20'))
+    if logical_hz not in (10,20):raise ValueError('logical rate must be 10 or 20')
     raw = environ.get('COBOT_EXECUTION_OPTIONS') or environ.get('COBOT_RLT_EXECUTION_OPTIONS')
     if raw:
         options = normalize_options(json.loads(raw))
         if options['enabled']:
-            return 'user_options', candidate_profile(ExecutionProfile(publish_hz=options['publish_hz'], rtc=options['rtc'],
+            return 'user_options', candidate_profile(ExecutionProfile(logical_hz=logical_hz,publish_hz=options['publish_hz'], rtc=options['rtc'],
                         smoothing_tau_sec=.08 if options['smoothing'] else 0.),environ.get('COBOT_DEPLOYMENT_MODEL_ID'))
     name = environ.get('COBOT_RLT_EXECUTION_PROFILE', '')
     if not name:
@@ -94,7 +97,7 @@ def selected_profile(root=ROOT, environ=None):
     registry = json.loads((Path(root)/'configs/execution_profiles.json').read_text())
     if name not in registry['profiles']:
         raise ValueError('Unknown execution profile: '+name)
-    return name, candidate_profile(ExecutionProfile(**registry['profiles'][name]),environ.get('COBOT_DEPLOYMENT_MODEL_ID'))
+    return name, candidate_profile(replace(ExecutionProfile(**registry['profiles'][name]),logical_hz=logical_hz),environ.get('COBOT_DEPLOYMENT_MODEL_ID'))
 
 
 def load_shared(root=ROOT):

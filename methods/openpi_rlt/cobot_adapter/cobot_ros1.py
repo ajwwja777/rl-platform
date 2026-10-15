@@ -200,6 +200,9 @@ class AtomicEpisodeTraceWriter:
 class RosTask2IO:
     """Read three cameras/14D state and publish only through Task2 policy topics."""
 
+    _camera_topics = CAMERA_TOPICS
+    _build_observation = staticmethod(build_machine_a_observation)
+
     def __init__(
         self,
         *,
@@ -236,11 +239,13 @@ class RosTask2IO:
         self._trace_writer = AtomicEpisodeTraceWriter(trace_dir)
         self._trace_replay_episode_id = None
         self._condition = threading.Condition(threading.RLock())
+        self._camera_topics = dict(getattr(type(self), "camera_topics", CAMERA_TOPICS))
         self._images: dict[str, Any] = {}
         self._joints: dict[str, Any] = {}
         self._coordinator_commands: dict[str, tuple[Any, float]] = {}
         self._mode = "policy"
         self._right_takeover_started_monotonic = None
+        self._left_takeover_started_monotonic = None
         self._paused = True
         self._chunk_ready = False
         self._outcome: EpisodeOutcome | None = None
@@ -254,7 +259,7 @@ class RosTask2IO:
         self._episode_signal_count = 0
 
         self.ros.init_node("cobot_rlt_task2", anonymous=False)
-        for key, topic in CAMERA_TOPICS.items():
+        for key, topic in self._camera_topics.items():
             self.ros.Subscriber(topic, self.image_type, self._image_callback(key), queue_size=2)
         for side, topic in JOINT_TOPICS.items():
             self.ros.Subscriber(topic, self.joint_state_type, self._joint_callback(side), queue_size=10)
@@ -410,6 +415,12 @@ class RosTask2IO:
             previous = self._mode.strip().lower()
             value = str(getattr(message, "data", "fault"))
             following = value.strip().lower()
+            was_left = previous.startswith("manual:") and "left" in previous.split(":", 1)[1].split("+")
+            is_left = following.startswith("manual:") and "left" in following.split(":", 1)[1].split("+")
+            if is_left and not was_left:
+                self._left_takeover_started_monotonic = time.perf_counter()
+            elif not is_left:
+                self._left_takeover_started_monotonic = None
             was_right = previous.startswith("manual:") and "right" in previous.split(":", 1)[1].split("+")
             is_right = following.startswith("manual:") and "right" in following.split(":", 1)[1].split("+")
             if is_right and not was_right:
@@ -469,6 +480,7 @@ class RosTask2IO:
             "captured_monotonic": time.perf_counter(),
             "mode": self._mode,
             "right_takeover_started_monotonic": getattr(self, "_right_takeover_started_monotonic", None),
+            "left_takeover_started_monotonic": getattr(self, "_left_takeover_started_monotonic", None),
             "coordinator_commands": commands,
             "feedback_ros_stamps": {side: self._stamp(msg) for side, msg in self._joints.items()},
             "camera_ros_stamps": {key: self._stamp(msg) for key, msg in self._images.items()},
@@ -566,7 +578,7 @@ class RosTask2IO:
         gate. Images are decoded as RGB once per received frame set.
         """
         with self._condition:
-            if len(self._images) != 3 or len(self._joints) != 2:
+            if len(self._images) != len(self._camera_topics) or len(self._joints) != 2:
                 raise RuntimeError("Control feedback requires all registered cameras/joints")
             if hasattr(self.ros, "is_shutdown") and self.ros.is_shutdown():
                 raise RuntimeError("ROS shut down during control publication")
@@ -583,7 +595,7 @@ class RosTask2IO:
             if _include_images and image_key != getattr(self, "_control_image_key", None):
                 images = {key:self.bridge.imgmsg_to_cv2(message,"rgb8")
                           for key,message in self._images.items()}
-                self._control_images = build_machine_a_observation(
+                self._control_images = self._build_observation(
                     left_state=left,right_state=right,images=images,prompt=self._prompt)["images"]
                 self._control_image_key = image_key
             state = right.copy() if right_arm_only else np.concatenate([left,right])
@@ -600,7 +612,7 @@ class RosTask2IO:
     def sample(self) -> CobotIOSample:
         while True:
             with self._condition:
-                if len(self._images) == 3 and len(self._joints) == 2:
+                if len(self._images) == len(self._camera_topics) and len(self._joints) == 2:
                     messages = [*self._images.values(), *self._joints.values()]
                     stamps = [self._stamp(message) for message in messages]
                     newest_common = min(stamps)
@@ -612,7 +624,7 @@ class RosTask2IO:
                             key: self.bridge.imgmsg_to_cv2(message, "rgb8")
                             for key, message in self._images.items()
                         }
-                        observation = build_machine_a_observation(
+                        observation = self._build_observation(
                             left_state=self._joints["left"].position[:7],
                             right_state=self._joints["right"].position[:7],
                             images=images,

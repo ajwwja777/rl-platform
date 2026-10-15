@@ -2,7 +2,7 @@
 """Full-Episode checkpoint comparison with physical errors and preserved predictions."""
 import argparse,json,os,sys,time,hashlib
 from pathlib import Path
-ap=argparse.ArgumentParser();ap.add_argument('--assets',type=Path,required=True);ap.add_argument('--data',type=Path,required=True);ap.add_argument('--checkpoint',type=Path,required=True);ap.add_argument('--output',type=Path,required=True);ap.add_argument('--tokenizer-cache',type=Path,required=True);ap.add_argument('--batch-size',type=int,default=8);ap.add_argument('--splits',nargs='+',choices=['train','dev'],default=['train','dev']);a=ap.parse_args()
+ap=argparse.ArgumentParser();ap.add_argument('--assets',type=Path,required=True);ap.add_argument('--data',type=Path,required=True);ap.add_argument('--checkpoint',type=Path,required=True);ap.add_argument('--output',type=Path,required=True);ap.add_argument('--tokenizer-cache',type=Path,required=True);ap.add_argument('--batch-size',type=int,default=1);ap.add_argument('--splits',nargs='+',choices=['train','dev'],default=['train','dev']);a=ap.parse_args()
 project=Path(__file__).resolve().parents[1];upstream=a.assets/'third_party/openpi-rlt'
 for p in [project,upstream/'src',upstream/'scripts',upstream/'packages/openpi-client/src']:sys.path.insert(0,str(p))
 os.environ['OPENPI_DATA_HOME']=str(a.tokenizer_cache);os.environ['WANDB_MODE']='disabled'

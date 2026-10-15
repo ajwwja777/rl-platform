@@ -59,10 +59,10 @@ class CobotOnlineEnv:
         self._raw_observation_contract = selected_contract()
         from .hil_targets import selected_target
         self._hil_target = selected_target()
-        if self._hil_sampling not in {'legacy', 'logical20'}:
-            raise ValueError('HIL sampling must be legacy or logical20')
-        if self._hil_sampling == 'logical20' and float(control_frequency_hz) != 20.0:
-            raise ValueError('logical20 HIL sampling requires logical Replay 20 Hz')
+        if self._hil_sampling not in {'legacy', 'logical20', 'logical10'}:
+            raise ValueError('HIL sampling must be legacy, logical20 or logical10')
+        if self._hil_sampling in {'logical10','logical20'} and float(control_frequency_hz) != float(self._hil_sampling[7:]):
+            raise ValueError(f'{self._hil_sampling} HIL sampling requires matching logical Replay Hz')
         self._max_episode_steps = None if max_episode_steps is None else int(max_episode_steps)
         self._enable_robot_reset = bool(enable_robot_reset)
         self._auto_next_delay_sec = auto_next_delay_sec
@@ -76,8 +76,8 @@ class CobotOnlineEnv:
         from .execution_profiles import selected_profile
         selected = selected_profile()
         if selected is not None:
-            if float(control_frequency_hz) != 20. or int(chunk_exec_horizon) != 10:
-                raise ValueError("Optional RTC executor requires the existing logical20/chunk10 contract")
+            if float(control_frequency_hz) != float(selected[1].logical_hz) or int(chunk_exec_horizon) != 10:
+                raise ValueError("Optional RTC executor requires matching logical rate and chunk10")
             from .async_execution import AsyncExecution
             self._execution = AsyncExecution(self, *selected)
 
@@ -158,7 +158,7 @@ class CobotOnlineEnv:
             if float(control_hz) <= 0:
                 raise ValueError("control_hz must be positive")
             period = 1.0 / float(control_hz)
-            if self._hil_sampling == 'logical20' and float(control_hz) != 20.0:
+            if self._hil_sampling in {'logical10','logical20'} and float(control_hz) != float(self._hil_sampling[7:]):
                 raise ValueError('Publication Hz must not replace logical HIL Replay Hz')
         if observation is None:
             observation = self._io.sample().observation
@@ -233,10 +233,10 @@ class CobotOnlineEnv:
                 if bool(getattr(sample, "paused", False)) and before.phase is EpisodePhase.ROLLOUT:
                     current_observation = sample.observation
                 if self._hil_target == 'coordinator_command':
-                    from .hil_targets import right_command_at_step_start
-                    hil_command, hil_command_receipt = right_command_at_step_start(
-                        sample, self._runtime.snapshot().expert_mask)
-                if self._hil_sampling == 'logical20':
+                    from .hil_targets import command_at_step_start
+                    hil_command, hil_command_receipt = command_at_step_start(
+                        sample, self._runtime.snapshot().expert_mask, side=getattr(self,"_active_arm","right"))
+                if self._hil_sampling in {'logical10','logical20'}:
                     # HIL publishes no policy command. Match its feedback
                     # trajectory sampling to the logical action time base,
                     # rather than recording one action per incoming ROS frame.

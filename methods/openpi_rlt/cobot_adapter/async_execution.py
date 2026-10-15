@@ -47,7 +47,7 @@ class AsyncExecution:
         self.inference_events = []
         self.evidence_lock = threading.Lock()
         self.plan_event_id = 0
-        self.stats = dict(profile=name, logical_hz=20, publish_hz=profile.publish_hz,
+        self.stats = dict(profile=name, logical_hz=profile.logical_hz, publish_hz=profile.publish_hz,
                           inference_requests=0, stale_results=0, emitted_commands=0,
                           rtc_training_data=profile.rtc, smoothing=profile.smoothing_tau_sec > 0,
                           smoothing_order=profile.smoothing_order, smoothing_tau_sec=profile.smoothing_tau_sec)
@@ -484,8 +484,8 @@ class AsyncExecution:
                     current = dict(current)
                     current.pop('rtc', None)
                     if env._hil_target == 'coordinator_command':
-                        from .hil_targets import right_command_at_step_start
-                        hil_command, hil_command_receipt = right_command_at_step_start(sample, runtime.snapshot().expert_mask)
+                        from .hil_targets import command_at_step_start
+                        hil_command, hil_command_receipt = command_at_step_start(sample, runtime.snapshot().expert_mask, side=getattr(self.env,"_active_arm","right"))
                     env._sleep(1/self.config.logical_hz)
                     after = self.sample()
                     executed = hil_command if hil_command_receipt is not None else env._state(after.observation)
@@ -517,7 +517,7 @@ class AsyncExecution:
                     epoch = self.epoch
                     interval_origin = self.timeline_origin
                     interval_index = self.publication_index
-                    for timestamp, alpha in self.events(self.publication_index, 20, self.config.publish_hz):
+                    for timestamp, alpha in self.events(self.publication_index, self.config.logical_hz, self.config.publish_hz):
                         # Interpolation and the causal filter depend on the last
                         # emitted target, not on a future camera frame. Prepare
                         # them in idle time; retain fresh feedback/authority and
@@ -606,7 +606,7 @@ class AsyncExecution:
                     # A partial segment can end on pause/HIL. Never wait on
                     # the invalidated interval's deadline after breaking out.
                     if epoch == self.epoch:
-                        self.wait_active(interval_origin+(interval_index+1)/20, epoch)
+                        self.wait_active(interval_origin+(interval_index+1)/self.config.logical_hz, epoch)
                     after = self.sample()
                     after_state = runtime.observe_mode(after.mode)
                     if after_state.phase is EpisodePhase.FAULT:
@@ -650,7 +650,7 @@ class AsyncExecution:
                     source=int(source), actor_param_version=int(version), done=outcome is not None,
                     outcome=None if outcome is None else outcome.value, expert_mask=list(runtime.snapshot().expert_mask),
                     timestamp=float(after.timestamp), shadow=env._shadow_mode,
-                    execution_profile=self.name, logical_hz=20, publish_hz=self.config.publish_hz,
+                    execution_profile=self.name, logical_hz=self.config.logical_hz, publish_hz=self.config.publish_hz,
                     execution_settings=dict(logical_hz=self.config.logical_hz,
                         publish_hz=self.config.publish_hz, rtc=self.config.rtc,
                         smoothing_tau_sec=self.config.smoothing_tau_sec,

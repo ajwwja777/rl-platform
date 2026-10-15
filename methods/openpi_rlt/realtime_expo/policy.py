@@ -1,6 +1,7 @@
 """Two-wrist left-arm Stage1 inference; no robot I/O or middle-camera input."""
 import dataclasses
 import hashlib
+import time
 from pathlib import Path
 import numpy as np
 from .dataset import PROMPT
@@ -20,7 +21,7 @@ def prepare_observation(observation):
         result[key]=resize_with_pad(image,224,224)
     return dict(state=state.copy(),images=result,prompt=observation.get('prompt',PROMPT))
 
-def load(checkpoint,output,*,num_steps=10):
+def load(checkpoint,output,*,num_steps=10,rtc_overlay=None):
     # Caller sets process-local upstream imports and cache before loading.
     import datasets,torch
     import jax
@@ -35,6 +36,11 @@ def load(checkpoint,output,*,num_steps=10):
     from .configuration import build_config
     from methods.openpi_rlt.plug_v3_yyshadow.stage1_loading import restore_inference_params
     import train_rlt
+    if not 1 <= num_steps <= 20:raise ValueError('num_steps must be within 1..20')
+    rtc_sampler=None
+    if rtc_overlay is not None:
+        from methods.openpi_rlt.experiments.rtc import load_sampler
+        rtc_sampler=load_sampler(rtc_overlay)
     checkpoint=Path(checkpoint); output=Path(output)
     c=build_config(output,checkpoint/'params',1,1,1)
     c=dataclasses.replace(c,data=dataclasses.replace(c.data,assets=tc.AssetsConfig(assets_dir=str(checkpoint/'assets'))))
@@ -53,15 +59,25 @@ def load(checkpoint,output,*,num_steps=10):
             actions=self.vla.sample_actions_from_prefix_cache(jax.random.key(42),cache,num_steps=num_steps,noise=noise)
             token=self.rlt_module(cache.image_prefix_out.astype(jnp.float32),None,method='encode',train=False)
             return actions,token
+        def infer_rtc(self,observation,previous,delay,execution):
+            cache=self.vla.prepare_prefix_for_inference(observation)
+            actions=rtc_sampler(self.vla,jax.random.key(42),observation,previous,
+                inference_delay=delay,execution_horizon=execution,num_steps=num_steps,prefix_cache=cache)
+            token=self.rlt_module(cache.image_prefix_out.astype(jnp.float32),None,method='encode',train=False)
+            return actions,token
     shape=nnx.eval_shape(Model);graph,state=nnx.split(shape)
     params=restore_inference_params(checkpoint/'params')
     if jax.tree.structure(state.to_pure_dict())!=jax.tree.structure(params):raise ValueError('wrong parameter tree')
     state.replace_by_pure_dict(params);model=nnx.merge(graph,state)
     infer=nnx_utils.module_jit(model.infer)
+    infer_rtc=nnx_utils.module_jit(model.infer_rtc) if rtc_sampler is not None else None
     input_transform=transforms.compose([*data.data_transforms.inputs,transforms.Normalize(data.norm_stats,use_quantiles=data.use_quantile_norm),*data.model_transforms.inputs])
     output_transform=transforms.compose([*data.model_transforms.outputs,transforms.Unnormalize(data.norm_stats,use_quantiles=data.use_quantile_norm),*data.data_transforms.outputs])
+    norm_files=list((checkpoint/'assets').rglob('norm_stats.json'))
+    if len(norm_files)!=1:raise ValueError('exactly one checkpoint normalization asset required')
+    norm_sha=hashlib.sha256(norm_files[0].read_bytes()).hexdigest()
     class Policy:
-        metadata=dict(arm='left',camera_keys=list(CAMERAS),has_rl_token=True,z_dim=2048,proprio_dim=7,action_dim=7,model_horizon=50,actor_chunk_len=10,control_hz=10,model_action_sampling_hz=10,reference_sampling_hz=10,default_prompt=PROMPT,reference_sampling='fixed_seed_42',denoising_steps=num_steps,checkpoint=str(checkpoint),parameter_asset_precision='unchanged',compute_restore_dtype='bfloat16 (existing RLT inference loader)',rtc_prefix_supported=False)
+        metadata=dict(norm_stats_sha256=norm_sha,arm='left',camera_keys=list(CAMERAS),has_rl_token=True,z_dim=2048,proprio_dim=7,action_dim=7,model_horizon=50,actor_chunk_len=10,control_hz=10,model_action_sampling_hz=10,reference_sampling_hz=10,default_prompt=PROMPT,reference_sampling='fixed_seed_42',denoising_steps=num_steps,checkpoint=str(checkpoint),parameter_asset_precision='unchanged',compute_restore_dtype='bfloat16 (existing RLT inference loader)',rtc_prefix_supported=rtc_sampler is not None)
         def predict_batch(self,observations):
             transformed=[input_transform(prepare_observation(x)) for x in observations]
             batched=jax.tree.map(lambda *values:jnp.asarray(np.stack(values)),*transformed)
@@ -72,7 +88,21 @@ def load(checkpoint,output,*,num_steps=10):
             if physical.shape!=(len(observations),50,7) or z.shape!=(len(observations),2048) or not np.isfinite(physical).all() or not np.isfinite(z).all():raise ValueError('invalid inference output')
             return physical,z
         def infer(self,observation):
-            if observation.get('rtc') is not None:raise ValueError('RTC needs separate left10Hz validation; cannot silently ignore prefix')
-            action,z=self.predict_batch([observation])
-            return dict(ref_chunk=action[0,:10],z_rl=z[0],proprio=np.asarray(observation['state'],dtype=np.float32).copy(),rtc_used=False)
+            start=time.perf_counter()
+            request=observation.get('rtc')
+            if request is None:
+                actions,z=self.predict_batch([observation])
+                physical,token=actions[0],z[0]
+            else:
+                if infer_rtc is None:raise ValueError('RTC overlay not configured')
+                from methods.openpi_rlt.experiments.rtc import encode_prefix
+                raw=prepare_observation(observation)
+                transformed=input_transform(raw)
+                batched=jax.tree.map(lambda v:jnp.asarray(v)[None,...],transformed)
+                previous,delay,execution=encode_prefix(raw,request,input_transform)
+                actions,z=infer_rtc(model_api.Observation.from_dict(batched),jnp.asarray(previous)[None],jnp.asarray(delay),jnp.asarray(execution))
+                physical=np.asarray(output_transform({'state':np.asarray(transformed['state']),'actions':np.asarray(actions[0]).copy()})['actions'],np.float32)
+                token=np.asarray(z[0],np.float32).reshape(-1)
+                if physical.shape!=(50,7) or token.shape!=(2048,) or not np.isfinite(physical).all() or not np.isfinite(token).all():raise ValueError('invalid RTC output')
+            return dict(ref_chunk=physical[:10],z_rl=token,proprio=np.asarray(observation['state'],dtype=np.float32).copy(),rtc_used=request is not None,policy_timing={'infer_ms':1000*(time.perf_counter()-start)})
     return Policy()
