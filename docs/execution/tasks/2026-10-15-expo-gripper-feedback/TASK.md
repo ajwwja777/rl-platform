@@ -17,3 +17,5 @@ feedback仅当策略目标超过实际开度1mm、上一指令低于反馈1mm时
 用户报告固定Actor11修正版真机效果很好，明确要求将同一修正用于最新batch5并继续Online。复用FeedbackExecution，batch5启动脚本显式开启--gripper-feedback，原逐回合Online与固定原版对照不启用。训练脚本、超参数、Replay、权重目录、model_id和每5回合更新策略不变；接续当前Actor40/Critic800/17有效回合/online2804/Replay6105/checkpoint3，而非回退Actor11。
 
 新回合started/finished元数据保存execution_profile=gripper_feedback_v1；历史回合不改写。Replay仍从/master/joint_left记录实际协调器输出，不用原模型输出替代限速修正后的动作。212 CPU通过、4 GPU布局用例跳过，覆盖Online真实发布循环的前缀一致性、关闭开关时旧行为、回合标签保存及实际动作不被二次限速；既有冻结预览测试继续通过。现场源码/加载回执归runtime/verification/batch5-gripper-20261015。
+
+2026-10-15现场交付通过：6个运行/文档文件逐SHA与操作锁安装；Cobot现有测试文件版本不同，保留不覆盖。释放已暂停且无Session的Actor11预览，通过正式Web采集模型API加载原batch5入口，50Hz/RTC/滤波保持。Runtime1594980 ready/manual-paused，gripper_feedback=true、execution_profile=gripper_feedback_v1；远端与本地Actor40一致，Critic800/VLA40/Replay6105、双A6000、batch0/5，published0。未开始真实回合、运动或额外训练。Learner committed.json与contract.json安装前后SHA完全不变。详细回执Cobot runtime/verification/batch5-gripper-20261015/{install,acceptance}.json；用户可开始Session继续Online。
