@@ -1,3 +1,7 @@
+## DELIVERY COMPLETE 2026-10-15T19:19:07
+
+Verified: both Web entries installed and no-motion field loads passed. Current Online is ready/disarmed, emitted_commands0, Replay551, Learner7000/Actor3500, pending budget0. Only two wrist camera subscriptions. User may proceed with controlled physical acceptance/collection; autonomous improvement remains unproven and gripper DEV retention limitation remains. Canonical final evidence and paths: [RESULT.md](RESULT.md). Earlier progress below is historical.
+
 ## Final offline candidate (2026-10-15T19:04:24)
 
 Verified: original delta10 Warmup7000 remains selected. Single-factor delta0 comparison completed 10k updates and deployed-input evaluation: selected7k DEV joint18.7913mrad/gripper4.6126mm vs native18.7425mrad/4.6135mm. No meaningful gripper-retention improvement; no algorithm default changed. Comparison and limits: outputs/realtime-expo-rlt-20261015/warmup-single-factor-comparison.json.

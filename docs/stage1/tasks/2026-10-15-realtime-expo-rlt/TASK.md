@@ -1,3 +1,5 @@
+Current delivery: complete for offline selection, Web integration and no-motion readiness; physical rollout/Online improvement remain operator validation. See [RESULT.md](RESULT.md) and [STATUS.md](STATUS.md).
+
 # realtime_expo 左臂RLT训练（2026-10-15）
 
 状态：HPC短训/恢复、部署一致单条评测及RTC推理已通过；正式4卡重试721065排队，自动多checkpoint评测721154等待前序成功。左臂双腕/10Hz执行适配93项、选型7项、专家种子5项CPU检查通过。未交付Online权重；实时入口[STATUS](STATUS.md)。
