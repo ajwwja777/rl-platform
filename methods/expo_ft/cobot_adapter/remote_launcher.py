@@ -77,7 +77,13 @@ def main():
     parser.add_argument("--config", type=Path, required=True)
     args = parser.parse_args()
     config = json.loads(args.config.read_text())
-    config=selected_profile(config,os.environ.get('SSH_ORIGINAL_COMMAND','run'))
+    original = os.environ.get('SSH_ORIGINAL_COMMAND', 'run')
+    if original == 'monitor' or original.startswith('monitor '):
+        config = selected_profile(config, 'run' + original[len('monitor'):])
+        from remote_monitor import snapshot
+        print(json.dumps(snapshot(config), allow_nan=False), flush=True)
+        return
+    config=selected_profile(config,original)
     if "relay" in config:
         command = relay_command(config)
         os.execvp(command[0], command)
