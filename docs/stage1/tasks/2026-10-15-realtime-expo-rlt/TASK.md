@@ -45,3 +45,17 @@ CUDA_VISIBLE_DEVICES=0,1 XLA_PYTHON_CLIENT_MEM_FRACTION=0.90 OMP_NUM_THREADS=8 "
 唯一下一步是完成已授权HPC四卡迁移核验/Slurm申请，再执行真实小步/保存恢复验证与正式Stage1；不足时调整batch并记录，不改算法挤单卡。之后才可提取同权重z_rl/reference、构建独立10Hz Warmup Replay、训练Actor/Critic并离线验证，最后实现独立左臂10Hz/可变夹爪的RLT部署入口。当前右臂运行器有硬编码，尚未适配，不得把本次新权重将来直接挂到右臂入口。没有自主失败样本/独立TEST，能力评估限制保留。
 
 本批HPC作业已启动，是否完成真实更新以STATUS和运行日志为准；尚无已验证新权重或现场部署，不要使用“训练完成”或“可以Online”描述。
+
+## 2026-10-15 用户追加的交付要求与选型协议
+
+授权范围扩展到实测训练提速、checkpoint离线选型、独立左臂双腕RLT的Warmup/Online接续与Web可选入口同步。用户自行真机rollout；不自动机器人运动，不替换现有EXPO/旧RLT，不覆盖生产Replay。部署不输入中臂/头部相机，真实输入仅left_wrist/right_wrist，base占位为全零且mask=false。
+
+先按固定候选1000/2000/3000/4000/4999比较；最后一步不是自动赢家。若最佳仍在预算边界且DEV持续改善，再有记录地扩展预算；不凭TRAIN loss无限续训。DEV五完整Episode、TRAIN44完整Episode，保留训练见过/重复开发标签，无独立TEST。
+
+离线主指标：C10有效未来帧的逐Episode等权六关节物理MAE；同时报告H50、各关节/夹爪MAE及p95、相邻重规划差、动作二阶差与TRAIN/DEV差距。尾部padding不作为真实误差样本；不把重叠窗口当独立样本。以完整Episode bootstrap描述不确定性，五集DEV结论强度有限。夹爪单列米，不与关节弧度混算。
+
+选择流程：先排除非有限值/输入资产不一致/缺集候选；以DEV主指标最佳为参照，若其夹爪MAE或关节p95相对候选最优差超过25%，标为指标冲突，保留Pareto候选供追加离线检查，不自动宣称最优。主指标差1%以内优先更早checkpoint；连续性作为退化诊断，不以过度平滑换低误差。每候选相同观测、batch、推理步数和逐观测固定noise；先验证单条与batch一致性。
+
+效率：记录编译冷启动与稳定每步用时、GPU利用率/显存、读数据/保存时间；只据实测改变workers/prefetch或卡数，batch变化单独记为训练配置变化。现有4H100 batch32先获得稳定基线，不中断正在执行的小步门禁。
+
+Online交付还需同一选中Stage1提取z/ref、独立TRAIN专家Replay/norm，Warmup多checkpoint比较、Actor导出/恢复与左右臂/夹爪/时基/最终执行动作一致性验证。全成功专家不能证明Critic有失败区分能力，实际自主改进仍待Online新经验。Web明确标注冻结/Online版本与独立数据目录，候选晋升可回退，不静默继承旧任务权重/硬编码。
