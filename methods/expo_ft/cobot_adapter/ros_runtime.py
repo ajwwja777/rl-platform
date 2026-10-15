@@ -210,6 +210,15 @@ class Runtime:
             except (OSError, ValueError):
                 pass
 
+    def make_plan(self, actions, last):
+        return limited_plan(actions, last, self.options['smoothing'])
+
+    def prepare_plan(self, plan, index, last):
+        return plan
+
+    def interpolate_command(self, last, target, fraction, index):
+        return last + (target - last) * fraction
+
     def run(self):
         self.start_server()
         epoch = -1
@@ -261,7 +270,7 @@ class Runtime:
                         continue
                     if time.monotonic() - self.future_started > .5:
                         raise ValueError('Bootstrap observation expired during inference')
-                    plan = limited_plan(self.resolve_inference(actions), last, self.options['smoothing'])
+                    plan = self.make_plan(self.resolve_inference(actions), last)
                     self.future = None
                     index = 0
                     next_tick = time.monotonic()
@@ -270,6 +279,11 @@ class Runtime:
                     self.future = None
                     self.fail(exc)
                     continue
+            try:
+                plan = self.prepare_plan(plan, index, last)
+            except Exception as exc:
+                self.fail(exc)
+                continue
             if self.options['rtc'] and index == 8-self.rtc_delay and self.future is None:
                 try:
                     obs = self.observation()
@@ -301,7 +315,7 @@ class Runtime:
                             break
                         if time.monotonic() - deadline > .05:
                             raise ValueError('EXPO physical publish deadline exceeded 50ms')
-                        value = last + (target - last) * (micro / count)
+                        value = self.interpolate_command(last, target, micro / count, index)
                         if self.publisher is not None:
                             message = self.joint_type()
                             message.header.stamp = self.ros.Time.now()
@@ -332,7 +346,7 @@ class Runtime:
                         if self.future_epoch != self.gate.generation:
                             plan = None
                             continue
-                        plan = limited_plan(self.resolve_inference(actions), last, self.options['smoothing'])
+                        plan = self.make_plan(self.resolve_inference(actions), last)
                         index = 0
                     except Exception as exc:
                         self.future = None

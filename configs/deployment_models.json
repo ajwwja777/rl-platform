@@ -1212,6 +1212,118 @@
         "apply": "load",
         "training_state": "independent_per_pair"
       }
+    },
+    {
+      "id": "expo-plug-actor11-gripper-original",
+      "label": "左臂插头 · Actor11 原执行逻辑对照（固定权重测试）",
+      "kind": "vla",
+      "family": "EXPO",
+      "runtime_adapter": "expo_left",
+      "mode": "evaluation",
+      "checkpoint": "/home/agilex/xiqing/models/expo-ft/plug_left_2cam/rtc_sft_20261013/step_2000",
+      "normalization": "/home/agilex/xiqing/models/expo-ft/plug_left_2cam/rtc_sft_20261013/step_2000/norm_stats.json",
+      "step": 2000,
+      "task": "plug_left_2cam",
+      "training_method": "realtime-expo-actor11-gripper-original",
+      "control_hz": 10,
+      "active_arm": "left",
+      "camera_keys": [
+        "left_wrist_image",
+        "right_wrist_image"
+      ],
+      "prompt": "Unplug the black plug from the bottom socket of the power strip and insert it into the top socket.",
+      "entry_relative": "scripts/expo_gripper_preview_up.sh",
+      "required": [
+        "/home/agilex/xiqing/projects/expo-ft/.venv/bin/python",
+        "/home/agilex/xiqing/models/expo-ft/plug_left_2cam/rtc_sft_20261013/step_2000/checkpoints/2000/params",
+        "/home/agilex/xiqing/models/expo-ft/plug_left_2cam/rtc_sft_20261013/step_2000/norm_stats.json",
+        "/home/agilex/jiaan/data/expo_ft/plug_left_2cam/gripper_feedback_actor11_20261015/actors/11/manifest.json",
+        "/home/agilex/jiaan/project/rl-platform/methods/expo_ft/cobot_adapter/gripper_preview.py"
+      ],
+      "checkpoint_type": "frozen_native_expo_actor11",
+      "resumable_training": false,
+      "integration_level": "managed_runtime",
+      "io_contract": "expo-left-7d-two-wrist-10hz",
+      "evaluation_allowed": true,
+      "capabilities": {
+        "load": true,
+        "ready": true,
+        "start": true,
+        "pause": true,
+        "resume": true,
+        "stop": true,
+        "unload": true,
+        "logs": true,
+        "pid": true,
+        "capture": true,
+        "hil": true,
+        "evaluate": true,
+        "train": false
+      },
+      "data_directories": {
+        "collection": "/media/agilex/Getea1/jiaan/data/datasets/plug_left_2cam/recordings/expo-actor11-gripper-original",
+        "evaluation": "/media/agilex/Getea1/jiaan/data/evaluations/plug_left_2cam/expo-actor11-gripper-original"
+      },
+      "validation": "208 CPU checks passed; 4 GPU-layout checks skipped. Physical release acceptance pending.",
+      "execution_fidelity": "Frozen Actor11, edit0.01, RTC5. Opening feedback anchor original. No online updates; unchanged arm limits and model weights.",
+      "collection_directory_policy": "model",
+      "actor_version": 11
+    },
+    {
+      "id": "expo-plug-actor11-gripper-feedback",
+      "label": "左臂插头 · Actor11 夹爪反馈修正（固定权重测试）",
+      "kind": "vla",
+      "family": "EXPO",
+      "runtime_adapter": "expo_left",
+      "mode": "evaluation",
+      "checkpoint": "/home/agilex/xiqing/models/expo-ft/plug_left_2cam/rtc_sft_20261013/step_2000",
+      "normalization": "/home/agilex/xiqing/models/expo-ft/plug_left_2cam/rtc_sft_20261013/step_2000/norm_stats.json",
+      "step": 2000,
+      "task": "plug_left_2cam",
+      "training_method": "realtime-expo-actor11-gripper-feedback",
+      "control_hz": 10,
+      "active_arm": "left",
+      "camera_keys": [
+        "left_wrist_image",
+        "right_wrist_image"
+      ],
+      "prompt": "Unplug the black plug from the bottom socket of the power strip and insert it into the top socket.",
+      "entry_relative": "scripts/expo_gripper_preview_up.sh",
+      "required": [
+        "/home/agilex/xiqing/projects/expo-ft/.venv/bin/python",
+        "/home/agilex/xiqing/models/expo-ft/plug_left_2cam/rtc_sft_20261013/step_2000/checkpoints/2000/params",
+        "/home/agilex/xiqing/models/expo-ft/plug_left_2cam/rtc_sft_20261013/step_2000/norm_stats.json",
+        "/home/agilex/jiaan/data/expo_ft/plug_left_2cam/gripper_feedback_actor11_20261015/actors/11/manifest.json",
+        "/home/agilex/jiaan/project/rl-platform/methods/expo_ft/cobot_adapter/gripper_preview.py"
+      ],
+      "checkpoint_type": "frozen_native_expo_actor11",
+      "resumable_training": false,
+      "integration_level": "managed_runtime",
+      "io_contract": "expo-left-7d-two-wrist-10hz",
+      "evaluation_allowed": true,
+      "capabilities": {
+        "load": true,
+        "ready": true,
+        "start": true,
+        "pause": true,
+        "resume": true,
+        "stop": true,
+        "unload": true,
+        "logs": true,
+        "pid": true,
+        "capture": true,
+        "hil": true,
+        "evaluate": true,
+        "train": false
+      },
+      "data_directories": {
+        "collection": "/media/agilex/Getea1/jiaan/data/datasets/plug_left_2cam/recordings/expo-actor11-gripper-feedback",
+        "evaluation": "/media/agilex/Getea1/jiaan/data/evaluations/plug_left_2cam/expo-actor11-gripper-feedback"
+      },
+      "validation": "208 CPU checks passed; 4 GPU-layout checks skipped. Physical release acceptance pending.",
+      "execution_fidelity": "Frozen Actor11, edit0.01, RTC5. Opening feedback anchor feedback. No online updates; unchanged arm limits and model weights.",
+      "collection_directory_policy": "model",
+      "actor_version": 11
     }
   ]
 }
