@@ -16,3 +16,9 @@
 CPU 验证覆盖原生数值/归一化、固定 Critic、真实 spawn 子进程、接管统计、队列溢出、异常隔离、过期 plan 排除及 RTC 前缀；Web 验证覆盖四卡、读取路径隔离、离线历史、切模型响应隔离、EXPO 回归。详细数量与现场同步在交付记录补充。
 
 当前另一任务已按用户要求暂不登记 `realtime-expo-rlt-online`，只开放 Reference 与专家 7k Frozen。本任务不恢复其训练入口、不启动训练或机器人；现有其他 Online 入口可使用监控。新运行采样代码在下次正常加载 Online 后生效；旧日志无指标不补值。真机回合与性能验收仍由现场执行。
+
+## 源码交付证据
+
+RL e607859 / Web ed2320c 已提交并推送，现场10文件SHA核验安装。81项RL CPU、7项Web Python、5项DOM通过；真实spawn CPU评分、固定Critic、RTC前缀及异常隔离已覆盖。现场纯CPU固定零输入诊断读取Critic7000，Q有限（TFRT_CPU_0，首次评分0.255s），未执行策略或机器人动作。只读历史读取：credit_mc30 480点、supported 281点、teacher5 107点、原Online600点；无相应历史字段的回合未推断成功率。
+
+现场当时正在Reference440116真实回合；本任务只安装源码，PID未变，尚未重载Web。用户已收到暂停窗口选择，等待回复；不得把源码同步写成后端激活或真机验收。现场证据：cobot-web/runtime/verification/rlt-charts-20261015/{install,cpu-score}.json。

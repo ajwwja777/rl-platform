@@ -109,3 +109,5 @@ xiqing 原生 RealTimeEXPOFTLearner 在 Cobot4090 完整推理通过；batch2/UT
 2026-10-14 EXPO抖动：[配对诊断](tasks/2026-10-14-expo-native-sync/JITTER.md)显示version0编辑扰动0.1是录制窗口内动作粗糙度主要增量；0.01相同RTC5/滤波限幅下二阶差分降约79%。独立本地低扰动预览已登记/HTTP验证，无Learner；真机待验收，原Online未改，LFT1 GPU占用阻止其加载。
 
 2026-10-15 EXPO batch5 Web readiness regression fixed: local Actor and remote Learner validation separated, role/identity checks retained. 188 CPU tests and paused Web load passed; Actor/Learner11, dual GPU, batch0/5. See [batch5 delivery](tasks/2026-10-14-expo-native-sync/BATCH5_DUAL_GPU.md).
+
+2026-10-15：[RLT四图监控](tasks/2026-10-15-rlt-monitoring/TASK.md)新增独立日志读取、Online/Warmup/评测隔离、实际回合自主成功率和CPU后台固定Critic动作Q1；源代码已同步，Web激活等待现场暂停。不得用训练批次actor_q代替单轮动作Q，也不以低loss证明成功率改善。

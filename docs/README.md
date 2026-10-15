@@ -90,3 +90,5 @@ Cobot4090 原生完整 EXPO 推理通过，完整更新 batch2/UTD1 两种分配
 
 
 2026-10-15 realtime_expo RLT: new left-arm/two-wrist Stage1 selected4999 + Warmup7000 delivered as independent frozen/Online Web entries. Both real no-motion loads passed; currently Online ready/paused, Replay551, step7000/Actor3500, pending0. No middle-camera model input. Gripper reused-DEV error exceeds Reference; independent TEST/autonomous Online improvement remain unverified. [Delivery evidence](stage1/tasks/2026-10-15-realtime-expo-rlt/RESULT.md).
+
+2026-10-15：[RLT Online四图监控](online/tasks/2026-10-15-rlt-monitoring/TASK.md)已实现并同步源码；独立于模型加载读取训练记录，固定Critic CPU评分不进入控制计算。81 RL/7 Web/5 DOM通过；Web激活等待用户暂停真机回合。
