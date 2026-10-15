@@ -63,11 +63,11 @@ def test_browser_choices_reach_both_real_launch_commands_and_status_guard(tmp_pa
         if not default:
             assert args.run_dir.name.endswith(options.suffix(dict(rtc_delay=delay,edit_scale=scale)))
             assert learner['run_dir'].endswith(options.suffix(dict(rtc_delay=delay,edit_scale=scale)))
-        info=dict(deployment_id='expo',rtc_delay=delay,edit_scale=scale,update_layout='native_full_batch',episodes_per_update=episodes)
+        info=dict(deployment_id='expo',rtc_delay=delay,edit_scale=scale,update_layout='native_full_batch',episodes_per_update=episodes,training_enabled=True)
         assert lc[lc.index('--episodes-per-update')+1]==str(episodes)
-        runtime.validate_server_status(info)
+        runtime.validate_remote_status(info)
         for bad in ({**info,'rtc_delay':9},{**info,'edit_scale':.99},{**info,'episodes_per_update':6}):
-            with pytest.raises(RuntimeError):runtime.validate_server_status(bad)
+            with pytest.raises(RuntimeError):runtime.validate_remote_status(bad)
     assert json.loads(learner_profile.read_text())==original
 
 
