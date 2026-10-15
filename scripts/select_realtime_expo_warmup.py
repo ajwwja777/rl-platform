@@ -26,12 +26,21 @@ fig,axes=plt.subplots(1,3,figsize=(14,4))
 for split in ['train','dev']:
  for ax,key,label in zip(axes,['joint_mae_rad','gripper_mae_m','joint_p95_rad'],['6-joint MAE (mrad)','Gripper MAE (mm)','Mean per-episode joint p95 (mrad)']):
   ax.plot([r['step'] for r in rows[1:]],[1000*r['cohorts'][split][key] for r in rows[1:]],marker='.',label=split.upper()+(' (repeated selection)' if split=='dev' else ''))
+  limits=[]
+  for row in rows[1:]:
+   values=np.array([e['p95_per_dim' if key=='joint_p95_rad' else 'mae_per_dim'] for e in row['cohorts'][split]['episodes']])
+   values=values[:,6] if key=='gripper_mae_m' else values[:,:6].mean(1)
+   indices=rng.integers(len(values),size=(5000,len(values)))
+   limits.append(np.percentile(values[indices].mean(1),[2.5,97.5])*1000)
+  limits=np.array(limits);ax.fill_between([r['step'] for r in rows[1:]],limits[:,0],limits[:,1],alpha=.12)
   ax.axvline(selected['step'],color='gray',ls=':');ax.set(xlabel='Learner updates',ylabel=label);ax.grid(alpha=.2);ax.legend()
-fig.suptitle('Native RLT Warmup | 44 TRAIN / 5 reused DEV Episodes | no independent TEST');fig.tight_layout();fig.savefig(a.run/'warmup_comparison.png',dpi=160);plt.close(fig)
+fig.suptitle('Native RLT Warmup | 44 TRAIN / 5 reused DEV Episodes | no independent TEST\n95% complete-Episode bootstrap bands; exploratory selection');fig.tight_layout();fig.savefig(a.run/'warmup_comparison.png',dpi=160);plt.close(fig)
 fig,axes=plt.subplots(1,2,figsize=(12,4))
 for split in ['train','dev']:
  q=np.load(a.run/f'{split}-step-{selected["step"]}.npz');axes[0].hist(q['q_actual'].ravel(),bins=35,alpha=.4,label=split.upper());axes[1].hist((q['q_actor'][:,0]-q['q_ref'][:,0]),bins=35,alpha=.4,label=split.upper())
 axes[0].axvline(0,color='red',ls=':');axes[0].axvline(.99**9,color='red',ls=':');axes[0].set_title('Q actual human action (both heads)');axes[1].set_title('Paired Q1(Actor)-Q1(Reference); no causal claim')
-for ax in axes:ax.legend();ax.set_ylabel('Transitions (not independent Episodes)')
+for ax in axes:ax.legend()
+axes[0].set_ylabel('Q values (2 heads per transition)')
+axes[1].set_ylabel('Paired transitions (not independent Episodes)')
 fig.tight_layout();fig.savefig(a.run/'warmup_q.png',dpi=160)
 print(json.dumps(dict(selected_step=selected['step'],train=selected['cohorts']['train']['joint_mae_rad'],dev=selected['cohorts']['dev']['joint_mae_rad'],grip=selected['cohorts']['dev']['gripper_mae_m'])))

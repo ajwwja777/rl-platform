@@ -63,6 +63,8 @@ def validate_environment(environment):
     for key, value in required.items():
         if environment.get(key) != value:
             raise ValueError(f'{key} must be {value!r} for the left-arm task')
+    if environment.get('COBOT_RLT_COLLECTION_PHASE','online') not in ('warmup','online'):
+        raise ValueError('Native collection phase must be warmup or online; frozen is a load mode')
     if environment.get('COBOT_RLT_HOME_AFTER_TERMINAL','0') != '0' or environment.get('COBOT_RLT_ENABLE_ROBOT_RESET','0') != '0':
         raise ValueError('Automatic home/reset not enabled for the new left-arm task')
 

@@ -88,3 +88,11 @@ def test_policy_input_rejects_middle_camera():
     assert all(v.shape==(224,224,3) for v in result['images'].values())
     obs['images']['base_0_rgb']=np.zeros((224,224,3),np.uint8)
     with pytest.raises(ValueError,match='forbidden'):prepare_observation(obs)
+
+
+def test_load_mode_is_not_a_native_replay_phase():
+    from methods.openpi_rlt.realtime_expo.left_arm_env import validate_environment
+    from methods.openpi_rlt.realtime_expo.dataset import PROMPT
+    env=dict(COBOT_RLT_TASK_CONTRACT='realtime_expo_left_2cam_10hz',COBOT_RLT_PROMPT=PROMPT,COBOT_RLT_CONTROL_HZ='10',COBOT_RLT_LOGICAL_HZ='10',COBOT_RLT_CHUNK_EXEC_HORIZON='10',COBOT_RLT_HIL_SAMPLING='logical10',COBOT_RLT_HIL_TARGET='coordinator_command',COBOT_RLT_RAW_OBSERVATION_CONTRACT='trace',COBOT_RLT_COLLECTION_PHASE='frozen')
+    with pytest.raises(ValueError,match='collection phase'):validate_environment(env)
+    env['COBOT_RLT_COLLECTION_PHASE']='online';validate_environment(env)
