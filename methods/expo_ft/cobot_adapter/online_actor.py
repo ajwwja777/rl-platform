@@ -14,7 +14,9 @@ from actor_snapshot import contract,restore,strip_training
 from wire import decode
 
 class Actor:
-    infer=Learner.infer
+    def infer(self, route, data):
+        from monitoring import infer_with_q
+        return infer_with_q(self, Learner.infer, route, data)
     warm_inference=Learner.warm_inference
 
     def __init__(self,args):
@@ -26,6 +28,9 @@ class Actor:
         self.agent=strip_training(self.agent)
         self.identity=contract(args.bundle,args.project,args.rtc_delay,self.edit_scale)
         self.install(args.snapshot)
+        import sys
+        from monitoring import install_selection_observer
+        install_selection_observer(sys.modules[type(self.agent).__module__])
 
     def status(self):
         return dict(ready=self.phase in ('ready','rollout'),phase=self.phase,error=self.error,active_episode=self.active,

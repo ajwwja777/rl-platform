@@ -22,6 +22,8 @@ class OnlineRuntime(FeedbackExecution, RemoteSupport, Runtime):
         self.remote_init(args)
         self.journal=EpisodeJournal(args.run_dir/'episodes')
         self.episode=None
+        from monitoring import RolloutHistory
+        self.monitor_history=RolloutHistory(args.run_dir)
         super().__init__(args,ros)
         if not self.options['rtc']:
             raise ValueError('Native online EXPO requires RTC for matching delayed training targets')
@@ -70,6 +72,13 @@ class OnlineRuntime(FeedbackExecution, RemoteSupport, Runtime):
         threading.Thread(target=self.control.serve_forever,daemon=True).start()
         threading.Thread(target=self.collect,daemon=True).start()
         if self.remote:threading.Thread(target=self.remote_poll,daemon=True).start()
+        threading.Thread(target=self.monitor_flush,daemon=True).start()
+
+    def monitor_flush(self):
+        import logging
+        while not self.stop.wait(.5):
+            try:self.monitor_history.flush()
+            except Exception:logging.exception('EXPO chart write failed; control unaffected')
 
     def begin_journal(self, identity, version):
         with self.journal.lock:
@@ -98,7 +107,7 @@ class OnlineRuntime(FeedbackExecution, RemoteSupport, Runtime):
             return [self.remote['python'],str(Path(__file__).with_name('online_actor.py')),
                 '--project',self.remote['native_project'],'--bundle',str(self.args.bundle),'--model-id',self.args.model_id,
                 '--snapshot-root',str(self.actor_root),'--snapshot',str(directory),'--port',str(self.args.port),'--rtc-delay',str(self.args.rtc_delay)]+(['--edit-scale',str(self.remote['edit_scale'])] if 'edit_scale' in self.remote else [])
-        command=[str(self.args.project/'.venv/bin/python'),str(Path(__file__).with_name('online_learner.py')),
+        command=[str(self.args.project/'.venv/bin/python'),str(Path(__file__).with_name('observed_learner.py')),
                 '--project',str(self.args.project),'--bundle',str(self.args.bundle),
                 '--run-dir',str(self.args.run_dir),'--port',str(self.args.port),'--rtc-delay',str(self.args.rtc_delay)]
         if getattr(self.args,'recipe','legacy')=='native_sync':
@@ -133,6 +142,7 @@ class OnlineRuntime(FeedbackExecution, RemoteSupport, Runtime):
         if not self.episode:raise ValueError('Online episode has ended')
         payload=self.array_rpc('/select',**self.observation(),episode_uuid=self.episode,
             precached=np.asarray(value['precached'],np.float32),delay=value['delay'],actor_version=value['actor_version'])
+        self.monitor_history.selected(self.journal.active,payload)
         return np.asarray(payload['actions'],np.float32)
 
     def collect(self):

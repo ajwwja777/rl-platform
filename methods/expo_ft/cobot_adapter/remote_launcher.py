@@ -59,7 +59,7 @@ def select_gpus(config, is_busy):
     if not free:raise RuntimeError('Reserved EXPO GPUs are already in use')
     return free[:maximum]
 def learner_command(config, adapter):
-    command = [config['python'], str(adapter / 'online_learner.py'), '--project', config['project'],
+    command = [config['python'], str(adapter / 'observed_learner.py'), '--project', config['project'],
                '--bundle', config['bundle'], '--run-dir', config['run_dir'], '--port', str(config['port']),
                '--recipe', 'native_sync', '--seed-dir', config['seed_dir'], '--deployment-id', config['model_id'],
                '--rtc-delay', str(config['rtc_delay']), '--native-batch-update', '--learner-only']

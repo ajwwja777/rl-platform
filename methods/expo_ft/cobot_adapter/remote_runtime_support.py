@@ -80,6 +80,13 @@ class RemoteSupport:
                 with self.rpc.open("http://127.0.0.1:%d/status" % self.remote.get("local_port",18453), timeout=5 if self.transfer else 1) as response:
                     value = json.load(response)
                 self.validate_remote_status(value)
+                monitoring = value.pop('monitoring', None)
+                if monitoring is not None:
+                    try:
+                        from monitoring import write_json
+                        write_json(self.args.run_dir / 'telemetry' / 'learner.json', monitoring)
+                    except (OSError, ValueError):
+                        pass  # Observability must never pause the robot or learner.
                 self.remote_status = value
                 self.remote_seen = time.monotonic()
             except RuntimeError as exc:
