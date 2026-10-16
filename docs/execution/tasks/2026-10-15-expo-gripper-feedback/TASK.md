@@ -19,3 +19,7 @@ feedback仅当策略目标超过实际开度1mm、上一指令低于反馈1mm时
 新回合started/finished元数据保存execution_profile=gripper_feedback_v1；历史回合不改写。Replay仍从/master/joint_left记录实际协调器输出，不用原模型输出替代限速修正后的动作。212 CPU通过、4 GPU布局用例跳过，覆盖Online真实发布循环的前缀一致性、关闭开关时旧行为、回合标签保存及实际动作不被二次限速；既有冻结预览测试继续通过。现场源码/加载回执归runtime/verification/batch5-gripper-20261015。
 
 2026-10-15现场交付通过：6个运行/文档文件逐SHA与操作锁安装；Cobot现有测试文件版本不同，保留不覆盖。释放已暂停且无Session的Actor11预览，通过正式Web采集模型API加载原batch5入口，50Hz/RTC/滤波保持。Runtime1594980 ready/manual-paused，gripper_feedback=true、execution_profile=gripper_feedback_v1；远端与本地Actor40一致，Critic800/VLA40/Replay6105、双A6000、batch0/5，published0。未开始真实回合、运动或额外训练。Learner committed.json与contract.json安装前后SHA完全不变。详细回执Cobot runtime/verification/batch5-gripper-20261015/{install,acceptance}.json；用户可开始Session继续Online。
+
+## 2026-10-16 逐回合 Online 接入
+
+用户要求 realtime-expo-ft-edit001-online 也启用已验收的松手反馈修正。其启动脚本新增 --gripper-feedback，复用现有 FeedbackExecution；模型 ID、独立权重/Replay 路径、逐回合训练频率与训练参数保持。网站标签注明夹爪修正。此前“原逐回合 Online 不启用”的描述为历史状态。现场现有 batch5 进程保持；该入口下次加载生效，未自动开始机器人动作或训练。启动脚本 bash -n 通过；141 项 CPU 回归通过（夹爪、Online、参数与批次调度），另 1 项实际 Learner 调度测试因系统 Python 缺 JAX 未运行，训练虚拟环境也未安装 pytest；本次不改训练实现。安装收据位于 Cobot runtime/verification/edit001-gripper-20261016，现场确认以该收据为准。

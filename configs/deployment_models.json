@@ -1073,7 +1073,7 @@
     },
     {
       "id": "expo-plug-left-2cam-edit001-online-2000",
-      "label": "左臂拔插插头 · EXPO Online（本地推理 / LFT2学习）",
+      "label": "左臂拔插插头 · EXPO Online＋夹爪修正（本地推理 / LFT2学习）",
       "kind": "vla",
       "family": "EXPO",
       "runtime_adapter": "expo_online",
@@ -1098,7 +1098,8 @@
         "/home/agilex/jiaan/project/rl-platform/methods/expo_ft/cobot_adapter/remote_runtime_support.py",
         "/home/agilex/xiqing/projects/expo-ft/.venv/bin/python",
         "/home/agilex/jiaan/project/rl-platform/runtime/expo-remote/native-source/train_pi_robo.py",
-        "/home/agilex/jiaan/project/rl-platform/methods/expo_ft/cobot_adapter/online_actor.py"
+        "/home/agilex/jiaan/project/rl-platform/methods/expo_ft/cobot_adapter/online_actor.py",
+        "/home/agilex/jiaan/project/rl-platform/methods/expo_ft/cobot_adapter/gripper_feedback.py"
       ],
       "checkpoint_type": "bounded_memory_expo_online_state",
       "resumable_training": true,
@@ -1124,7 +1125,7 @@
         "collection": "/media/agilex/Getea1/jiaan/data/datasets/plug_left_2cam/recordings/expo-edit001-online-sft2000"
       },
       "validation": "60 CPU checks; native20Critic/1VLA, fresh-process restore, updated Cobot Actor and paused Web Session/Range checks passed. Real online rollout/HIL benefit pending.",
-      "execution_fidelity": "Native synchronous EXPO; default edit_scale0.01/RTC5, selectable d1..8 and edit_scale0.01..0.10 on load in Actor and Learner; non-default pairs use independent training state. 25 confirmed TRAIN demos, warmup10 episodes, batch64/UTD20/interval30.",
+      "execution_fidelity": "Native synchronous EXPO; default edit_scale0.01/RTC5, selectable d1..8 and edit_scale0.01..0.10 on load in Actor and Learner; non-default pairs use independent training state. 25 confirmed TRAIN demos, warmup10 episodes, batch64/UTD20/interval30. Opening uses gripper_feedback_v1, shared with field-accepted Actor11/batch5; arm limits, per-episode schedule and learning settings unchanged.",
       "online_run_dir": "/home/agilex/jiaan/data/expo_ft/plug_left_2cam/native_remote_edit001_sft2000_success25_20261014",
       "collection_directory_policy": "model",
       "expo_online_options": {
