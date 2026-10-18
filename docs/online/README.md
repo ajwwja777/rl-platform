@@ -1,5 +1,7 @@
 # Online：Replay、采样、学习与 Actor 发布
 
+2026-10-18 EXPO：[HPC四卡验收与释放](tasks/2026-10-18-expo-hpc4/STATUS.md)。生产Online98完整保留，4×H100隔离更新/恢复、Cobot返回Actor与正式HTTP全量下载通过；批次3/5重启不丢，5/5才学习。稳定20Critic+1VLA为60.5秒，四卡不等于线性提速；5回合全周期估计30–40分钟。已按用户要求释放734617，恢复入口支持新作业号，物理rollout/HIL与收益仍待现场验收。
+
 2026-10-14 RLT：[Teacher5 8234离线接续检查](tasks/2026-10-11-online-learning-evidence/TEACHER5_PREONLINE_8234.md)：两套重复DEV保持门槛通过、149状态叶/双RNG/8vs4+4恢复精确、64输入导出差1.19e-7、14回归通过。Actor4117独立接续包已备，现场未晋升，EXPO保持；新DEV min-Q残差和单集HIL偏好仍不充分，不能声称自主收益。下次受控Online前仅沿既有切换做现场身份核验。
 
 2026-10-14 EXPO：[独立edit0.01 Online交付](tasks/2026-10-14-expo-native-sync/EDIT001_ONLINE.md)完成Actor/Learner一致尺度、独立Replay/快照身份及LFT2 GPU1正式暂停加载。完整20Critic/1VLA与恢复、本地更新后Actor和60CPU通过；修改动作编辑尺度必须同时修改训练目标/损失配置，并隔离身份。并发状态落盘采用唯一临时文件，避免收尾与更新线程竞争。真实rollout/HIL收益仍待验收。

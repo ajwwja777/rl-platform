@@ -1,6 +1,6 @@
 # RL 平台：当前进度与关键经验
 
-2026-10-18 EXPO HPC4：[预约与执行事实](online/tasks/2026-10-18-expo-hpc4/STATUS.md)。作业734617单节点四卡12h排队；完整Online98/Critic1960/VLA98/Replay7824迁移6343文件SHA一致，246CPU及Cobot隔离Actor98通过。后台已登记真实更新/恢复/回传验收，新Web HPC4入口资格门控，尚未就绪；保留旧LFT2与其他现场服务。
+2026-10-18 EXPO HPC4：[验收与释放事实](online/tasks/2026-10-18-expo-hpc4/STATUS.md)。4×H100真实更新/保存/3/5恢复/4→2恢复、Cobot新Actor推理及完整HTTP2.018GB回传176秒通过；可复用入口重新恢复生产98通过。按用户要求734617于22:52取消，保留状态/资产/缓存，Web入口无活动预约时不可用。稳定20Critic+1VLA实测60.5秒，历史数据估计5回合全周期约30–40分钟；无真机rollout或收益结论。
 
 2026-10-18 已按用户授权发布Teacher5 Actor4117（Learner8234），现场Actor /version确认4117；Replay3730与checkpoint/配置SHA不变、预算0、训练未冻结。50Hz RTC单EMA保持，waiting_scene/paused、录制idle，无机器人动作/服务重启。后续新经验自动训练、候选仍staged；自主持续收益证据不足。 详见[发布回执](online/tasks/2026-10-11-online-learning-evidence/TEACHER5_PREONLINE_8234.md#2026-10-18-用户授权发布回执)。
 
