@@ -57,6 +57,10 @@ def start_service(profile,name,port):
         except (OSError,ValueError):pass
         time.sleep(2)
     raise TimeoutError(name+' startup timed out')
+def stop_requested(signum, frame):
+    raise SystemExit(128+signum)
+signal.signal(signal.SIGTERM,stop_requested)
+
 try:
     fields_result=subprocess.run(['scontrol','show','job',str(JOB),'-o'],capture_output=True,text=True,check=True,timeout=15)
     node=allocated_node(config,fields_result.stdout)
@@ -91,4 +95,5 @@ try:
 except Exception as exc:
     event('failed',error=str(exc));traceback.print_exc();stop_service();raise
 finally:
+    stop_service()
     if tunnel is not None and tunnel.poll() is None:tunnel.terminate()
