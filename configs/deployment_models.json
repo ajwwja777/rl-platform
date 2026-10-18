@@ -1269,7 +1269,7 @@
       "data_directories": {
         "collection": "/media/agilex/Getea1/jiaan/data/datasets/plug_left_2cam/recordings/expo-edit001-hpc4"
       },
-      "validation": "Pending real four-GPU update, checkpoint restore and local Actor return verification; readiness receipt required.",
+      "validation": "Four-H100 update, partial-batch and 4-to-2 GPU restore, returned Cobot Actor and SSH/HTTP checks passed; active allocation and readiness receipt required. Physical rollout/HIL acceptance pending.",
       "execution_fidelity": "Continue complete committed Online98/Critic1960/VLA98 with Replay and optimizer; Cobot local inference, one Slurm node/four GPU Learner; batch5/global batch64/UTD20/interval30, RTC5/edit0.01 and gripper_feedback_v1 retained. Learner lifetime belongs to Slurm allocation, independent of local model unload.",
       "online_run_dir": "/home/agilex/jiaan/data/expo_ft/plug_left_2cam/native_remote_edit001_hpc4_20261018",
       "collection_directory_policy": "model"
