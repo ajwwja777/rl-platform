@@ -1,5 +1,7 @@
 # RL 平台：当前进度与关键经验
 
+2026-10-18 已按用户授权发布Teacher5 Actor4117（Learner8234），现场Actor /version确认4117；Replay3730与checkpoint/配置SHA不变、预算0、训练未冻结。50Hz RTC单EMA保持，waiting_scene/paused、录制idle，无机器人动作/服务重启。后续新经验自动训练、候选仍staged；自主持续收益证据不足。 详见[发布回执](online/tasks/2026-10-11-online-learning-evidence/TEACHER5_PREONLINE_8234.md#2026-10-18-用户授权发布回执)。
+
 2026-10-15 用户纠正：[Reference先采集/Warmup顺序修正](warmup/tasks/2026-10-15-reference-rollout-first/TASK.md)。现7k仅专家示范训练，撤下该任务Online入口；新增纯Reference4999与7k冻结对照，先采rollout再Warmup。本次不再训练，现场状态以任务回执为准。
 
 2026-10-15 RLT真机反馈后复核：[新双腕RLT抖动诊断](execution/tasks/2026-10-15-realtime-expo-rlt-jitter/ANALYSIS.md)。50Hz/RTC/EMA实际开启、固定Actor3500无探索；7k在重复DEV的chunk内关节粗糙度为Reference2.60倍（Episode bootstrap95%2.21–3.11），单集803发布无>40ms断档。连续性门槛遗漏已记录；RLT普通Stage1/推理RTC与EXPO训练RTC不同，因果仍需单因素。暂不把当前7k视为真机平顺验收通过；本批未改现场/训练资产。

@@ -73,3 +73,16 @@ A6000独立候选：
 - 本报告及项目/Online/guide事实摘要；未改生产算法、默认参数、训练资产或现场代码。
 
 命令统一加`CUDA_VISIBLE_DEVICES= JAX_PLATFORMS=cpu OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 taskset -c 172-175`，Python使用P/.venv/bin/python；绘图为/usr/bin/python3。精确参数、源码SHA、输入SHA和结果路径见O/COMMANDS.json、O/source-manifest.json、O/candidate-package.json。首次transfer在A6000系统Python3.8因Path.is_relative_to不可用而止于解包前，改用resolve().relative_to校验后重试成功；未影响现场。重复传输的失败尝试未当成功收据。
+
+## 2026-10-18 用户授权发布回执
+
+**已验证**：北京时间17:20:58，现用 `plug-v3-teacher5-online` 的 served Actor4063 原子晋升到已评估的 Actor4117；直接读取 Actor服务 `http://127.0.0.1:9141/version` 依次为4063、4063、4117。本次仅发布既有候选，没有新训练或参数修改。上文“未发布”是10月14日历史状态，以本节为最新结果。
+
+- A6000基线 `863d2d9`；发布脚本、完整前后状态和SHA收据：`/data/LFT-W02_data/jiaan/jiaan/projects/rl-platform/outputs/teacher5-publish-4117-20261018/{publish_on_cobot.py,receipt.json}`。命令：通过 A6000 SSH 到 agilex@10.12.166.118，用现场 `envs/online/bin/python -` 执行该脚本；仅CPU文件校验和HTTP状态读取，没有调用infer或机器人接口。
+- 现场 runtime：`/home/agilex/jiaan/data/rlt/plug_insertion/history/candidates/teacher5_8127_runtime_20261013`。发布前已核对pending/完整checkpoint/Replay与10月14日离线审查SHA完全一致，持有Web两层model-operation锁，在Session waiting_scene、policy_paused、recorder idle条件下备份旧Actor并原子替换served。
+- 新served SHA `08dd512f78bbedd7fa1ca7a76db9d9e1ad6e8857236f3ab3f2177f1ecde81ae6`；Learner8234/Actor4117、Replay3730、预算0、training_frozen=false、ready_for_online=true。checkpoint、Replay、pending、profile、teacher、norm、online.yaml前后SHA均不变。
+- 模型PID1568092、Session6936f34e-a4a3-4718-ba46-ea8ce6d837c6/Episode2/generation16保持，执行50Hz RTC、逻辑20Hz、单级EMA tau0.08保持；没有启停服务、开始Episode、录制或机器人动作。Session的actor_version仍4063是上一推理的记录，不代表Actor服务未更新；下一Episode动作版本尚待真实推理记录验证。
+- 现场旧4063备份与收据：`/home/agilex/jiaan/project/rl-platform/runtime/verification/teacher5-publish-4117-20261018/{actor4063.pkl,receipt.json}`。原生Actor拒绝热降级，回退仍需要新Actor实例读取4063，不能仅覆盖旧文件宣称回退成功。
+- 接续策略未改：新transition每条1次Critic、Actor每2次更新、每50步checkpoint/pending；后续候选仍staged，不自动替换执行Actor。用户负责触发Online rollout，本轮不创建后台自动晋升任务。
+
+**证据不足**：4117的自主成功提升、独立泛化、动作级Critic全面正确仍待真实闭环验证。发布就绪不是持续学习必然改善的证明。
