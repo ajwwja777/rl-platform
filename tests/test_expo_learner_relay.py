@@ -52,3 +52,12 @@ def test_four_gpu_selection_never_returns_unsupported_three_devices():
  c={'gpu':0,'gpu_candidates':[0,1,2,3],'max_devices':4}
  assert module.select_gpus(c,lambda _:False)==[0,1,2,3]
  assert module.select_gpus(c,lambda x:x==3)==[0,1]
+
+
+def test_relay_can_use_isolated_hpc_python():
+    config=dict(port=18443,relay=dict(destination='user@login',launcher='/source/gateway.py',
+        profile='/owned/gateway.json',port=18443,python='/owned/python-expo'))
+    command=module.relay_command(config)
+    assert command[-1].startswith('/owned/python-expo ')
+    config['relay']['python']='relative'
+    with pytest.raises(ValueError):module.relay_command(config)

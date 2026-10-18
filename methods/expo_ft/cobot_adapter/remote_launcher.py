@@ -25,7 +25,9 @@ def relay_command(config):
     local_port, remote_port = int(config['port']), int(relay['port'])
     if not all(1024 <= port <= 65535 for port in (local_port, remote_port)):
         raise ValueError('Invalid Learner relay port')
-    remote = shlex.join(['/usr/bin/python3', relay['launcher'], '--config', relay['profile']])
+    interpreter = relay.get('python', '/usr/bin/python3')
+    if not Path(interpreter).is_absolute():raise ValueError('Relay interpreter must be absolute')
+    remote = shlex.join([interpreter, relay['launcher'], '--config', relay['profile']])
     return ['ssh', '-T', '-o', 'BatchMode=yes', '-o', 'ExitOnForwardFailure=yes',
             '-o', 'ServerAliveInterval=3', '-o', 'ServerAliveCountMax=2',
             '-o', 'ConnectTimeout=8', '-L',

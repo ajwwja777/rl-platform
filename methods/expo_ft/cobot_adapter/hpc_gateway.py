@@ -45,7 +45,7 @@ def main():
     command=['ssh','-T','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes',
              '-o','ConnectTimeout=8','-o','ServerAliveInterval=3','-o','ServerAliveCountMax=2']
     if args.monitor:
-        remote=shlex.join(['/usr/bin/python3',str(Path(__file__).resolve()),'--config',str(args.config.resolve()),'--monitor-local'])
+        remote=shlex.join([config['python'],str(Path(__file__).resolve()),'--config',str(args.config.resolve()),'--monitor-local'])
         command += [config['slurm_user']+'@'+node,remote]
     else:
         # Existing service must match the immutable configured run and role.
