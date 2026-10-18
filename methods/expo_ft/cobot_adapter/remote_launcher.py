@@ -51,13 +51,14 @@ def selected_profile(config, command):
 def select_gpus(config, is_busy):
     candidates=config.get('gpu_candidates',[config['gpu']])
     maximum=config.get('max_devices',1)
-    if (not isinstance(candidates,list) or not candidates or maximum not in (1,2)
+    if (not isinstance(candidates,list) or not candidates or maximum not in (1,2,4)
             or any(type(x) is not int or x<0 for x in candidates)
             or len(set(candidates))!=len(candidates)):
         raise ValueError('Invalid EXPO GPU selection')
     free=[gpu for gpu in candidates if not is_busy(gpu)]
     if not free:raise RuntimeError('Reserved EXPO GPUs are already in use')
-    return free[:maximum]
+    count = max(n for n in (1,2,4) if n <= maximum and n <= len(free))
+    return free[:count]
 def learner_command(config, adapter):
     command = [config['python'], str(adapter / 'observed_learner.py'), '--project', config['project'],
                '--bundle', config['bundle'], '--run-dir', config['run_dir'], '--port', str(config['port']),
@@ -108,7 +109,9 @@ def main():
     for key in ("PYTHONPATH", "HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy"):
         env.pop(key, None)
     env.update(CUDA_VISIBLE_DEVICES=gpu, XLA_PYTHON_CLIENT_PREALLOCATE="false", XLA_PYTHON_CLIENT_ALLOCATOR="platform", OMP_NUM_THREADS="4", JAX_COMPILATION_CACHE_DIR=config["cache_dir"])
-    adapter = Path(__file__).resolve().parent
+    adapter = Path(config.get('adapter_dir', str(Path(__file__).resolve().parent)))
+    if not adapter.is_absolute() or not (adapter / 'observed_learner.py').is_file():
+        raise ValueError('Invalid configured versioned Learner adapter')
     command = learner_command(config, adapter)
     command+=['--num-devices',str(len(selected))]
     print('EXPO Learner CUDA_VISIBLE_DEVICES='+gpu,flush=True)

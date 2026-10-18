@@ -27,9 +27,9 @@ class Learner:
         if self.episodes_per_update!=1 and not self.aligned:
             raise ValueError('Episode batching requires native_sync')
         self.num_devices=int(getattr(args,'num_devices',1))
-        if self.num_devices not in (1,2):raise ValueError('EXPO supports one or two Learner devices')
-        if self.num_devices==2 and not (self.learner_only and self.aligned and self.native_batch_update):
-            raise ValueError('Dual GPU requires native full-batch remote Learner')
+        if self.num_devices not in (1,2,4):raise ValueError('EXPO supports one, two or four Learner devices')
+        if self.num_devices>1 and not (self.learner_only and self.aligned and self.native_batch_update):
+            raise ValueError('Multi-GPU requires native full-batch remote Learner')
         self.rtc_delay=int(getattr(args,'rtc_delay',2))
         from sampling_config import edit_scale as validate
         self.edit_scale=validate(getattr(args,'edit_scale',None))
@@ -336,7 +336,7 @@ def main():
     p.add_argument('--rtc-delay',type=int,default=2)
     p.add_argument('--native-batch-update',action='store_true')
     p.add_argument('--learner-only',action='store_true')
-    p.add_argument('--num-devices',type=int,choices=(1,2),default=1)
+    p.add_argument('--num-devices',type=int,choices=(1,2,4),default=1)
     p.add_argument('--episodes-per-update',type=int,default=1)
     p.add_argument('--edit-scale',type=float)
     args=p.parse_args()

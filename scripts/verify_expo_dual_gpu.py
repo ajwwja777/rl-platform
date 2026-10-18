@@ -4,7 +4,7 @@ from pathlib import Path
 import numpy as np
 p=argparse.ArgumentParser()
 for name in ('project','bundle','seed-dir','output','adapter'):p.add_argument('--'+name,type=Path,required=True)
-p.add_argument('--num-devices',type=int,choices=(1,2),required=True)
+p.add_argument('--num-devices',type=int,choices=(1,2,4),required=True)
 p.add_argument('--restore',type=Path)
 p.add_argument('--initial-only',action='store_true')
 a=p.parse_args()

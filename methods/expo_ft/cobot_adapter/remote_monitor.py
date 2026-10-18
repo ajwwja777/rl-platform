@@ -40,7 +40,19 @@ def process_matches(pid, root, model_id, proc_root=Path('/proc')):
 
 def snapshot(config):
     if 'relay' in config:
-        raise ValueError('Independent monitoring is unavailable for relay profiles')
+        if not config['relay'].get('monitor'):
+            raise ValueError('Independent monitoring is unavailable for relay profiles')
+        from remote_launcher import relay_command
+        command = relay_command(config)
+        index = command.index('-L')
+        del command[index:index + 2]
+        command[-1] += ' --monitor'
+        result = subprocess.run(command, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE, timeout=9, check=False)
+        if result.returncode or len(result.stdout) > MAX_BYTES:
+            raise OSError('HPC monitoring relay unavailable')
+        return json.loads(result.stdout)
+
     root = Path(config['run_dir'])
     status = read_object(root / 'status.json')
     if status and (status.get('deployment_id') != config['model_id']

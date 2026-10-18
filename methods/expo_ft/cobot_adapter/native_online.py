@@ -48,8 +48,8 @@ def load_native(bundle, delay=4, resume=False, aligned=False, edit_scale=None, n
     contract = json.loads((bundle / "deployment.json").read_text())
     if (contract["active_arm"], contract["control_hz"], contract["action_horizon"]) != ("left", 10, 16):
         raise ValueError("EXPO online requires the verified left-arm10Hz/H16 bundle")
-    if num_devices not in (1, 2) or jax.default_backend() != "gpu" or jax.device_count() != num_devices:
-        raise RuntimeError("Reserve the requested one or two GPUs for native EXPO online")
+    if num_devices not in (1, 2, 4) or jax.default_backend() != "gpu" or jax.device_count() != num_devices:
+        raise RuntimeError("Reserve the requested one, two or four GPUs for native EXPO online")
     config = configuration(bundle, delay, aligned, edit_scale)
     mesh = sharding.make_mesh(1)
     data = jax.sharding.NamedSharding(mesh, jax.sharding.PartitionSpec(sharding.DATA_AXIS))

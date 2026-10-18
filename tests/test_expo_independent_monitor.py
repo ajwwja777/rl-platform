@@ -65,3 +65,22 @@ def test_client_no_tunnel_no_run_and_rejects_wrong_response(tmp_path,monkeypatch
     value['model_id']='other'
     with pytest.raises(ValueError):monitor.fetch(profile,opts)
     with pytest.raises(ValueError):monitor.monitor_command({**profile,'destination':'host; rm -rf /'},opts)
+
+
+def test_hpc_monitor_relay_has_no_port_forward_or_lifecycle(monkeypatch):
+    profile=dict(port=18443,relay=dict(destination='user@login',port=18443,
+        launcher='/source/hpc_gateway.py',profile='/owned/gateway.json',monitor=True))
+    value=dict(schema=1,model_id='expo',running=True,training=dict(points=[]))
+    seen=[]
+    def run(command,**kwargs):
+        seen.append((command,kwargs))
+        return SimpleNamespace(returncode=0,stdout=json.dumps(value).encode())
+    monkeypatch.setattr(monitor.subprocess,'run',run)
+    assert monitor.snapshot(profile)==value
+    command,kwargs=seen[0]
+    assert '-L' not in command and command[-1].endswith(' --monitor')
+    assert kwargs['stdin']==monitor.subprocess.DEVNULL and kwargs['timeout']==9
+    monkeypatch.setattr(monitor.subprocess,'run',lambda *a,**k:SimpleNamespace(returncode=1,stdout=b''))
+    with pytest.raises(OSError):monitor.snapshot(profile)
+    profile['relay']['monitor']=False
+    with pytest.raises(ValueError):monitor.snapshot(profile)

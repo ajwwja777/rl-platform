@@ -46,3 +46,9 @@ def test_gpu_selection_uses_only_free_candidates_and_preserves_single_default():
 ])
 def test_gpu_selection_rejects_ambiguous_configuration(c):
  with pytest.raises(ValueError):module.select_gpus(c,lambda _:False)
+
+
+def test_four_gpu_selection_never_returns_unsupported_three_devices():
+ c={'gpu':0,'gpu_candidates':[0,1,2,3],'max_devices':4}
+ assert module.select_gpus(c,lambda _:False)==[0,1,2,3]
+ assert module.select_gpus(c,lambda x:x==3)==[0,1]

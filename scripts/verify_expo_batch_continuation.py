@@ -4,7 +4,7 @@ from pathlib import Path
 from types import SimpleNamespace
 p=argparse.ArgumentParser()
 p.add_argument('--profile',type=Path,required=True);p.add_argument('--adapter',type=Path,required=True)
-p.add_argument('--output',type=Path,required=True);p.add_argument('--num-devices',type=int,choices=(1,2),default=2)
+p.add_argument('--output',type=Path,required=True);p.add_argument('--num-devices',type=int,choices=(1,2,4),default=2)
 a=p.parse_args()
 if 'verification' not in a.output.parts:raise ValueError('Verification receipt path required')
 c=json.loads(a.profile.read_text());root=Path(c['run_dir'])

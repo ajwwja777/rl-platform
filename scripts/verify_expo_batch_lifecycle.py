@@ -6,7 +6,7 @@ import numpy as np
 p=argparse.ArgumentParser()
 for name in ('project','bundle','seed-dir','output','adapter'):p.add_argument('--'+name,type=Path,required=True)
 p.add_argument('--stage',choices=('partial','resume','restore'),required=True)
-p.add_argument('--num-devices',type=int,choices=(1,2),default=1)
+p.add_argument('--num-devices',type=int,choices=(1,2,4),default=1)
 a=p.parse_args()
 if 'verification' not in a.output.parts:raise ValueError('Independent verification output required')
 if a.stage=='partial' and (a.output/'run').exists():raise ValueError('Fresh run required')
