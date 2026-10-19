@@ -7,3 +7,5 @@
 验证：141 CPU单元/回归通过；实际原生Replay CPU gather与OpenPI转换、RNG复现通过。非GPU训练收益验证，尚未执行新配方梯度更新/真机动作。现场原运行Actor121/Critic2420在首次预检时ready且机器人暂停，实际切换前重新取状态。
 
 状态：源码准备及同步；当前旧Learner尚未切换。已向用户请求结束空闲Session并暂停重载模型的明确授权，依据项目机器人推理启动边界。待授权后停止旧owner、核验完整checkpoint、建立独立 --demo50 接续、安装profile/运行路径并正式暂停加载验证。保留默认seeded回退，不混写历史实验。
+
+用户随后明确授权立即从Actor121重启本批，舍弃未保存梯度、保留所有回合。新增restart-pending接续：完整checkpoint恢复，保留credit/partial batch，未提交回合存pending-recovery备份，待Cobot恢复后通过原上传重试链重新提交，避免Learner初始化期间恢复训练阻塞Actor启动。142 CPU检查通过。

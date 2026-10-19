@@ -45,7 +45,8 @@ def test_launcher_default_unchanged_and_opt_in():
     assert a[a.index('--critic-prior')+1]=='demo50'
 
 
-def test_independent_continuation_preserves_partial_batch(tmp_path):
+@pytest.mark.parametrize('restart_pending',[False,True])
+def test_independent_continuation_preserves_partial_batch(tmp_path,restart_pending):
     import json,hashlib
     sys.path.insert(0,str(Path(__file__).parents[1]/'scripts'))
     from fork_expo_batch_run import fork
@@ -54,13 +55,16 @@ def test_independent_continuation_preserves_partial_batch(tmp_path):
     source=tmp_path/'original';source.mkdir()
     meta=dict(checkpoint=121,updates=121,completed_episodes=33,episodes_since_update=1,credit=99,accepted=['ep'],replay=['ep'],steps=100,critic_updates=2420)
     contract=dict(recipe='native_sync',update_layout='native_full_batch',learner_only=True,episodes_per_update=5,adapter_source_sha256=digest(adapter,True))
-    for name,value in [('status',dict(phase='ready',pid=2000000000,actor_version=121)),('committed',meta),('contract',contract)]:
+    for name,value in [('status',dict(phase='updating' if restart_pending else 'ready',pid=2000000000,actor_version=125 if restart_pending else 121)),('committed',meta),('contract',contract)]:
         (source/(name+'.json')).write_text(json.dumps(value))
     ep=source/'episodes/ep';ep.mkdir(parents=True);(ep/'finished.json').write_text('{}');(ep/'0.npz').write_bytes(b'data')
     cp=source/'checkpoints/121';cp.mkdir(parents=True);(cp/'weight').write_bytes(b'checkpoint')
     (cp/'manifest.json').write_text(json.dumps(dict(records=[dict(file='weight',sha256=hashlib.sha256(b'checkpoint').hexdigest())])))
     before=(source/'committed.json').read_bytes()
-    target=tmp_path/'demo50';fork(source,target,adapter,adapter,5,'demo50')
+    if restart_pending:
+        pending=source/'episodes/pending';pending.mkdir();(pending/'finished.json').write_text('{}')
+    target=tmp_path/'demo50';fork(source,target,adapter,adapter,5,'demo50',restart_pending)
+    if restart_pending:assert (target/'pending-recovery/pending/finished.json').exists()
     assert json.loads((target/'committed.json').read_text())==meta
     assert (source/'committed.json').read_bytes()==before
     assert json.loads((target/'contract.json').read_text())['critic_prior']=='demo50'
