@@ -1508,6 +1508,79 @@
       "collection_directory_policy": "model",
       "version_label_zh": "纯专家 Warmup 对照",
       "version_label_en": "Expert-only Warmup comparison"
+    },
+    {
+      "id": "expo-plug-left-2cam-edit001-532-batch5-2000",
+      "label": "左臂拔插插头 · EXPO Online SFT2000新训练 · 示教50/成功30/失败20",
+      "kind": "vla",
+      "family": "EXPO",
+      "runtime_adapter": "expo_online",
+      "mode": "online",
+      "checkpoint": "/home/agilex/xiqing/models/expo-ft/plug_left_2cam/rtc_sft_20261013/step_2000",
+      "normalization": "/home/agilex/xiqing/models/expo-ft/plug_left_2cam/rtc_sft_20261013/step_2000/norm_stats.json",
+      "step": 2000,
+      "task": "plug_left_2cam",
+      "training_method": "realtime-expo-ft-532-batch5",
+      "control_hz": 10,
+      "active_arm": "left",
+      "camera_keys": [
+        "left_wrist_image",
+        "right_wrist_image"
+      ],
+      "prompt": "Unplug the black plug from the bottom socket of the power strip and insert it into the top socket.",
+      "entry_relative": "scripts/expo_532_batch5_up.sh",
+      "required": [
+        "/home/agilex/xiqing/models/expo-ft/plug_left_2cam/rtc_sft_20261013/step_2000/norm_stats.json",
+        "/home/agilex/jiaan/project/rl-platform/runtime/expo-remote/profile-532-batch5.json",
+        "/home/agilex/jiaan/project/rl-platform/runtime/expo-remote/id_ed25519",
+        "/home/agilex/jiaan/project/rl-platform/methods/expo_ft/cobot_adapter/remote_runtime_support.py",
+        "/home/agilex/xiqing/projects/expo-ft/.venv/bin/python",
+        "/home/agilex/jiaan/project/rl-platform/runtime/expo-remote/native-source/train_pi_robo.py",
+        "/home/agilex/jiaan/project/rl-platform/methods/expo_ft/cobot_adapter/online_actor.py",
+        "/home/agilex/jiaan/project/rl-platform/methods/expo_ft/cobot_adapter/gripper_feedback.py"
+      ],
+      "checkpoint_type": "bounded_memory_expo_online_state",
+      "resumable_training": true,
+      "integration_level": "managed_runtime",
+      "io_contract": "expo-left-7d-two-wrist-10hz",
+      "evaluation_allowed": false,
+      "capabilities": {
+        "load": true,
+        "ready": true,
+        "start": true,
+        "pause": true,
+        "resume": true,
+        "stop": true,
+        "unload": true,
+        "logs": true,
+        "pid": true,
+        "capture": true,
+        "hil": true,
+        "evaluate": false,
+        "train": true
+      },
+      "data_directories": {
+        "collection": "/media/agilex/Getea1/jiaan/data/datasets/plug_left_2cam/recordings/expo-532-batch5-sft2000"
+      },
+      "validation": "149 CPU checks and native Replay gather/conversion/RNG checks passed; fresh mode registered, robot/GPU learning not started.",
+      "execution_fidelity": "Fresh SFT2000, no old online Replay or RL checkpoint. Critic 50% demonstration /30% online-success /20% online-failure per1280; minibatch64, UTD20,K30, warmup10, trigger5 eligible episodes. Base actor success-only unchanged.",
+      "online_run_dir": "/home/agilex/jiaan/data/expo_ft/plug_left_2cam/native_remote_532_batch5_sft2000_20261019",
+      "collection_directory_policy": "model",
+      "expo_online_options": {
+        "defaults": {
+          "rtc_delay": 5,
+          "edit_scale": 0.01
+        },
+        "rtc_delay_min": 1,
+        "rtc_delay_max": 8,
+        "logical_step_ms": 100,
+        "edit_scale_min": 0.01,
+        "edit_scale_max": 0.1,
+        "edit_scale_step": 0.01,
+        "apply": "load",
+        "training_state": "independent_per_pair"
+      },
+      "critic_prior": "demo50_success30_failure20"
     }
   ]
 }

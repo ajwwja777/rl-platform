@@ -1,0 +1,22 @@
+{
+  "model_id": "expo-plug-left-2cam-edit001-532-batch5-2000",
+  "gpu": 1,
+  "port": 18443,
+  "python": "/data/LFT-W02_data/jiaan/jiaan/projects/expo-ft/.venv/bin/python",
+  "project": "/data/LFT-W02_data/jiaan/jiaan/projects/rl-platform/outputs/expo-native-remote-20261014/assets/native-source",
+  "bundle": "/data/LFT-W02_data/jiaan/jiaan/projects/rl-platform/outputs/expo-native-remote-20261014/assets/bundle",
+  "seed_dir": "/data/LFT-W02_data/jiaan/jiaan/projects/rl-platform/outputs/expo-native-remote-20261014/assets/seed25",
+  "run_dir": "/data/LFT-W02_data/jiaan/jiaan/projects/rl-platform/outputs/expo-532-batch5-sft2000-20261019/online",
+  "cache_dir": "/data/LFT-W02_data/jiaan/jiaan/projects/rl-platform/outputs/expo-native-remote-20261014/jax-cache",
+  "rtc_delay": 5,
+  "edit_scale": 0.01,
+  "allow_online_options": true,
+  "gpu_candidates": [
+    1,
+    0
+  ],
+  "max_devices": 2,
+  "episodes_per_update": 5,
+  "adapter_dir": "/data/LFT-W02_data/jiaan/jiaan/projects/rl-platform/outputs/expo-532-batch5-sft2000-20261019/adapter",
+  "critic_prior": "demo50_success30_failure20"
+}

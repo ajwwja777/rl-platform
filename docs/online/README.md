@@ -118,3 +118,5 @@ xiqing 原生 RealTimeEXPOFTLearner 在 Cobot4090 完整推理通过；batch2/UT
 
 2026-10-19：按用户要求删除最新 EXPO rollout episode23（6aafaa86，267条，失败），原始网页11文件经SHA核验备份后使用正式DELETE接口移除；Replay与计数同步排除。重载验收：Replay8522、在线5221、有效轮数32、batch0/5、credit16，Actor121/Critic2420/checkpoint6未变，暂停且Session未启动。证据 `/data/LFT-W02_data/jiaan/jiaan/projects/rl-platform/outputs/expo-latest-exclusion-20261019/acceptance.json`；仅处理指定回合，未改变网页删除默认行为。
 2026-10-19：[EXPO demo50](tasks/2026-10-19-expo-demo50/TASK.md)新增逐Critic小批次32示教/32在线的可选采样，141 CPU及原生Replay gather通过；现场启用另记。
+
+2026-10-19：新增独立 EXPO SFT2000 50/30/20 Online 模式；149 CPU及原生Replay采样验证通过，未启动现场新训练。详情 tasks/2026-10-19-expo-532/TASK.md。

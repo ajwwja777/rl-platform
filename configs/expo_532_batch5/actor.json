@@ -1,0 +1,16 @@
+{
+  "model_id": "expo-plug-left-2cam-edit001-532-batch5-2000",
+  "rtc_delay": 5,
+  "remote_port": 18443,
+  "local_port": 18453,
+  "destination": "LFT-W02@10.12.1.245",
+  "identity_file": "/home/agilex/jiaan/project/rl-platform/runtime/expo-remote/id_ed25519",
+  "python": "/home/agilex/xiqing/projects/expo-ft/.venv/bin/python",
+  "native_project": "/home/agilex/jiaan/project/rl-platform/runtime/expo-remote/native-source",
+  "learner_host": "LFT2 A6000",
+  "edit_scale": 0.01,
+  "launch_name": "expo532_batch5",
+  "allow_online_options": true,
+  "episodes_per_update": 5,
+  "critic_prior": "demo50_success30_failure20"
+}

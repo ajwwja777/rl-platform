@@ -45,7 +45,8 @@ def test_launcher_passes_batch_policy_and_rejects_invalid_values():
     with pytest.raises(ValueError):learner_command(c,Path('/adapter'))
 
 
-def test_real_learner_commits_partial_batches_and_ignores_duplicate_receipts(tmp_path,monkeypatch):
+@pytest.mark.parametrize('prior',['seeded','demo50_success30_failure20'])
+def test_real_learner_commits_partial_batches_and_ignores_duplicate_receipts(tmp_path,monkeypatch,prior):
     from types import SimpleNamespace
     import jax
     import numpy as np
@@ -69,10 +70,15 @@ def test_real_learner_commits_partial_batches_and_ignores_duplicate_receipts(tmp
     monkeypatch.setattr(actor_snapshot,'prune',lambda *args:None)
     l=module.Learner.__new__(module.Learner)
     l.root=tmp_path;l.meta_path=tmp_path/'committed.json';l.aligned=True;l.learner_only=True;l.native_batch_update=True
-    l.critic_prior='seeded';l.args=SimpleNamespace(capacity=500000);l.seed={'frames':3301};l.buffer=Buffer();l.episodes_per_update=5
+    l.critic_prior=prior;l.args=SimpleNamespace(capacity=500000);l.seed={'frames':3301};l.buffer=Buffer();l.episodes_per_update=5
     l.meta=dict(checkpoint=None,updates=0,accepted=[],replay=[],steps=1000,credit=0,actor_updates=0,critic_updates=0,completed_episodes=10,episodes_since_update=0)
+    if prior=='demo50_success30_failure20':
+        import outcome_sampling
+        l.outcome_pools=lambda:tuple(np.arange(10) for _ in range(3))
+        monkeypatch.setattr(outcome_sampling,'sample_critic',lambda *args: {'quota':(640,384,256)})
     l.agent=Agent(jax.numpy.asarray([3,4],dtype=jax.numpy.uint32))
     def update(agent,batch,utd,actor_batch):
+        if prior=='demo50_success30_failure20':assert batch['quota']==(640,384,256)
         updates.append(utd)
         return agent.replace(critic=SimpleNamespace(step=20),actor_train_state=SimpleNamespace(step=1)),{'loss':1.}
     # The test exercises journal/metadata/checkpoint ordering; numerical updates have separate GPU coverage.
