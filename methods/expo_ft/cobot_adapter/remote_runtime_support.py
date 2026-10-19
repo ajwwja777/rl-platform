@@ -71,6 +71,8 @@ class RemoteSupport:
         self.validate_identity(info, 'Remote learner')
         if info.get('training_enabled') is not True:
             raise RuntimeError('Remote learner role mismatch')
+        if 'critic_prior' in self.remote and info.get('critic_prior')!=self.remote['critic_prior']:
+            raise RuntimeError('Remote learner Critic sampling mismatch')
         if info.get('episodes_per_update', 1) != self.remote.get('episodes_per_update', 1):
             raise RuntimeError('Remote learner episode batch size mismatch')
 

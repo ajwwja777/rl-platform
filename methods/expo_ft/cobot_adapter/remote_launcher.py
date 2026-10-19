@@ -66,6 +66,9 @@ def learner_command(config, adapter):
                '--bundle', config['bundle'], '--run-dir', config['run_dir'], '--port', str(config['port']),
                '--recipe', 'native_sync', '--seed-dir', config['seed_dir'], '--deployment-id', config['model_id'],
                '--rtc-delay', str(config['rtc_delay']), '--native-batch-update', '--learner-only']
+    prior=config.get('critic_prior','seeded')
+    if prior not in ('seeded','demo50'):raise ValueError('Invalid Critic prior mode')
+    if prior!='seeded':command += ['--critic-prior',prior]
     episodes=config.get('episodes_per_update',1)
     if type(episodes) is not int or episodes<1:raise ValueError('Invalid episode batch size')
     command += ['--episodes-per-update',str(episodes)]

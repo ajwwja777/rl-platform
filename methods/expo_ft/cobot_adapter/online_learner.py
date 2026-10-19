@@ -19,7 +19,11 @@ class Learner:
         import jax
         self.args=args
         self.aligned=getattr(args,'recipe','legacy')=='native_sync'
+        self.critic_prior=getattr(args,'critic_prior','seeded')
+        if self.critic_prior not in ('seeded','demo50'):raise ValueError('Invalid Critic prior mode')
         self.native_batch_update=bool(getattr(args,'native_batch_update',False))
+        if self.critic_prior=='demo50' and not (self.aligned and self.native_batch_update):
+            raise ValueError('demo50 requires native_sync full-batch updates')
         self.learner_only=bool(getattr(args,'learner_only',False))
         self.episodes_per_update=getattr(args,'episodes_per_update',1)
         if type(self.episodes_per_update) is not int or self.episodes_per_update<1:
@@ -69,6 +73,9 @@ class Learner:
             contract['learner_only']=self.learner_only
         if self.episodes_per_update!=1:contract['episodes_per_update']=self.episodes_per_update
         if self.edit_scale is not None:contract['edit_scale']=self.edit_scale
+        if self.critic_prior=='demo50':
+            contract['critic_prior']='demo50'
+            contract['prior_sampling_sha256']=hashlib.sha256(Path(__file__).with_name('prior_sampling.py').read_bytes()).hexdigest()
         contract_path=self.root/'contract.json'
         if contract_path.exists() and json.loads(contract_path.read_text())!=contract:
             raise ValueError('Online run configuration changed; use an independent run directory')
@@ -154,6 +161,8 @@ class Learner:
                 batch_episodes_collected=self.meta['episodes_since_update'],
                 batch_episodes_remaining=max(0,self.episodes_per_update-self.meta['episodes_since_update']),
                 pending_update_calls=self.meta['credit']//30)
+        value['critic_prior']=self.critic_prior
+        value['critic_sampling']=getattr(getattr(self,'buffer',None),'prior_sampling_stats',None)
         value['edit_scale']=float(self.agent.edit_scale)
         value['learner_devices']=self.num_devices
         value['visible_gpus']=os.environ.get('CUDA_VISIBLE_DEVICES','')
@@ -252,7 +261,13 @@ class Learner:
             for _ in range(count):
                 if self.aligned:
                     if self.native_batch_update:
-                        batch=self.buffer._convert_to_openpi_format(self.buffer.sample_jax(64*20))
+                        if self.critic_prior=='demo50':
+                            from prior_sampling import sample_critic
+                            raw=sample_critic(self.buffer,64*20,self.seed['frames'])
+                        else:
+                            raw=self.buffer.sample_jax(64*20)
+                        batch=self.buffer._convert_to_openpi_format(raw)
+                        del raw
                     else:
                         from stream_sample import Batch
                         batch=Batch(self.buffer,64*20,64)
@@ -332,6 +347,7 @@ def main():
     p.add_argument('--max-updates',type=int,default=8)
     p.add_argument('--recipe',choices=('legacy','native_sync'),default='legacy')
     p.add_argument('--seed-dir',type=Path)
+    p.add_argument('--critic-prior',choices=('seeded','demo50'),default='seeded')
     p.add_argument('--deployment-id')
     p.add_argument('--rtc-delay',type=int,default=2)
     p.add_argument('--native-batch-update',action='store_true')

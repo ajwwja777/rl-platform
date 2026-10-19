@@ -69,7 +69,7 @@ def test_real_learner_commits_partial_batches_and_ignores_duplicate_receipts(tmp
     monkeypatch.setattr(actor_snapshot,'prune',lambda *args:None)
     l=module.Learner.__new__(module.Learner)
     l.root=tmp_path;l.meta_path=tmp_path/'committed.json';l.aligned=True;l.learner_only=True;l.native_batch_update=True
-    l.args=SimpleNamespace(capacity=500000);l.seed={'frames':3301};l.buffer=Buffer();l.episodes_per_update=5
+    l.critic_prior='seeded';l.args=SimpleNamespace(capacity=500000);l.seed={'frames':3301};l.buffer=Buffer();l.episodes_per_update=5
     l.meta=dict(checkpoint=None,updates=0,accepted=[],replay=[],steps=1000,credit=0,actor_updates=0,critic_updates=0,completed_episodes=10,episodes_since_update=0)
     l.agent=Agent(jax.numpy.asarray([3,4],dtype=jax.numpy.uint32))
     def update(agent,batch,utd,actor_batch):
