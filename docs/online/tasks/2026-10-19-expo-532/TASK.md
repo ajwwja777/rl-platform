@@ -7,3 +7,5 @@
 验证：149 CPU测试通过，包含真实Learner调用链配方路由和提交去重；原生Replay320条gather/OpenPI转换实际160/96/64，恢复RNG逐数组一致。未验证新配方GPU训练或自主成功率收益。旧现场Session仍active，本次无生命周期操作。
 
 源码配置configs/expo_532_batch5/{learner,actor}.json为明确来源；新目录outputs/expo-532-batch5-sft2000-20261019/online和Cobot native_remote_532_batch5_sft2000_20261019，采集目录expo-532-batch5-sft2000。这是Online训练入口，固定checkpoint仅部署功能不在本次实现中。发布/网页验收结果随后追加。
+
+发布验收：348661c已推送并SHA校验同步Cobot新增目录/脚本/注册表；Web API新模式available=true。远端受限profile路由核验通过，新训练目录尚不存在，确保首次从SFT建立。旧Cobot PID265652、Sessionactive保持，未重载。证据Cobot runtime/verification/expo-532-20261019/acceptance.json；LFT2 outputs/expo-532-batch5-sft2000-20261019/native-check.log。
