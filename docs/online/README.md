@@ -115,3 +115,5 @@ xiqing 原生 RealTimeEXPOFTLearner 在 Cobot4090 完整推理通过；batch2/UT
 2026-10-15：[RLT四图监控](tasks/2026-10-15-rlt-monitoring/TASK.md)新增独立日志读取、Online/Warmup/评测隔离、实际回合自主成功率和CPU后台固定Critic动作Q1；源代码已同步，Web激活等待现场暂停。不得用训练批次actor_q代替单轮动作Q，也不以低loss证明成功率改善。
 
 2026-10-19：用户指定排除 EXPO 失败 episode16（2b56b902），当时 Critic/VLA 均0；edit005 独立 run 已备份并撤回118条 Replay 与1轮热身计数，保留成功17的262条。两端 journal 标记 training_eligible=false，保留 accepted 回执防重复恢复；正式暂停重载验证 Replay3563、有效轮数1、热身剩余9、batch0/5、Actor0。原始样本和 Actor 共521文件SHA未变，Session未启动。证据：`/data/LFT-W02_data/jiaan/jiaan/projects/rl-platform/outputs/expo-episode16-exclusion-20261019/{repair,acceptance}.json`。这是指定回合的维护，不改变网页删除行为。
+
+2026-10-19：按用户要求删除最新 EXPO rollout episode23（6aafaa86，267条，失败），原始网页11文件经SHA核验备份后使用正式DELETE接口移除；Replay与计数同步排除。重载验收：Replay8522、在线5221、有效轮数32、batch0/5、credit16，Actor121/Critic2420/checkpoint6未变，暂停且Session未启动。证据 `/data/LFT-W02_data/jiaan/jiaan/projects/rl-platform/outputs/expo-latest-exclusion-20261019/acceptance.json`；仅处理指定回合，未改变网页删除默认行为。
