@@ -6,7 +6,7 @@ model="${1:?model id required}"
 profile="$root/runtime/expo-remote/profile-edit001-batch5.json"
 bundle=/home/agilex/xiqing/models/expo-ft/plug_left_2cam/rtc_sft_20261013/step_2000
 project=/home/agilex/xiqing/projects/expo-ft
-run_dir=/home/agilex/jiaan/data/expo_ft/plug_left_2cam/native_remote_edit001_batch5_20261015
+run_dir=/home/agilex/jiaan/data/expo_ft/plug_left_2cam/native_remote_edit001_batch5_20261015--demo50
 [[ -f "$profile" && -f "$bundle/norm_stats.json" ]] || exit 1
 mkdir -p "$run_dir"
 exec 9>"$run_dir/owner.lock"

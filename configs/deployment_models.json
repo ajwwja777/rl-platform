@@ -1145,7 +1145,7 @@
     },
     {
       "id": "expo-plug-left-2cam-edit001-batch5-2000",
-      "label": "左臂拔插插头 · EXPO Online 5回合更新＋夹爪修正",
+      "label": "左臂拔插插头 · EXPO Online 5回合更新 · 50%示教",
       "kind": "vla",
       "family": "EXPO",
       "runtime_adapter": "expo_online",
@@ -1196,9 +1196,9 @@
       "data_directories": {
         "collection": "/media/agilex/Getea1/jiaan/data/datasets/plug_left_2cam/recordings/expo-edit001-batch5"
       },
-      "validation": "User accepted Actor11 gripper-feedback physical test; same execution now enabled for batch5. 212 CPU passed /4 GPU-layout skipped; latest Online learning benefit remains to be measured.",
-      "execution_fidelity": "Native batch scheduling: 5 eligible episodes per update trigger; batch64/UTD20/interval30 unchanged. Continue committed Online11; default edit0.01/RTC5. Free dual GPU preferred, one free GPU fallback. Field-accepted opening-feedback anchor; unchanged latest Online state, arm limits and training parameters.",
-      "online_run_dir": "/home/agilex/jiaan/data/expo_ft/plug_left_2cam/native_remote_edit001_batch5_20261015",
+      "validation": "Fixed demo50 CPU sampling and native Replay checks passed; physical learning benefit unverified.",
+      "execution_fidelity": "Native batch scheduling: 5 eligible episodes per update trigger; batch64/UTD20/interval30 unchanged. Continue committed Online11; default edit0.01/RTC5. Free dual GPU preferred, one free GPU fallback. Field-accepted opening-feedback anchor; unchanged latest Online state, arm limits and training parameters. Critic minibatch32 demonstration +32 online; success-only base actor unchanged. Independent continuation preserves committed weights and Replay.",
+      "online_run_dir": "/home/agilex/jiaan/data/expo_ft/plug_left_2cam/native_remote_edit001_batch5_20261015--demo50",
       "collection_directory_policy": "model",
       "expo_online_options": {
         "defaults": {
@@ -1213,7 +1213,8 @@
         "edit_scale_step": 0.01,
         "apply": "load",
         "training_state": "independent_per_pair"
-      }
+      },
+      "critic_prior": "demo50"
     },
     {
       "id": "expo-plug-left-2cam-edit001-hpc4-2000",
