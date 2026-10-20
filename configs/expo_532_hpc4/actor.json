@@ -1,0 +1,15 @@
+{
+  "model_id": "expo-plug-left-2cam-532-hpc4-2000",
+  "rtc_delay": 5,
+  "remote_port": 18443,
+  "local_port": 18453,
+  "destination": "LFT-W02@10.12.1.245",
+  "identity_file": "/home/agilex/jiaan/project/rl-platform/runtime/expo-remote/id_ed25519",
+  "python": "/home/agilex/xiqing/projects/expo-ft/.venv/bin/python",
+  "native_project": "/home/agilex/jiaan/project/rl-platform/runtime/expo-remote/native-source",
+  "learner_host": "HPC4",
+  "edit_scale": 0.01,
+  "launch_name": "expo532_hpc4",
+  "episodes_per_update": 5,
+  "critic_prior": "demo50_success30_failure20"
+}
