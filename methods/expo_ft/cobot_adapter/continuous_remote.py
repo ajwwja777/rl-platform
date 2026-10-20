@@ -135,7 +135,7 @@ class ContinuousRemote(AsyncRemote):
                 self.fail(str(exc))
                 return
             except (OSError, ValueError) as exc:
-                self.download_state = dict(state='retrying', error=str(exc))
+                self.download_state = dict(self.download_state, state='retrying', error=str(exc))
                 self.stop.wait(2)
 
     def download_once(self):
@@ -163,12 +163,13 @@ class ContinuousRemote(AsyncRemote):
         if latest <= self.local_actor_version:
             return False
         started = time.monotonic()
-        self.download_state = dict(state='downloading', actor_version=latest)
+        self.download_state = dict(state='downloading', actor_version=latest, started_at=time.time())
         directory, manifest = self.download_actor()
         self.staged = (directory, manifest)
         self.publication_pending = False
         atomic_json(self.args.run_dir / 'downloaded.json', dict(directory=str(directory), actor_version=manifest['actor_version']))
-        self.download_state = dict(state='downloaded', actor_version=manifest['actor_version'], seconds=time.monotonic() - started)
+        self.download_state = dict(self.download_state, state='downloaded', actor_version=manifest['actor_version'],
+                                   downloaded_at=time.time(), seconds=time.monotonic() - started)
         return self.maybe_install()
 
     def maybe_install(self):
@@ -182,14 +183,15 @@ class ContinuousRemote(AsyncRemote):
             matching = value.get('stage_directory') == str(directory)
             if matching and phase == 'stage_failed':
                 self.install_error = value.get('stage_error')
-                self.download_state = dict(state='stage_failed', actor_version=version, error=self.install_error)
+                self.download_state = dict(self.download_state, state='stage_failed', actor_version=version, error=self.install_error)
             if not matching or phase in ('idle', 'adopted', 'stage_failed'):
                 if time.monotonic() < self.stage_retry_after:
                     return False
                 self.stage_retry_after = time.monotonic() + 5
+                self.download_state.setdefault('stage_started_monotonic', time.monotonic())
                 value = self.local_rpc('/actor/stage', {'directory': str(directory)})
                 self.actor_status = value
-                self.download_state = dict(state='staging', actor_version=version)
+                self.download_state = dict(self.download_state, state='staging', actor_version=version, error=None)
             if value.get('stage_phase') != 'ready':
                 return False
             if not self.control_lock.acquire(blocking=False):
@@ -205,7 +207,10 @@ class ContinuousRemote(AsyncRemote):
             raise ValueError('Adopted Actor identity mismatch')
         self.local_actor_version = max(self.local_actor_version, version)
         self.staged, self.install_error = None, None
-        self.download_state = dict(state='adopted', actor_version=version)
+        adopted_at = time.monotonic()
+        self.download_state = dict(self.download_state, state='installed', actor_version=version, error=None,
+            install_seconds=max(0., adopted_at-self.download_state.get('stage_started_monotonic', adopted_at)),
+            installed_at=time.time())
         atomic_json(self.args.run_dir / 'installed.json', self.download_state)
         from actor_snapshot import prune
         prune(self.actor_root, version)

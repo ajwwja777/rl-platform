@@ -100,6 +100,8 @@ def test_publication_request_coalesces_through_download_and_active_adoption(tmp_
     c.remote_status['actor_version'] = 2
     assert not c.download_once()
     assert operations == ['/actor/stage']
+    timings = {key: c.download_state[key] for key in ('started_at', 'downloaded_at', 'seconds', 'stage_started_monotonic')}
+    assert timings['started_at'] <= timings['downloaded_at'] and timings['seconds'] >= 0
     c.episode = str(uuid4())
     status['stage_phase'] = 'ready'
     assert not c.download_once()
@@ -108,6 +110,11 @@ def test_publication_request_coalesces_through_download_and_active_adoption(tmp_
     status.update(actor_version=2, stage_phase='adopted')
     assert c.download_once()
     assert c.local_actor_version == 2 and c.staged is None
+    assert all(c.download_state[key] == value for key, value in timings.items())
+    assert c.download_state['state'] == 'installed'
+    assert c.download_state['install_seconds'] >= 0
+    assert c.download_state['installed_at'] >= timings['downloaded_at']
+    assert json.loads((tmp_path/'installed.json').read_text()) == c.download_state
     assert c.episode and not c.failures
 
 
@@ -145,8 +152,11 @@ def test_stage_failure_keeps_old_actor_and_retries_without_new_publication(tmp_p
     calls = []
     c.local_rpc = lambda path, body: calls.append(path) or dict(actor_version=0, stage_phase='loading')
     c.remote_rpc = lambda *a: pytest.fail('No publication request while staged')
+    c.download_state = dict(started_at=1., downloaded_at=2., seconds=1.)
     assert not c.download_once()
     assert calls == ['/actor/stage'] and c.install_error == 'OOM'
+    assert c.download_state['started_at'] == 1. and c.download_state['downloaded_at'] == 2.
+    assert c.download_state['seconds'] == 1. and 'stage_started_monotonic' in c.download_state
     assert c.remote_online_status()['ready'] and not c.failures
     assert not c.download_once() and calls == ['/actor/stage']
 
