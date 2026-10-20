@@ -66,7 +66,8 @@ class AsyncRemote(RemoteSupport):
         if value.get('phase')=='fault' and not self.episode:reason='learner_fault'
         ready=bool(self.ready and self.local_actor_version>=0 and reason is None)
         value.update(ready=ready,phase='rollout' if self.episode else 'ready' if ready else reason or 'loading',
-            learner_phase=self.remote_status.get('phase'),served_actor_version=self.local_actor_version,
+            learner_phase=self.remote_status.get('phase'),learner_active_episode=value.get('active_episode'),
+            active_episode=self.episode,served_actor_version=self.local_actor_version,
             published_actor_version=self.remote_status.get('actor_version',-1),
             downloaded_actor_version=self.staged[1]['actor_version'] if self.staged else self.local_actor_version,
             pending_upload_episodes=len(local_pending),pending_episodes=len(pending),policy_generation_lag=lag,

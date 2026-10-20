@@ -87,3 +87,9 @@ def test_recovered_finished_episode_can_upload_and_end_idempotently(tmp_path):
     c.local_rpc=lambda *a,**k:pytest.fail('Recovered end must not call fresh Actor.finish')
     assert c.upload_one(i) is True and c.outbox.pending()==[]
     assert c.transfer_episode(i)['pending_episodes']==1
+
+
+def test_local_rollout_identity_is_distinct_from_learner_work(tmp_path):
+    c=runtime(tmp_path);c.remote_status['active_episode']='being-trained';c.episode='being-collected'
+    v=c.remote_online_status()
+    assert v['active_episode']=='being-collected' and v['learner_active_episode']=='being-trained'
