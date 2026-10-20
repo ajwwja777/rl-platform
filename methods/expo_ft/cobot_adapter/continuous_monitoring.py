@@ -2,7 +2,7 @@
 from pathlib import Path
 import runpy
 import time
-from monitoring import RolloutHistory, finite, write_json
+from monitoring import RolloutHistory, finite, write_json, rollout_diagnostics
 
 
 class ContinuousRolloutHistory(RolloutHistory):
@@ -33,9 +33,13 @@ class ContinuousRolloutHistory(RolloutHistory):
                 if used not in self.policy_versions:
                     self.policy_versions.append(used)
             self.last_version = version
-            self.points.append(dict(seconds=max(0., time.time()-active['started_at']),
-                q=payload['selected_q'], timestamp=time.time(),
-                actor_version=version, precache_actor_version=precache))
+            monotonic_seconds = time.monotonic()
+            timestamp = time.time()
+            self.points.append(dict(seconds=max(0., timestamp-active['started_at']),
+                q=payload['selected_q'], timestamp=timestamp,
+                monotonic_seconds=monotonic_seconds,
+                actor_version=version, precache_actor_version=precache,
+                **rollout_diagnostics(payload)))
             self.dirty = True
 
     def flush(self):

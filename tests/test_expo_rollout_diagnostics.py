@@ -202,3 +202,71 @@ def test_wait_is_per_cache_not_previous_or_negative():
     assert monitoring.selection_timing({}, 22.) == {}
     assert monitoring.precache_timing({'compute_seconds': float('nan')}, float('inf')) == {}
     assert monitoring.selection_timing({'_rollout_telemetry': 'unknown'}, 22.) == {}
+
+
+def test_continuous_runtime_preserves_version_token_and_measures_same_cache(monkeypatch):
+    from continuous_runtime import ContinuousRuntime
+    runtime = ContinuousRuntime.__new__(ContinuousRuntime)
+    runtime.episode = 'continuous-one'
+    runtime.local_actor_version = 1
+    runtime.journal = SimpleNamespace(active=dict(episode_uuid='continuous-one', actor_version=1, started_at=0))
+    recorded = []
+    runtime.monitor_history = SimpleNamespace(selected=lambda active, payload: recorded.append(payload))
+    runtime.observation = lambda: {'state': np.zeros(7)}
+    actions = np.arange(56, dtype=np.float32).reshape(8, 7)
+    calls = []
+    def rpc(route, **values):
+        calls.append((route, values))
+        if route == '/precache':
+            return dict(precached=np.zeros((2, 16, 7)).tolist(), delay=5, actor_version=2,
+                        inference_token='same-inference', compute_seconds=.1)
+        return dict(actions=actions.tolist(), actor_version=4, precache_actor_version=2,
+                    selected_q=.7, best_unedited_q=.5, edit_selected=True,
+                    edit_norm=.2, compute_seconds=.012)
+    runtime.array_rpc = rpc
+    ticks = iter([10., 10.15])
+    monkeypatch.setattr(monitoring.time, 'monotonic', lambda: next(ticks))
+    cached = runtime.infer(runtime.observation(), np.zeros((5, 7)))
+    assert runtime.local_actor_version == 2
+    output = runtime.resolve_inference(cached)
+    assert runtime.local_actor_version == 4
+    np.testing.assert_array_equal(output, actions)
+    assert [route for route, values in calls] == ['/precache', '/select']
+    assert calls[1][1]['inference_token'] == 'same-inference'
+    assert calls[1][1]['actor_version'] == 2 and calls[1][1]['delay'] == 5
+    assert all('_rollout_telemetry' not in values for route, values in calls)
+    assert recorded[0]['actor_version'] == 4 and recorded[0]['precache_actor_version'] == 2
+    assert recorded[0]['wait_ms'] == pytest.approx(150.)
+    assert recorded[0]['precache_ms'] == 100.
+    assert monitoring.rollout_diagnostics(recorded[0])['inference_ms'] == 12.
+    assert runtime.episode == 'continuous-one'
+
+
+def test_continuous_points_archive_new_fields_and_mixed_policy_provenance(tmp_path, monkeypatch):
+    from continuous_monitoring import ContinuousRolloutHistory
+    history = ContinuousRolloutHistory(tmp_path)
+    active = dict(episode_uuid='mixed', actor_version=2, started_at=100.)
+    monkeypatch.setattr(monitoring.time, 'time', lambda: 101.5)
+    monkeypatch.setattr(monitoring.time, 'monotonic', lambda: 50.75)
+    metrics = dict(selected_q=.5, best_unedited_q=.1, edit_selected=True, edit_norm=.2,
+                   compute_seconds=.012, wait_ms=150., precache_ms=100.)
+    history.selected(active, dict(metrics, actor_version=2, precache_actor_version=2))
+    history.selected(active, dict(metrics, actor_version=5, precache_actor_version=2))
+    history.flush()
+    stored = json.loads(history.path.read_text())
+    assert stored['policy_versions'] == [2, 5]
+    assert stored['actor_version'] == 2 and stored['last_actor_version'] == 5
+    point = stored['points'][-1]
+    assert point['actor_version'] == 5 and point['precache_actor_version'] == 2
+    assert point['timestamp'] == 101.5 and point['monotonic_seconds'] == 50.75 and point['seconds'] == 1.5
+    assert {k: point[k] for k in ('best_unedited_q', 'edit_selected', 'edit_norm', 'inference_ms', 'wait_ms', 'precache_ms')} == dict(
+        best_unedited_q=.1, edit_selected=True, edit_norm=.2, inference_ms=12., wait_ms=150., precache_ms=100.)
+    archive = runpy.run_path(str(Path(__file__).resolve().parents[1]/'integrations/cobot_runtime/rollout_archive.py'))
+    _, saved = archive['history'](tmp_path, 'mixed')
+    assert saved['points'][-1] == point and saved['policy_versions'] == [2, 5]
+    history.selected(dict(active, episode_uuid='next', actor_version=5),
+                     dict(actor_version=6, precache_actor_version=5, selected_q=.1))
+    history.flush()
+    next_point = json.loads(history.path.read_text())['points'][-1]
+    assert next_point['actor_version'] == 6 and next_point['precache_actor_version'] == 5
+    assert not any(key in next_point for key in ('best_unedited_q', 'edit_selected', 'edit_norm', 'inference_ms', 'wait_ms', 'precache_ms'))
