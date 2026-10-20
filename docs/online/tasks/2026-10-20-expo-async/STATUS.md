@@ -1,6 +1,6 @@
 # EXPO asynchronous Online acceptance
 
-2026-10-20. User approved implementation and four-GPU throughput qualification, then confirmed collection ended and allowed the idle field switch. Isolated returned-Actor acceptance passed. Formal continuation startup is in progress; see the delivery addendum below for actual field state.
+2026-10-20. User approved implementation and four-GPU throughput qualification, then confirmed collection ended and allowed the idle field switch. Isolated returned-Actor acceptance passed. Formal continuation is loaded and paused; see the delivery addendum below for actual field state.
 
 ## Implemented behavior
 
@@ -37,3 +37,11 @@ Isolated final save: checkpoint18.39 seconds; inference bundle export6.94 second
 Both source repositories were submitted/pushed before SHA-guarded Cobot installation. New entry remains gated until GPU return and final paused load pass. The HTTP acceptance wrapper initially treated an accepted asynchronous Web unload as completed and collided with the old SSH forward; it was corrected to wait for phase=offline and operation=null. No production journals/weights were changed by that failed attempt. Complete2,017,658,362-byte Actor25 HTTP transfer/SHA and Range verification passed in256.39 seconds. One Cobot process loaded Actor20 and installed25 in5.75 seconds without restart; active-episode install was rejected. Local load/warmup32.36 seconds; subsequent complete pre-cache/selection samples approximately0.147-0.149 seconds. No ROS publication or production data was involved. The formal continuation keeps Actor20; its exact original snapshot is retained on both hosts to reuse the verified initial cache.
 
 Related: DESIGN.md,PLAN.md,RUNBOOK.md. Detailed artifacts under the evidence directory; current field owner recorded in scratch/cobot-web/coordination/cobot-live.md. Physical rollout/HIL acceptance remains operator-owned.
+
+## Final field delivery (2026-10-20 15:25 CST)
+
+Formal optional entry realtime-expo-ft-532-hpc4-async loaded successfully after the user ended collection. Cobot runtime1309486, local Actor20, published20, Learner20/Critic400, Replay5152, completed15, seed25/3301 and online1851; batch0/5, pending uploads0, untrained0, lag0. All four learner GPUs are configured. Web phase=paused/model_ready=true/Session inactive, no runtime/network/install fault. Local8043 and control8044 confirm the same identity. 50Hz publication/logical10Hz/RTC/filtering and d5/edit0.01 are active. No episode, recording or robot command was started. Operator owns the next Session/rollout/HIL.
+
+Production committed metadata is byte-identical to the real Actor20 baseline; qualification UUIDs are absent. Initial connection-refused messages occurred during multi-hop SSH startup; the final live chain and model readiness succeeded without restart or source change. Evidence: outputs/expo-async-20261020/final-acceptance.json. Runtime sourcecad6dc6, catalogue2a8ce93, Web runtime0bc6192; documentation commits follow separately. Allocation740494 remains owned/running until22:34:20 CST; no automatic extension. Test GPU workers and the temporary return wrapper exited, pending reservation741226 was cancelled. Future allocation recovery is documented in RUNBOOK.md.
+
+Eight isolated before/after inference samples were recorded, not a statistically supported real-robot p95 under continuous upload/training load. Physical continuous rollout/HIL and autonomous success rate remain operator acceptance; do not equate transport/update qualification with learned policy improvement.

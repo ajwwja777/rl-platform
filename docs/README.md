@@ -100,3 +100,6 @@ Cobot4090 原生完整 EXPO 推理通过，完整更新 batch2/UTD1 两种分配
 2026-10-15：[RLT Online四图监控](online/tasks/2026-10-15-rlt-monitoring/TASK.md)已实现并同步源码；独立于模型加载读取训练记录，固定Critic CPU评分不进入控制计算。81 RL/7 Web/5 DOM通过；Web激活等待用户暂停真机回合。
 
 2026-10-19：新增独立 EXPO SFT2000 50/30/20 Online 模式；149 CPU及原生Replay采样验证通过，未启动现场新训练。详情 online/tasks/2026-10-19-expo-532/TASK.md。
+
+
+2026-10-20: [EXPO bounded asynchronous Online delivery](online/tasks/2026-10-20-expo-async/STATUS.md). Cobot Actor20/HPC4 Learner20 ready and paused, real Replay5152 preserved; no robot motion. Concurrent admission/update/restore/full HTTP return and same-process hot install passed; 289 EXPO tests and113 Web tests. Background transfer overlaps collection, with10 outstanding episodes/2 published generations bounds. Stable native update34.6s (1VLA+20Critic), GPU utilization~95%; full return256s, hot install5.75s. Recipe unchanged. Startup SSH connection refusals can be transient: verify live model-ready and matching identities before delivery, not merely accepted load. Source and detailed limits in task STATUS/RUNBOOK.

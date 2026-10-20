@@ -122,3 +122,6 @@ xiqing 原生 RealTimeEXPOFTLearner 在 Cobot4090 完整推理通过；batch2/UT
 2026-10-19：[EXPO demo50](tasks/2026-10-19-expo-demo50/TASK.md)新增逐Critic小批次32示教/32在线的可选采样，141 CPU及原生Replay gather通过；现场启用另记。
 
 2026-10-19：新增独立 EXPO SFT2000 50/30/20 Online 模式；149 CPU及原生Replay采样验证通过，未启动现场新训练。详情 tasks/2026-10-19-expo-532/TASK.md。
+
+
+2026-10-20: [EXPO bounded asynchronous Online delivery](tasks/2026-10-20-expo-async/STATUS.md). Cobot Actor20/HPC4 Learner20 ready and paused, real Replay5152 preserved; no robot motion. Concurrent admission/update/restore/full HTTP return and same-process hot install passed; 289 EXPO tests and113 Web tests. Background transfer overlaps collection, with10 outstanding episodes/2 published generations bounds. Stable native update34.6s (1VLA+20Critic), GPU utilization~95%; full return256s, hot install5.75s. Recipe unchanged. Startup SSH connection refusals can be transient: verify live model-ready and matching identities before delivery, not merely accepted load. Source and detailed limits in task STATUS/RUNBOOK.
