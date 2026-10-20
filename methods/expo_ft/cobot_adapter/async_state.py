@@ -145,3 +145,30 @@ class Outbox:
         with self.lock:
             atomic_json(self.receipts/(identity+'.json'),receipt)
             self.acknowledged[identity]=receipt
+
+
+def retire_uncommitted_snapshots(root):
+    """Keep retryable training from colliding with an unpublished export after crash.
+
+    Published versions are immutable. Only snapshots newer than durable commit and
+    absent from the publication registry can be moved out of the served namespace.
+    Retain bytes for audit; floating-point replay need not reproduce an orphan bitwise.
+    The caller must own the learner run lock and have no active optimizer worker.
+    """
+    import os,uuid
+    root=Path(root);path=root/'committed.json'
+    if not path.exists():return []
+    version=json.loads(path.read_text())['updates']
+    registry=root/'publications.json'
+    published=json.loads(registry.read_text()) if registry.exists() else {}
+    if any(int(v)>version for v in published):raise ValueError('Published Actor is ahead of durable commit')
+    retired=[]
+    for path in (root/'actors').glob('*'):
+        if not path.is_dir() or not path.name.isdigit() or int(path.name)<=version:continue
+        target=root/'orphaned-actors'/(path.name+'-'+str(uuid.uuid4()));target.parent.mkdir(exist_ok=True)
+        os.replace(path,target);retired.append(str(target))
+        for directory in (path.parent,target.parent):
+            fd=os.open(str(directory),os.O_DIRECTORY)
+            try:os.fsync(fd)
+            finally:os.close(fd)
+    return retired

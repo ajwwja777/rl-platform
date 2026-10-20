@@ -48,6 +48,7 @@ def learn_episode(self,identity):
             self.meta['credit']+=len(data['actions'])
             count=min(self.args.max_updates,self.meta['credit']//self.args.steps_per_update) if len(self.buffer)-len(self.meta['replay'])>=self.args.warmup_steps else 0
         self.pending_updates=count
+        self.save_status()
         for _ in range(count):
             started=time.monotonic()
             if self.aligned:

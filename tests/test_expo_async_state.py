@@ -103,3 +103,23 @@ def test_deferred_learning_ids_remain_in_bound(tmp_path):
     (box.root/'committed.json').write_text(json.dumps({'accepted':[i],'replay':[i],
         'episodes_since_update':0,'credit':150,'async_untrained':[i]}))
     assert box.backlog()==[i]
+
+
+def test_unpublished_snapshot_from_interrupted_commit_is_retired(tmp_path):
+    from async_state import retire_uncommitted_snapshots
+    (tmp_path/'committed.json').write_text(json.dumps({'updates':20}))
+    (tmp_path/'publications.json').write_text(json.dumps({'20':{'generation':0}}))
+    for version in [20,25]:
+        p=tmp_path/'actors'/str(version);p.mkdir(parents=True);(p/'manifest.json').write_text('snapshot')
+    retired=retire_uncommitted_snapshots(tmp_path)
+    assert len(retired)==1 and (tmp_path/'actors/20/manifest.json').exists()
+    assert not (tmp_path/'actors/25').exists() and Path(retired[0]).joinpath('manifest.json').read_text()=='snapshot'
+    assert retire_uncommitted_snapshots(tmp_path)==[]
+
+def test_published_snapshot_ahead_of_commit_is_not_silently_retired(tmp_path):
+    from async_state import retire_uncommitted_snapshots
+    (tmp_path/'committed.json').write_text(json.dumps({'updates':20}))
+    (tmp_path/'publications.json').write_text(json.dumps({'25':{'generation':1}}))
+    p=tmp_path/'actors/25';p.mkdir(parents=True)
+    with pytest.raises(ValueError,match='ahead'):retire_uncommitted_snapshots(tmp_path)
+    assert p.exists()

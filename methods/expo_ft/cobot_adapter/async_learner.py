@@ -10,7 +10,7 @@ import time
 from online_protocol import atomic_json
 from observed_learner import ObservedLearner
 from async_learning import learn_episode
-from async_state import Inbox
+from async_state import Inbox,retire_uncommitted_snapshots
 
 
 class AsyncLearner(ObservedLearner):
@@ -25,6 +25,7 @@ class AsyncLearner(ObservedLearner):
         self.pending_updates=0;self.timings={};self._status={}
         self.max_pending=args.async_max_pending
         self.async_contract(args)
+        retire_uncommitted_snapshots(args.run_dir)
         super().__init__(args)
         self.publish_committed()
         self.inbox=Inbox(self.root,self.known_versions,self.max_pending)
