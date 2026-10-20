@@ -31,14 +31,17 @@ def capture(agent, updater):
 
     for section, tree in (('agent', agent.replace(_infer_cache=None)), ('target', updater.target)):
         for index, (path, value) in enumerate(jax.tree_util.tree_flatten_with_path(tree)[0]):
-            if section == 'agent' and not hasattr(value, 'dtype'):
+            scalar = not hasattr(value, 'dtype')
+            if section == 'agent' and scalar:
                 value = jax.numpy.asarray(value)
             record = dict(section=section, index=index, path=jax.tree_util.keystr(path),
                           shape=list(np.shape(value)), dtype=str(value.dtype) if hasattr(value, 'dtype') else str(np.asarray(value).dtype))
             if isinstance(value, jax.Array) and buffer_identity(value) in frozen:
                 record['seed'] = True
             else:
-                identity = key(value)
+                # Scalar conversions are temporary; their device address may be
+                # reused by a later scalar after its owned host copy is captured.
+                identity = ('scalar', section, index) if scalar else key(value)
                 if identity not in aliases:
                     owned = np.array(jax.device_get(value), copy=True, order='C')
                     owned.setflags(write=False)

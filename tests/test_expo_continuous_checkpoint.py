@@ -175,3 +175,24 @@ def test_background_writer_never_accesses_jax_or_the_live_updater(tmp_path,monke
     assert result['checkpoint']==2 and result['actor_manifest']['actor_version']==21
     target=next(r for r in json.loads((tmp_path/'checkpoints'/'2'/'manifest.json').read_text())['records'] if r['section']=='target')
     np.testing.assert_array_equal(np.fromfile(tmp_path/'checkpoints'/'2'/target['file'],dtype=np.float32),np.arange(12))
+
+
+def test_python_scalars_do_not_alias_when_temporary_device_addresses_are_reused(monkeypatch):
+    from continuous_checkpoint import capture
+    import device_layout
+    original=device_layout.buffer_identity
+    def reused_scalar_address(value):
+        # Model allocator reuse after each temporary conversion is released.
+        if value.shape==() and value.dtype==jnp.float32:
+            return ('reused-temporary-scalar-address',)
+        return original(value)
+    monkeypatch.setattr(device_layout,'buffer_identity',reused_scalar_address)
+    agent,updater=example()
+    agent=agent.replace(actor_train_state=agent.actor_train_state.replace(
+        opt_state={'first':0.125,'second':0.25,'third':0.75}))
+    captured=capture(agent,updater)
+    actual={r['path']:captured['buffers'][r['buffer']].item()
+            for r in captured['checkpoint_records'] if '.opt_state[' in r['path']}
+    assert actual=={".actor_train_state.opt_state['first']":0.125,
+                    ".actor_train_state.opt_state['second']":0.25,
+                    ".actor_train_state.opt_state['third']":0.75}
