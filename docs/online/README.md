@@ -129,3 +129,5 @@ xiqing 原生 RealTimeEXPOFTLearner 在 Cobot4090 完整推理通过；batch2/UT
 2026-10-20：原生EXPO标量指标独立只读观察器及网页扩展，W&B按用户要求延期。详情tasks/2026-10-20-native-metrics/TASK.md。
 
 2026-10-20：新增 [rollout监控](tasks/2026-10-20-rollout-monitoring/TASK.md)，复用选动作时Q与Edit候选，记录实际precache/select耗时与monotonic视频锚；保留continuous每点版本来源。只同步源码，新增字段未来正常加载生效；当前HPC/Actor/Session不重载。
+
+2026-10-20: [Native continuous EXPO asynchronous delivery](tasks/2026-10-20-expo-continuous/RESULT.md) supersedes earlier bounded/batch5 scheduling for the new optional native-async entry. Every eligible completed episode enters Replay independently; native sampling/continuous groups/120s timeout, no10-episode or2-version gate. Final localActor22/HPC4Learner22/Critic440, Replay5152, explicit50Hz/RTC/filter/d5/Edit.01; Sessionclosed/paused/zero commands. Actual same-process21->22 adoption passed; full return224-379s, hotstage5s, stable native group60-62s with remaining compilation/CPU gaps. [Operational handoff](tasks/2026-10-20-expo-continuous/RUNBOOK.md). Physical rollout/HIL success remains operator acceptance; allocation740494 expires22:34:20.
