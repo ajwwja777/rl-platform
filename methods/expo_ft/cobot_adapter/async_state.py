@@ -14,9 +14,16 @@ def rollout_rng(run,identity):
     return [int.from_bytes(digest[:4],'little'),int.from_bytes(digest[4:8],'little')]
 
 
+def validate_pending_limit(value,episodes=1):
+    # Zero disables count-based backpressure, not journal validation/disk guards.
+    if type(value) is not int or not 0<=value<=50:raise ValueError('Invalid async pending limit')
+    if value and value<episodes:raise ValueError('Async bound smaller than episode batch')
+    return value
+
+
 def collection_gate(pending,lag,active,max_pending=10,max_lag=2):
     if active:return None
-    if pending>=max_pending:return 'backlog'
+    if max_pending and pending>=max_pending:return 'backlog'
     if lag>=max_lag:return 'policy_lag'
     return None
 
@@ -26,7 +33,7 @@ class Inbox:
         self.root=Path(root);self.root.mkdir(parents=True,exist_ok=True)
         self.episodes=self.root/'episodes';self.episodes.mkdir(exist_ok=True)
         self.path=self.root/'admitted.json';self.lock=threading.RLock()
-        self.known_versions=known_versions;self.max_pending=max_pending
+        self.known_versions=known_versions;self.max_pending=validate_pending_limit(max_pending)
         self.records=json.loads(self.path.read_text()) if self.path.exists() else {}
 
     def committed(self):
@@ -72,7 +79,7 @@ class Inbox:
                 if type(version) is not int or version not in self.known_versions():
                     raise ValueError('Episode policy was not published by this run')
                 if not directory.exists():
-                    if len(self.backlog())>=self.max_pending:raise ValueError('Remote episode backlog is full')
+                    if self.max_pending and len(self.backlog())>=self.max_pending:raise ValueError('Remote episode backlog is full')
                     if shutil.disk_usage(self.root).free<16*1024**3:raise ValueError('Remote journal disk space low')
             elif not (directory/'started.json').is_file():raise ValueError('Missing transferred start')
             return receive(self.episodes,identity,[],identity,name,payload,digest)

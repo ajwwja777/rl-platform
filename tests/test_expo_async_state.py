@@ -123,3 +123,16 @@ def test_published_snapshot_ahead_of_commit_is_not_silently_retired(tmp_path):
     p=tmp_path/'actors/25';p.mkdir(parents=True)
     with pytest.raises(ValueError,match='ahead'):retire_uncommitted_snapshots(tmp_path)
     assert p.exists()
+
+
+def test_unlimited_pending_accepts_more_than_ten_and_retains_policy_gate(tmp_path,monkeypatch):
+    from types import SimpleNamespace
+    import async_state
+    local=tmp_path/'local';box=Inbox(tmp_path/'remote',lambda:{3},max_pending=0)
+    ids=[episode(local) for _ in range(12)]
+    for i in ids:assert transfer(box,local,i)['received']
+    assert len(box.backlog())==12 and len(Inbox(box.root,lambda:{3},0).backlog())==12
+    assert collection_gate(1000,1,False,0,2) is None
+    assert collection_gate(1000,2,False,0,2)=='policy_lag'
+    monkeypatch.setattr(async_state.shutil,'disk_usage',lambda _:SimpleNamespace(free=0))
+    with pytest.raises(ValueError,match='disk space'):transfer(box,local,episode(local))

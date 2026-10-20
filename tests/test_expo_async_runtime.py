@@ -93,3 +93,20 @@ def test_local_rollout_identity_is_distinct_from_learner_work(tmp_path):
     c=runtime(tmp_path);c.remote_status['active_episode']='being-trained';c.episode='being-collected'
     v=c.remote_online_status()
     assert v['active_episode']=='being-collected' and v['learner_active_episode']=='being-trained'
+
+
+def test_unlimited_pending_is_reported_without_blocking_rollout(tmp_path):
+    c=runtime(tmp_path);c.remote['async_max_pending']=0
+    c.remote_status.update(async_max_pending=0,pending_episode_ids=[str(uuid4()) for _ in range(12)])
+    value=c.remote_online_status()
+    assert value['ready'] and value['pending_episodes']==12 and value['async_max_pending']==0
+
+def test_launcher_allows_explicit_unlimited_pending_but_rejects_invalid_bound():
+    from remote_launcher import learner_command
+    config=dict(python='python',project='native',bundle='bundle',run_dir='run',port=1,
+        seed_dir='seed',model_id='test',rtc_delay=5,episodes_per_update=5,
+        async_mode='bounded_async_v1',async_max_pending=0)
+    args=learner_command(config,Path('/adapter'))
+    assert args[args.index('--async-max-pending')+1]=='0'
+    for bad in [-1,True,1,4,51]:
+        with pytest.raises(ValueError):learner_command(dict(config,async_max_pending=bad),Path('/adapter'))
