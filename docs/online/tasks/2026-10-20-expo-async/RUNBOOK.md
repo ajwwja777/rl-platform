@@ -24,9 +24,9 @@ Warmup10,5-episode trigger,K30,UTD20,global batch64,Critic50/30/20,success-only 
 - Untrained: union of pending uploads, admitted/unprocessed journals and committed partial/deferred batch identities. Acknowledged IDs remain counted until a fresh admission revision confirms remote visibility.
 - Lag: published generations behind the current local Actor, not the numerical difference between optimizer step counts.
 
-New episodes are blocked at10 outstanding episodes or2 observed published generations of lag. An active episode may finish. This prevents unbounded disk/replay age growth when collection is faster than learning; it does not promise indefinitely uninterrupted collection. If the 532 success/failure pools are missing, their earned credit is retained and the explicit missing-pool/backlog condition needs resolution. This continuation already has both outcome pools.
+After the user-requested unlimited-backlog patch, async_max_pending=0 disables outstanding-episode count blocking. New episodes remain blocked at2 observed published generations of lag. An active episode may finish. The remaining generation gate is not a fixed wall-clock limit; its timing is under review. Queue counts remain visible and the operator decides when to stop collection. See SCHEDULING_AUDIT.md for source scheduling differences. If the 532 success/failure pools are missing, their earned credit is retained and the explicit missing-pool/backlog condition needs resolution. This continuation already has both outcome pools.
 
-After a WAN interruption, bounded local collection can continue; completed journals retry and duplicate admissions remain idempotent. Do not delete outbox or receipt files to clear a warning. After a crash between journal finalization and Actor receipt, a complete labeled journal is recovered with an explicit missing-final-RNG audit marker; no fake RNG is created and the learner's independent RNG is unchanged.
+After a WAN interruption, local collection can continue while existing fault/install/generation guards permit; completed journals retry and duplicate admissions remain idempotent. Do not delete outbox or receipt files to clear a warning. After a crash between journal finalization and Actor receipt, a complete labeled journal is recovered with an explicit missing-final-RNG audit marker; no fake RNG is created and the learner's independent RNG is unchanged.
 
 ## Locations
 
@@ -42,7 +42,7 @@ Cobot profile: /home/agilex/jiaan/project/rl-platform/runtime/expo-remote/profil
 
 HPC root: /data/user/jhe724/jiaan/research-workspace/projects/rl-platform/outputs/expo-async-20261020
 
-HPC production Replay/checkpoints: the online/ directory under that root. qualification/, test-upload/ and verification/ are isolated tests and must not be imported into production.
+HPC production Replay/checkpoints after the unlimited-backlog continuation: online-unlimited/ under that root. Original online/ is retained as the pre-change continuation source. qualification/, test-upload/ and verification/ are isolated tests and must not be imported into production.
 
 ## Resume on a future owned allocation
 

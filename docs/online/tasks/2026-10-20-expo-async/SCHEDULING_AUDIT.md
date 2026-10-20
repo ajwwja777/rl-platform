@@ -1,0 +1,29 @@
+# Scheduling audit and unlimited episode backlog
+
+2026-10-20. User rejects automatic stop at10 outstanding episodes and asks whether5-episode triggers are native, and what2 published generations mean in time. Source scope: the supplied checkout /home/agilex/xiqing/projects/expo-ft, not a claim of identity with public upstream. Exact two-script snapshots and SHA receipts are in outputs/expo-async-20261020/audit-train_pi_robo{,_async}.py and native-scheduling-audit.json.
+
+## Source facts
+
+train_pi_robo.py:45-48 supports update_type=episode/step/batch, defaultepisode and num_batch1. num_updates may be fixed or derived from transition credit/step_interval. Lines389-415 require10 prior episodes plus sufficient steps, flush transitions at each episode end, and optionally trigger after num_batch episodes. Five is our chosen deployment configuration, not a fixed repository requirement.
+
+train_pi_robo_async.py:319-357 starts a background sampling/update loop when a minibatch fits (lines496-499; resumed populated Replay starts immediately at386-388). Each completed episode flushes transitions and finalizes outcome under the buffer lock (481-484). It does not wait for5 episodes and does not use our K30 transition-credit budget. Default ep_timeout_secs120 pauses *learning* if no episode finishes, then resumes on an episode signal. Each update publishes an inference cache reference (347-348); the main process adopts newest cache for subsequent chunks (407-424), while an in-flight chunk retains its parameters. This is same-process parameter sharing, not cross-host2GB export/transfer, and not our full-episode-pinned installation.
+
+Current deployed adapter is asynchronous collection/admission/transport around the signed native synchronous batch recipe. HTTP reception remains available during optimization, but new journals enter its *sampleable* Replay only when the single worker processes them, after the current batch finishes. Consequently it is inaccurate to claim immediate sampling of arrivals during that batch or full scheduling equivalence with train_pi_robo_async.py. Five eligible episodes trigger accumulated K30 budget; the first four are already inserted/committed when the worker is free. Publication follows the batch's complete durable checkpoint.
+
+## Implemented narrow change
+
+Explicit async_max_pending=0 disables both local count-based collection blocking and remote count-based journal refusal. Counts remain visible, Web displays unlimited. Replay capacity500000, full-episode validation, immutable version checks, disk guard16GiB, failed-install and fault handling remain. Optional finite bounds still work. Default command-line configuration remains10 for old callers; the user's production profiles explicitly select0. Two-generation lag gate and5-episode training schedule are unchanged while their alternatives are being evaluated.
+
+Three new regression tests cover12 isolated synthetic journal admissions/restart, start allowed with12 pending, launcher0/invalid settings, and retained low-disk/policy-lag behavior. 292 EXPO tests passed,8 skipped,1 known unrelated fixture deselected;113 Web tests passed. No extra synthetic production data or training budget.
+
+Changing async source signatures requires explicit continuation: HPC online-unlimited is copied from the idle online/ state, with exact committed metadata, Replay, Actor20 and checkpoints. Original online/ and its old contract remain intact; the copied old contract is renamed continuation-source-async-contract.json before generating the new contract. HPC profiles point to online-unlimited; Cobot run/recordings remain unchanged with no pending episodes at switch. Source178bd8f/Webce0b064. Final live activation evidence is appended after load.
+
+## Timing: facts versus estimates
+
+One stable update group (1VLA+20Critic):34.60s. Checkpoint18.39s, inference export6.94s. Full2,017,658,362-byte download256.39s, local hot installation5.75s. These are separate measured stages, not a promised end-to-end bound. Existing isolated20->25 publication timestamps span311.72s including post-start journal arrival and cold update overhead; this is one observed interval, not evidence for two consecutive steady production intervals.
+
+With~600 new transitions and K30, one5-episode trigger earns~20groups, approximately11.5min steady compute plus25.3s checkpoint/export. After publication, a complete returned policy takes another~4.3min transfer and~5.8s install plus any wait for a safe boundary. Collection can overlap these stages. Different episode lengths, compile state and WAN throughput change timing. Two generations could represent very different elapsed time; no two-consecutive-production-publication measurement yet exists for this new async run.
+
+Recommended next design: independently schedule (1) finalized labeled episode insertion into sampleable Replay, (2) background learning and explicit data/update budget or the source's timeout policy, and (3) coalesced newest-version publication/download. Avoid exporting a2GB bundle every34.6s over a~256s transfer path. Prefer visible wall-clock age and manual decision over an arbitrary generation threshold, but no unapproved change to the training recipe is made in this patch. This redesign still needs implementation and separate update/durability/contention qualification.
+
+2026-10-20 16:27 CST activation passed: Cobot runtime1357120 ready/paused/Sessioninactive, Actor20/Learner20/Replay5152/completed15, pending0, async_max_pending0 and lag limit2. HPC orchestrator3293725/Learner3181876 restored online-unlimited on job740494. Committed metadata exactly equals original online/; no new data or gradients.50Hz/RTC/filtering/d5/edit.01 unchanged. Evidence outputs/expo-async-20261020/unlimited-acceptance.json. User owns next rollout; five-episode schedule and two-generation gate remain active, source-equivalent continuous scheduling is not yet implemented.
