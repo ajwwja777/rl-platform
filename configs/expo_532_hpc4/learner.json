@@ -22,5 +22,7 @@
   "critic_prior": "demo50_success30_failure20",
   "job_id": 0,
   "slurm_user": "jhe724",
-  "learner_port": 18443
+  "learner_port": 18443,
+  "gpu_allocator": "default",
+  "memory_fraction": 0.65
 }
