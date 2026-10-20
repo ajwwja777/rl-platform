@@ -139,12 +139,18 @@ class OnlineRuntime(FeedbackExecution, RemoteSupport, Runtime):
 
     def infer(self,observation,prefix):
         if not self.episode:raise ValueError('Start a Web collection episode before rollout')
-        return self.array_rpc('/precache',**observation,prefix=np.asarray(prefix,np.float32).reshape(-1,7),episode_uuid=self.episode)
+        value=self.array_rpc('/precache',**observation,prefix=np.asarray(prefix,np.float32).reshape(-1,7),episode_uuid=self.episode)
+        from monitoring import precache_timing
+        return {**value,'_rollout_telemetry':precache_timing(value,time.monotonic())}
 
     def resolve_inference(self,value):
         if not self.episode:raise ValueError('Online episode has ended')
-        payload=self.array_rpc('/select',**self.observation(),episode_uuid=self.episode,
+        observation=self.observation()
+        selected_at=time.monotonic()
+        payload=self.array_rpc('/select',**observation,episode_uuid=self.episode,
             precached=np.asarray(value['precached'],np.float32),delay=value['delay'],actor_version=value['actor_version'])
+        from monitoring import selection_timing
+        payload.update(selection_timing(value,selected_at))
         self.monitor_history.selected(self.journal.active,payload)
         return np.asarray(payload['actions'],np.float32)
 

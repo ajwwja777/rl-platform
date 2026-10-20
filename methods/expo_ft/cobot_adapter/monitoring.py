@@ -68,29 +68,125 @@ def install_selection_observer(module):
         result = original(*args, **kwargs)
         if getattr(_capture, 'enabled', False):
             _capture.selection = result
+            _capture.base_count = kwargs.get('N')
         return result
     observed._expo_monitoring = True
     module._jitted_fast_select = observed
 
 
+def selection_diagnostics(selection, base_count=None):
+    """CPU scalars from the native selection, without forward calls or RNG access.
+
+    Native candidates are N unedited chunks followed by edits of the first base
+    chunks. Q values already use the native target-critic ensemble reduction.
+    edit_norm is the full-chunk L2 norm of the selected edit minus its paired
+    base, in normalized action coordinates (dimensionless, not joint radians).
+    """
+    import numpy as np
+    if selection is None or selection.get('qs') is None:
+        return {}
+    qs = np.asarray(selection['qs'])
+    index = np.asarray(selection.get('idx'))
+    if qs.ndim != 1 or index.shape != () or index.dtype.kind not in 'iu':
+        return {}
+    index = int(index)
+    if not 0 <= index < len(qs):
+        return {}
+    q = float(qs[index])
+    if not math.isfinite(q):
+        return {}
+    value = {'selected_q': q}
+    if type(base_count) is not int or not 0 < base_count <= len(qs):
+        return value  # Old/native variants without an explicit base count remain compatible.
+    if np.isfinite(qs[:base_count]).all():
+        value['best_unedited_q'] = float(qs[:base_count].max())
+    edited = index >= base_count
+    value['edit_selected'] = edited
+    if not edited:
+        value['edit_norm'] = 0.0  # Measured choice of an unedited candidate, not missing data.
+        return value
+    if selection.get('cand') is None:
+        return value
+    candidates = np.asarray(selection['cand'])
+    paired = index - base_count
+    if (candidates.ndim != 3 or candidates.shape[0] != len(qs)
+            or paired >= base_count or not all(candidates.shape[1:])):
+        return value
+    delta = candidates[index].astype(np.float64) - candidates[paired]
+    norm = float(np.linalg.norm(delta.reshape(-1)))
+    if math.isfinite(norm):
+        value['edit_norm'] = norm
+    return value
+
+
 def infer_with_q(actor, infer, route, data):
     _capture.selection = None
+    _capture.base_count = None
     _capture.enabled = route == '/select'
     try:
         result = infer(actor, route, data)
-        selection = _capture.selection
-        if route == '/select' and selection is not None and selection.get('qs') is not None:
-            # actions are already synchronized by native infer; copy only its selected scalar.
+        if route == '/select':
+            # Native infer has already synchronized its actions. Diagnostics only copy
+            # the existing small candidate outputs; failure cannot affect inference.
             try:
-                q = float(selection['qs'][selection['idx']])
-                if math.isfinite(q):
-                    result['selected_q'] = q
-            except (ValueError, TypeError, IndexError, KeyError):
-                pass  # Missing diagnostic values cannot change inference behavior.
+                result.update(selection_diagnostics(_capture.selection, _capture.base_count))
+            except Exception:
+                pass
         return result
     finally:
         _capture.enabled = False
         _capture.selection = None
+        _capture.base_count = None
+
+
+def rollout_diagnostics(payload):
+    """Optional finite scalars only; absent timings are never replaced with zero.
+
+    compute_seconds is measured by the Actor around this /select inference. It
+    excludes the earlier pi0.5 /precache phase and transport/queue waiting.
+    wait_ms measures a completed RTC precache waiting until select begins; it
+    is not robot stalling or network latency. precache_ms is separate compute.
+    """
+    value = {}
+    if finite(payload.get('best_unedited_q')):
+        value['best_unedited_q'] = payload['best_unedited_q']
+    if type(payload.get('edit_selected')) is bool:
+        value['edit_selected'] = payload['edit_selected']
+    for key in ('edit_norm', 'inference_ms', 'wait_ms', 'precache_ms'):
+        if finite(payload.get(key)) and payload[key] >= 0:
+            value[key] = payload[key]
+    if 'inference_ms' not in value and finite(payload.get('compute_seconds')):
+        milliseconds = payload['compute_seconds'] * 1000.0
+        if math.isfinite(milliseconds) and milliseconds >= 0:
+            value['inference_ms'] = milliseconds
+    return value
+
+
+def precache_timing(payload, completed_monotonic):
+    """Local per-result timing, carried with the cache and never sent to Actor."""
+    value = {}
+    if finite(completed_monotonic):
+        value['precache_completed_monotonic'] = completed_monotonic
+    compute = payload.get('compute_seconds')
+    if finite(compute) and compute >= 0 and math.isfinite(compute * 1000.0):
+        value['precache_ms'] = compute * 1000.0
+    return value
+
+
+def selection_timing(cached, select_monotonic):
+    """Use this cache's completion, never a shared/previous request timestamp."""
+    source = cached.get('_rollout_telemetry')
+    if not isinstance(source, dict):
+        return {}
+    value = {}
+    completed = source.get('precache_completed_monotonic')
+    if finite(completed) and finite(select_monotonic) and select_monotonic >= completed:
+        elapsed = (select_monotonic - completed) * 1000.0
+        if math.isfinite(elapsed):
+            value['wait_ms'] = elapsed
+    if finite(source.get('precache_ms')) and source['precache_ms'] >= 0:
+        value['precache_ms'] = source['precache_ms']
+    return value
 
 
 class RolloutHistory:
@@ -114,8 +210,14 @@ class RolloutHistory:
                 self.identity = active['episode_uuid']
                 self.version = payload['actor_version']
                 self.points.clear()
-            self.points.append(dict(seconds=max(0., time.time() - active['started_at']),
-                                    q=payload['selected_q'], timestamp=time.time()))
+            # Same-host monotonic time aligns future points to recorded frame
+            # timestamps; old points intentionally have no synthesized anchor.
+            monotonic_seconds = time.monotonic()
+            timestamp = time.time()
+            self.points.append(dict(seconds=max(0., timestamp - active['started_at']),
+                                    q=payload['selected_q'], timestamp=timestamp,
+                                    monotonic_seconds=monotonic_seconds,
+                                    **rollout_diagnostics(payload)))
             self.dirty = True
 
     def flush(self):
