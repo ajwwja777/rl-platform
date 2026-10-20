@@ -22,6 +22,9 @@ def learn_episode(self,identity):
     # Behavior RNG is recorded for audit, never assigned to the independent learner.
     accepted=data is not None and info.get('training_eligible',True) and info['outcome'] in ('success','failure')
     if accepted:
+        partial=self.meta.get('episodes_since_update',0)
+        self.meta.setdefault('async_untrained',self.meta['replay'][-partial:] if partial else [])
+        if self.meta['completed_episodes']>=10:self.meta['async_untrained'].append(identity)
         self.meta['replay'].append(identity)
         sizes={x:json.loads((self.root/'episodes'/x/'finished.json').read_text())['count']+(0 if self.aligned else 1) for x in self.meta['replay']}
         evicted=False
@@ -86,6 +89,7 @@ def learn_episode(self,identity):
             self.pending_updates-=1
             self.save_status()
         if self.meta['updates'] != previous_updates:
+            self.meta['async_untrained']=[]
             if not self.learner_only:self.warm_inference()
             # Use a fresh disk step even after an interrupted uncommitted save.
             disk_step=max([int(p.name) for p in (self.root/'checkpoints').glob('*') if p.name.isdigit()] or [0])+1

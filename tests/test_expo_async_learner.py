@@ -2,8 +2,10 @@ import json,sys
 from pathlib import Path
 import pytest
 sys.path.insert(0,str(Path(__file__).parents[1]/"methods/expo_ft/cobot_adapter"))
-@pytest.mark.parametrize('prior',['seeded','demo50_success30_failure20'])
+@pytest.mark.parametrize('prior',['seeded','demo50_success30_failure20','missing532'])
 def test_async_old_policy_preserves_budget_and_independent_rng(tmp_path,monkeypatch,prior):
+    missing=prior=='missing532'
+    if missing:prior='demo50_success30_failure20'
     from types import SimpleNamespace
     import jax
     import numpy as np
@@ -36,7 +38,7 @@ def test_async_old_policy_preserves_budget_and_independent_rng(tmp_path,monkeypa
     l.meta=dict(checkpoint=None,updates=0,accepted=[],replay=[],steps=1000,credit=0,actor_updates=0,critic_updates=0,completed_episodes=10,episodes_since_update=0)
     if prior=='demo50_success30_failure20':
         import outcome_sampling
-        l.outcome_pools=lambda:tuple(np.arange(10) for _ in range(3))
+        l.outcome_pools=lambda:tuple(np.arange(0 if missing and i==2 else 10) for i in range(3))
         monkeypatch.setattr(outcome_sampling,'sample_critic',lambda *args: {'quota':(640,384,256)})
     l.agent=Agent(jax.numpy.asarray([3,4],dtype=jax.numpy.uint32))
     def update(agent,batch,utd,actor_batch):
@@ -62,8 +64,13 @@ def test_async_old_policy_preserves_budget_and_independent_rng(tmp_path,monkeypa
             # Simulate process restart from durable metadata between eligible episodes 3 and 4.
             assert committed['episodes_since_update']==3 and committed['credit']==18
             l.meta=committed
+    if missing:
+        assert not updates and not saved and not published
+        assert l.meta['credit']==36 and len(l.meta['async_untrained'])==6
+        return
     assert updates==[20] and saved==[1] and published==[1]
     assert l.meta['completed_episodes']==16 and l.meta['episodes_since_update']==1
+    assert l.meta['async_untrained']==['7']
     np.testing.assert_array_equal(l.agent.rng,np.asarray([3,4],np.uint32))
     assert len(l.meta['replay'])==6 and l.meta['credit']==6
 

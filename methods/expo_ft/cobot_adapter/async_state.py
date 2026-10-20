@@ -54,7 +54,13 @@ class Inbox:
             partial=meta.get('replay',[])[-count:] if count else []
             done=set(meta.get('accepted',[]))
             outstanding=[p.name for p in self.episodes.iterdir() if p.is_dir() and p.name not in done]
-            return list(dict.fromkeys(partial+outstanding))
+            return list(dict.fromkeys(meta.get('async_untrained',partial)+outstanding))
+
+    def transport_status(self):
+        # Revision and backlog must describe the same admission point.
+        with self.lock:
+            pending=self.backlog()
+            return dict(admission_revision=len(self.records),pending_episode_ids=pending,pending_episodes=len(pending))
 
     def receive(self,identity,name,payload,digest):
         identity=episode_id(identity)
@@ -79,7 +85,7 @@ class Inbox:
                 info,data=read_journal(self.episodes,identity)
                 if info['actor_version'] not in self.known_versions():raise ValueError('Episode policy was not published by this run')
                 eligible=data is not None and info.get('training_eligible',True) and info['outcome'] in ('success','failure')
-                record=dict(eligible=bool(eligible),actor_version=info['actor_version'],count=info['count'],
+                record=dict(admission_revision=len(self.records)+1,eligible=bool(eligible),actor_version=info['actor_version'],count=info['count'],
                     sha256=hashlib.sha256((self.episodes/identity/'finished.json').read_bytes()).hexdigest())
                 updated=dict(self.records);updated[identity]=record
                 atomic_json(self.path,updated)
@@ -99,6 +105,21 @@ class Outbox:
         self.episodes=Path(episodes);self.receipts=self.episodes.parent/'upload_receipts'
         self.receipts.mkdir(parents=True,exist_ok=True)
         self.lock=threading.RLock()
+        self.acknowledged={p.stem:json.loads(p.read_text()) for p in self.receipts.glob('*.json')}
+
+    def unconfirmed(self,revision):
+        with self.lock:
+            return [i for i,r in self.acknowledged.items() if r.get('admission_revision',float('inf'))>revision]
+
+    def recover_finished(self):
+        # Called only after a fresh local Actor has started with no active episode.
+        # Final behavior RNG is audit-only in async mode; never invent it or feed it
+        # to the learner. A complete, labeled journal remains usable after a crash.
+        with self.lock:
+            for identity in self.pending():
+                path=self.episodes/identity/'finished.json';meta=json.loads(path.read_text())
+                if 'rollout_rng' not in meta and not meta.get('actor_receipt_missing_after_restart'):
+                    meta['actor_receipt_missing_after_restart']=True;atomic_json(path,meta)
 
     def pending(self):
         with self.lock:
@@ -108,7 +129,7 @@ class Outbox:
                 if (self.receipts/(p.parent.name+'.json')).exists():continue
                 meta=json.loads(p.read_text())
                 actor_receipt=self.episodes.parent/'actor_receipts'/(p.parent.name+'.json')
-                if 'rollout_rng' not in meta and actor_receipt.is_file():
+                if 'rollout_rng' not in meta and not meta.get('actor_receipt_missing_after_restart') and actor_receipt.is_file():
                     receipt=json.loads(actor_receipt.read_text())
                     if receipt['actor_version']!=meta['actor_version']:raise ValueError('Recovered Actor version mismatch')
                     meta['rollout_rng']=receipt['rollout_rng'];atomic_json(p,meta)
@@ -121,4 +142,6 @@ class Outbox:
         digest=hashlib.sha256(path.read_bytes()).hexdigest()
         if not receipt.get('received') or receipt.get('episode_uuid')!=identity or receipt.get('sha256')!=digest:
             raise ValueError('Durable upload receipt does not match this episode')
-        with self.lock:atomic_json(self.receipts/(identity+'.json'),receipt)
+        with self.lock:
+            atomic_json(self.receipts/(identity+'.json'),receipt)
+            self.acknowledged[identity]=receipt

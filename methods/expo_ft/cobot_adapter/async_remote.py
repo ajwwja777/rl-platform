@@ -29,6 +29,7 @@ class AsyncRemote(RemoteSupport):
 
     def start_server(self):
         super().start_server()
+        with self.control_lock:self.outbox.recover_finished()
         for target in (self.upload_loop,self.download_loop):
             threading.Thread(target=target,daemon=True).start()
 
@@ -55,7 +56,7 @@ class AsyncRemote(RemoteSupport):
     def remote_online_status(self):
         value=dict(self.remote_status)
         local_pending=self.outbox.pending()
-        pending=set(value.get('pending_episode_ids',[]))|set(local_pending)
+        pending=set(value.get('pending_episode_ids',[]))|set(local_pending)|set(self.outbox.unconfirmed(value.get('admission_revision',0)))
         publications=value.get('publications',{})
         served_generation=publications.get(str(self.local_actor_version),{}).get('generation',0)
         lag=max(0,value.get('published_generation',0)-served_generation)
@@ -84,8 +85,9 @@ class AsyncRemote(RemoteSupport):
         return super().json_rpc(path,body)
 
     def transfer_episode(self,identity):
-        receipt=self.local_rpc('/episode/end',{'episode_uuid':identity})
         path=self.journal.root/identity/'finished.json';meta=json.loads(path.read_text())
+        if meta.get('actor_receipt_missing_after_restart'):return self.remote_online_status()
+        receipt=self.local_rpc('/episode/end',{'episode_uuid':identity})
         if receipt['actor_version']!=meta['actor_version']:raise ValueError('Actor receipt policy mismatch')
         meta['rollout_rng']=receipt['rollout_rng'];atomic_json(path,meta)
         return self.remote_online_status()
@@ -94,7 +96,7 @@ class AsyncRemote(RemoteSupport):
         # The control handler seals the RNG receipt before upload; finished.json alone
         # can briefly exist while /episode/end is still running.
         meta=json.loads((self.outbox.episodes/identity/'finished.json').read_text())
-        if 'rollout_rng' not in meta:return False
+        if 'rollout_rng' not in meta and not meta.get('actor_receipt_missing_after_restart'):return False
         receipt=self.remote_rpc('/async/episode/receipt',{'episode_uuid':identity})
         if not receipt.get('received'):
             paths=files(self.outbox.episodes,identity);started=time.monotonic();total=0

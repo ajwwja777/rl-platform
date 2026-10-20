@@ -19,6 +19,7 @@ class AsyncLearner(ObservedLearner):
     def __init__(self,args):
         if not (args.recipe=='native_sync' and args.learner_only and args.native_batch_update):
             raise ValueError('Async requires native full-batch learner-only mode')
+        if args.async_max_pending<args.episodes_per_update:raise ValueError('Async bound smaller than episode batch')
         self.stop=threading.Event();self.wake=threading.Event()
         self.inbox=None;self.publications={};self.published_version=-1
         self.pending_updates=0;self.timings={};self._status={}
@@ -75,7 +76,7 @@ class AsyncLearner(ObservedLearner):
     def snapshot(self):
         value=dict(self._status)
         if self.inbox:
-            pending=self.inbox.backlog();value.update(pending_episode_ids=pending,pending_episodes=len(pending))
+            value.update(self.inbox.transport_status())
         return value
 
     def work(self):
@@ -105,7 +106,7 @@ def main():
     p.add_argument('--rtc-delay',type=int,default=5);p.add_argument('--edit-scale',type=float,default=.01)
     p.add_argument('--async-max-pending',type=int,default=10);p.add_argument('--async-max-policy-lag',type=int,default=2)
     args=p.parse_args()
-    if not 1<=args.async_max_pending<=50 or not 1<=args.async_max_policy_lag<=10:p.error('Invalid async queue bounds')
+    if not args.episodes_per_update<=args.async_max_pending<=50 or not 1<=args.async_max_policy_lag<=10:p.error('Invalid async queue bounds')
     args.batch_size=64;args.capacity=500000;args.warmup_steps=0;args.steps_per_update=30;args.max_updates=0
     from native_online import source_path
     source_path(args.project)

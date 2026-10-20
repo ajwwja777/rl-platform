@@ -57,3 +57,33 @@ def test_optional_catalogue_keeps_sync_and_separate_async_run():
     assert new['runtime_adapter']=='expo_online' and new['async_mode']=='bounded_async_v1'
     assert 'async_runtime.py' in (root/new['entry_relative']).read_text()
     assert any('async-ready.json' in p for p in new['required'])
+
+
+def test_ack_visibility_gap_does_not_allow_extra_collection(tmp_path):
+    from test_expo_async_state import episode,transfer
+    from async_state import Inbox
+    c=runtime(tmp_path);box=Inbox(tmp_path/'remote',lambda:{3})
+    i=episode(c.outbox.episodes);receipt=transfer(box,c.outbox.episodes,i);c.outbox.ack(i,receipt)
+    c.remote['async_max_pending']=1;c.network_error='disconnected'
+    value=c.remote_online_status()
+    assert value['pending_episodes']==1 and not value['ready']
+
+def test_launcher_rejects_bound_smaller_than_batch():
+    from remote_launcher import learner_command
+    config=dict(python='python',project='native',bundle='bundle',run_dir='run',port=1,
+        seed_dir='seed',model_id='test',rtc_delay=5,episodes_per_update=5,
+        async_mode='bounded_async_v1',async_max_pending=4)
+    with pytest.raises(ValueError,match='batch'):learner_command(config,Path('/adapter'))
+
+
+def test_recovered_finished_episode_can_upload_and_end_idempotently(tmp_path):
+    import hashlib
+    from test_expo_async_state import episode
+    c=runtime(tmp_path);i=episode(c.outbox.episodes);c.journal.root=c.outbox.episodes
+    assert c.upload_one(i) is False
+    c.outbox.recover_finished()
+    sha=hashlib.sha256((c.outbox.episodes/i/'finished.json').read_bytes()).hexdigest()
+    c.remote_rpc=lambda *a:dict(received=True,episode_uuid=i,sha256=sha,admission_revision=1)
+    c.local_rpc=lambda *a,**k:pytest.fail('Recovered end must not call fresh Actor.finish')
+    assert c.upload_one(i) is True and c.outbox.pending()==[]
+    assert c.transfer_episode(i)['pending_episodes']==1

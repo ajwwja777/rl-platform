@@ -79,6 +79,7 @@ def learner_command(config, adapter):
         from sampling_config import edit_scale as validate
         command += ['--edit-scale', str(validate(config['edit_scale']))]
     if mode:
+        if config.get('async_max_pending',10)<episodes:raise ValueError('Async bound smaller than episode batch')
         for key,default,maximum in [('async_max_pending',10,50),('async_max_policy_lag',2,10)]:
             value=config.get(key,default)
             if type(value) is not int or not 1<=value<=maximum:raise ValueError('Invalid async bound')

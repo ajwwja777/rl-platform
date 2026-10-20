@@ -79,3 +79,27 @@ def test_failed_admission_write_cannot_ack_durability(tmp_path,monkeypatch):
     monkeypatch.setattr(async_state,'atomic_json',fail)
     with pytest.raises(OSError):box.admit(i)
     assert not box.receipt(i)['received']
+
+
+def test_startup_seals_finished_journal_without_actor_receipt(tmp_path):
+    local=tmp_path/'local';i=episode(local);out=Outbox(local)
+    assert 'rollout_rng' not in json.loads((local/i/'finished.json').read_text())
+    out.recover_finished()
+    meta=json.loads((local/i/'finished.json').read_text())
+    assert meta['actor_receipt_missing_after_restart'] is True
+    assert 'rollout_rng' not in meta and meta['outcome']=='success'
+    assert out.pending()==[i]
+
+def test_ack_stays_counted_until_status_observes_admission_revision(tmp_path):
+    local=tmp_path/'local';i=episode(local);box=Inbox(tmp_path/'remote',lambda:{3})
+    stale=box.transport_status();receipt=transfer(box,local,i);out=Outbox(local);out.ack(i,receipt)
+    assert out.pending()==[] and out.unconfirmed(stale['admission_revision'])==[i]
+    assert Outbox(local).unconfirmed(stale['admission_revision'])==[i]
+    fresh=box.transport_status()
+    assert i in fresh['pending_episode_ids'] and out.unconfirmed(fresh['admission_revision'])==[]
+
+def test_deferred_learning_ids_remain_in_bound(tmp_path):
+    local=tmp_path/'local';i=episode(local);box=Inbox(tmp_path/'remote',lambda:{3});transfer(box,local,i)
+    (box.root/'committed.json').write_text(json.dumps({'accepted':[i],'replay':[i],
+        'episodes_since_update':0,'credit':150,'async_untrained':[i]}))
+    assert box.backlog()==[i]
