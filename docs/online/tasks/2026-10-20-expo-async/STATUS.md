@@ -1,6 +1,6 @@
 # EXPO asynchronous Online acceptance
 
-2026-10-20. User approved implementation and four-GPU throughput qualification, then confirmed collection ended and allowed the idle field switch. Production deployment is still pending local returned-Actor acceptance at this checkpoint; see the delivery addendum below when available.
+2026-10-20. User approved implementation and four-GPU throughput qualification, then confirmed collection ended and allowed the idle field switch. Isolated returned-Actor acceptance passed. Formal continuation startup is in progress; see the delivery addendum below for actual field state.
 
 ## Implemented behavior
 
@@ -34,6 +34,6 @@ Isolated final save: checkpoint18.39 seconds; inference bundle export6.94 second
 
 ## Field transfer status
 
-Both source repositories were submitted/pushed before SHA-guarded Cobot installation. New entry remains gated until GPU return and final paused load pass. The HTTP acceptance wrapper initially treated an accepted asynchronous Web unload as completed and collided with the old SSH forward; it was corrected to wait for phase=offline and operation=null. No production journals/weights were changed by that failed attempt. Full returned-Actor transfer and local hot-install are being completed before the ready marker is issued.
+Both source repositories were submitted/pushed before SHA-guarded Cobot installation. New entry remains gated until GPU return and final paused load pass. The HTTP acceptance wrapper initially treated an accepted asynchronous Web unload as completed and collided with the old SSH forward; it was corrected to wait for phase=offline and operation=null. No production journals/weights were changed by that failed attempt. Complete2,017,658,362-byte Actor25 HTTP transfer/SHA and Range verification passed in256.39 seconds. One Cobot process loaded Actor20 and installed25 in5.75 seconds without restart; active-episode install was rejected. Local load/warmup32.36 seconds; subsequent complete pre-cache/selection samples approximately0.147-0.149 seconds. No ROS publication or production data was involved. The formal continuation keeps Actor20; its exact original snapshot is retained on both hosts to reuse the verified initial cache.
 
 Related: DESIGN.md,PLAN.md,RUNBOOK.md. Detailed artifacts under the evidence directory; current field owner recorded in scratch/cobot-web/coordination/cobot-live.md. Physical rollout/HIL acceptance remains operator-owned.

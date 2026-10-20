@@ -1644,7 +1644,7 @@
     },
     {
       "id": "expo-plug-left-2cam-532-hpc4-async-2000",
-      "label": "EXPO 5:3:2 Async Online (Cobot Actor / HPC4 Learner)",
+      "label": "左臂拔插插头 · EXPO 5:3:2 异步 Online（本地推理 / HPC四卡学习）",
       "kind": "vla",
       "family": "EXPO",
       "runtime_adapter": "expo_online",
@@ -1699,7 +1699,7 @@
       "data_directories": {
         "collection": "/media/agilex/Getea1/jiaan/data/datasets/plug_left_2cam/recordings/expo-532-hpc4-sft2000-async"
       },
-      "validation": "CPU transport/scheduling tested; isolated GPU and field qualification pending. Readiness marker required.",
+      "validation": "Isolated four-H100 concurrent admission/update/checkpoint restore and full HTTP Actor return passed; Cobot same-process Actor20-to25 hot install and inference passed. Physical rollout/HIL remains operator-validated.",
       "execution_fidelity": "Explicit continuation of committed synchronous state; warmup10/batch5/K30/UTD20/batch64/532 unchanged; independent Actor RNG, bounded asynchronous transport, episode-pinned publication.",
       "online_run_dir": "/home/agilex/jiaan/data/expo_ft/plug_left_2cam/native_remote_532_hpc4_async_20261020",
       "collection_directory_policy": "model",
