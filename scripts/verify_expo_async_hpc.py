@@ -92,4 +92,10 @@ try:
  assert (base/'committed.json').read_bytes()==original
  result=dict(passed=True,job_id=cfg['job_id'],initial_actor=initial['updates'],actor_version=before['updates'],critic_updates=before['critic_updates'],load_seconds=load,restore_seconds=restore_seconds,uploads=uploads,concurrent=concurrent,timings=result.get('timings'),restored=restored,robot_execution=False,production_data=False)
  atomic_json(H/'qualification-result.json',result);event('passed',actor=before['updates'])
+ atomic_json(H/'return-ready.json',dict(actor_version=before['updates'],port=cfg['port'],pid=child.pid))
+ deadline=time.monotonic()+1800
+ while not (H/'return-verified.json').exists():
+  if child.poll() is not None:raise RuntimeError('Qualified learner exited before return test')
+  if time.monotonic()>deadline:raise TimeoutError('Returned Actor acceptance timeout')
+  time.sleep(2)
 finally:stop()
