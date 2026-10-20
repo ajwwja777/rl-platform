@@ -1,0 +1,62 @@
+import hashlib,json,sys
+from pathlib import Path
+from uuid import uuid4
+import numpy as np
+import pytest
+sys.path.insert(0,str(Path(__file__).parents[1]/'methods/expo_ft/cobot_adapter'))
+from episode_journal import EpisodeJournal
+from remote_journal import files
+from async_state import Inbox,Outbox,rollout_rng,collection_gate
+
+def episode(root,version=3,outcome='success'):
+    identity=str(uuid4());j=EpisodeJournal(root);j.begin(identity,version)
+    obs=dict(state=np.ones(7,np.float32),left_wrist_image=np.zeros((180,320,3),np.uint8),right_wrist_image=np.zeros((180,320,3),np.uint8))
+    for i in range(4):j.sample(obs,np.zeros(7,np.float32),1+i*.1,False)
+    j.finish(identity,outcome)
+    return identity
+
+def transfer(box,local,identity):
+    for p in files(local,identity):
+        b=p.read_bytes();box.receive(identity,p.name,b,hashlib.sha256(b).hexdigest())
+    return box.admit(identity)
+
+def test_durable_admission_is_separate_from_training_and_idempotent(tmp_path):
+    local=tmp_path/'local';i=episode(local);root=tmp_path/'remote'
+    box=Inbox(root,known_versions=lambda:{3});r=transfer(box,local,i)
+    assert r['received'] and not r['processed'] and r['eligible']
+    assert box.pending()==[i]
+    box=Inbox(root,known_versions=lambda:{3});assert transfer(box,local,i)==r
+    (root/'committed.json').write_text(json.dumps({'accepted':[i]}))
+    assert box.receipt(i)['processed'] and box.pending()==[]
+
+def test_partial_future_and_mutated_journals_rejected(tmp_path):
+    local=tmp_path/'local';i=episode(local,4);box=Inbox(tmp_path/'remote',known_versions=lambda:{3})
+    with pytest.raises(ValueError,match='published'):transfer(box,local,i)
+    i=episode(local,3);ps=files(local,i);p=ps[0];b=p.read_bytes();box.receive(i,p.name,b,hashlib.sha256(b).hexdigest())
+    with pytest.raises(ValueError):box.admit(i)
+    with pytest.raises(ValueError):
+        b=ps[-1].read_bytes();box.receive(i,'finished.json',b,hashlib.sha256(b).hexdigest())
+    transfer(box,local,i)
+    b=b'changed'
+    with pytest.raises(ValueError):box.receive(i,'started.json',b,hashlib.sha256(b).hexdigest())
+
+def test_bound_and_outbox_recovery(tmp_path):
+    local=tmp_path/'local';a=episode(local);b=episode(local);box=Inbox(tmp_path/'remote',known_versions=lambda:{3},max_pending=1)
+    transfer(box,local,a)
+    with pytest.raises(ValueError,match='backlog'):transfer(box,local,b)
+    out=Outbox(local);assert out.pending()==[a,b]
+    r=box.receipt(a);out.ack(a,r);assert Outbox(local).pending()==[b]
+    with pytest.raises(ValueError):out.ack(b,r)
+
+def test_unknown_is_received_but_never_eligible(tmp_path):
+    local=tmp_path/'local';i=episode(local,outcome='unknown');box=Inbox(tmp_path/'remote',known_versions=lambda:{3})
+    assert not transfer(box,local,i)['eligible']
+
+def test_rng_independent_and_gate_keeps_active_episode_alive():
+    i=str(uuid4());a=rollout_rng('run',i)
+    assert a==rollout_rng('run',i) and a!=rollout_rng('run',str(uuid4()))
+    assert len(a)==2 and all(0<=x<2**32 for x in a)
+    assert collection_gate(9,1,False,10,2) is None
+    assert collection_gate(10,1,False,10,2)=='backlog'
+    assert collection_gate(1,2,False,10,2)=='policy_lag'
+    assert collection_gate(100,100,True,10,2) is None
