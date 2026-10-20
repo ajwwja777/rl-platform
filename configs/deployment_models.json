@@ -1764,7 +1764,7 @@
       "data_directories": {
         "collection": "/media/agilex/Getea1/jiaan/data/datasets/plug_left_2cam/recordings/expo-native-async-hpc4"
       },
-      "validation": "Qualification pending; ready marker withheld.",
+      "validation": "Four-H100 native continuous admission/update/save/restore passed; full verified HTTP weight return and same-process Cobot GPU hot adoption passed. Formal paused service acceptance recorded separately; physical rollout/HIL remains operator validation.",
       "execution_fidelity": "Supplied native async continuous schedule and BatchProcessor; explicit d5/edit.01, Cobot IO and remote transport. Prior Actor20 continuation retained; no batch5/K30/532/lag gate.",
       "online_run_dir": "/home/agilex/jiaan/data/expo_ft/plug_left_2cam/native_continuous_hpc4_20261020",
       "collection_directory_policy": "model",
