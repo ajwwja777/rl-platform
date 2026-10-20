@@ -33,7 +33,7 @@ def stop_service():
     global service
     if service is not None and service.poll() is None:
         service.terminate()
-        try:service.wait(timeout=30)
+        try:service.wait(timeout=180 if config.get('async_mode')=='native_async_v1' else 30)
         except subprocess.TimeoutExpired:
             service.kill();service.wait(timeout=10)
     service=None
@@ -87,7 +87,9 @@ try:
         tunnel=subprocess.Popen(['ssh','-N','-T','-o','BatchMode=yes','-o','StrictHostKeyChecking=yes','-o','ExitOnForwardFailure=yes','-L','127.0.0.1:18446:127.0.0.1:18443','jhe724@'+node],stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=(logroot/'tunnel.log').open('w'),start_new_session=True)
         time.sleep(1);assert tunnel.poll() is None
         value=start_service(H/'learner.json','resume_production',18446)
-        assert value['actor_version']>=initial['updates'] and value['phase']=='ready' and value['training_enabled']
+        assert value['actor_version']>=initial['updates'] and value['training_enabled']
+        allowed=('ready','sampling','updating','saving','waiting_episode','waiting_replay') if config.get('async_mode')=='native_async_v1' else ('ready',)
+        assert value['phase'] in allowed
         atomic_json(H/'resume-ready.json',dict(passed=True,job_id=JOB,node=node,end_time=fields.get('EndTime'),status=value,robot_execution=False,web_gate_enabled=False))
         event('resumed_learner_running',node=node,actor_version=value['actor_version'])
         tunnel.terminate();tunnel.wait(timeout=15);tunnel=None

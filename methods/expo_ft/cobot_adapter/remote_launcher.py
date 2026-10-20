@@ -63,8 +63,8 @@ def select_gpus(config, is_busy):
     return free[:count]
 def learner_command(config, adapter):
     mode=config.get('async_mode')
-    if mode not in (None,'bounded_async_v1'):raise ValueError('Invalid async mode')
-    entry='async_learner.py' if mode else 'observed_learner.py'
+    if mode not in (None,'bounded_async_v1','native_async_v1'):raise ValueError('Invalid async mode')
+    entry={'bounded_async_v1':'async_learner.py','native_async_v1':'continuous_learner.py'}.get(mode,'observed_learner.py')
     command = [config['python'], str(adapter / entry), '--project', config['project'],
                '--bundle', config['bundle'], '--run-dir', config['run_dir'], '--port', str(config['port']),
                '--recipe', 'native_sync', '--seed-dir', config['seed_dir'], '--deployment-id', config['model_id'],
@@ -78,7 +78,13 @@ def learner_command(config, adapter):
     if 'edit_scale' in config:
         from sampling_config import edit_scale as validate
         command += ['--edit-scale', str(validate(config['edit_scale']))]
-    if mode:
+    if mode=='native_async_v1':
+        if prior!='seeded' or episodes!=1:raise ValueError('Continuous mode requires native sampling and no batching')
+        for key,default in [('ep_timeout_secs',120),('checkpoint_interval_secs',300)]:
+            value=config.get(key,default)
+            if type(value) not in (int,float) or value<=0:raise ValueError('Invalid continuous interval')
+            command+=['--'+key.replace('_','-'),str(value)]
+    if mode=='bounded_async_v1':
         from async_state import validate_pending_limit
         validate_pending_limit(config.get('async_max_pending',10),episodes)
         for key,default,maximum in [('async_max_pending',10,50),('async_max_policy_lag',2,10)]:
@@ -155,7 +161,7 @@ def main():
         if process.poll() is None:
             os.killpg(process.pid, signal.SIGTERM)
             try:
-                process.wait(timeout=20)
+                process.wait(timeout=180 if config.get('async_mode')=='native_async_v1' else 20)
             except subprocess.TimeoutExpired:
                 os.killpg(process.pid, signal.SIGKILL)
                 process.wait()
