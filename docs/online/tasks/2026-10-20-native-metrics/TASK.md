@@ -9,3 +9,5 @@ W&B：用户团队3082928125-hkust-gz--org，项目暂定expo-online。现有Cob
 资源：仅Cobot单个CPU观察器、本地SQLite和静态JSON。HPC/Actor/Session/后端不重启，模型和训练源码/配置不改。现场进程1357120与HPC Learner3181876/job740494作为发布前基线，实际验收再核对。
 
 现场验收：RL1f6fee8/Web1442dd4已推送并SHA安装；static HTTP返回新版本及schema1指标。Cobot观察器1427342运行，读取当前异步实验run18eafdadb8ebc3f4e8e7。Runtime1357120/Learner3181876/job740494身份保持，Sessioninactive；Critic400/Actor20/Replay5152。尚无新更新metrics，完整指标点0，未运行训练来造验收数据。证据Cobot rl-platform/runtime/verification/native-metrics-20261020/acceptance.json。W&B按用户要求延期，无上传。
+
+2026-10-20 用户取消W&B：独立Cobot用户服务读取既有只读状态链路，原生标量保存在原SQLite并发布静态网页；不联系W&B、不读取凭据。不改HPC/Actor/Learner/Session/Web生命周期。观察器恢复时保留最后真实指标及上游原时间，断连不能显示实时。原始指标仅最近状态，接入前未归档完整loss等不补造；后续每2秒观察，按Critic步去重。个人LFT2开发副本 /data/LFT-W02_data/xiqing/projects/rl-platform-metrics-web，正式部署入口不迁移。

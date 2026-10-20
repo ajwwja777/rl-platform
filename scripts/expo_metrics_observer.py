@@ -16,7 +16,7 @@ def extract(status):
         return None
     identity=[model['id'],model.get('online_run_dir'),online.get('pid'),online.get('rtc_delay'),online.get('edit_scale')]
     run=hashlib.sha256(json.dumps(identity).encode()).hexdigest()[:20]
-    progress={k:online.get(k) for k in ('critic_updates','actor_updates','learner_step','served_actor_version','published_actor_version','replay_steps','online_steps','completed_episodes','pending_episodes','pending_update_calls','rtc_delay','edit_scale','critic_prior','critic_sampling','compute_host','learner_phase','phase')}
+    progress={k:online.get(k) for k in ('critic_updates','actor_updates','learner_step','served_actor_version','published_actor_version','replay_steps','online_steps','completed_episodes','pending_episodes','pending_update_calls','rtc_delay','edit_scale','critic_prior','critic_sampling','compute_host','learner_phase','phase','updated_at','last_update_at','network_error')}
     metrics={k:v for k,v in (online.get('metrics') or {}).items() if scalar(v)}
     step=online.get('critic_updates')
     point=None
@@ -44,7 +44,7 @@ class Store:
             m=json.loads(meta);m['observed_at']=updated
             m['points']=[json.loads(p[0]) for p in self.db.execute('SELECT data FROM points WHERE run=? ORDER BY step DESC LIMIT 600',(run,))][::-1]
             runs.append(m)
-        return dict(schema=1,sampled_at=time.time(),runs=runs,wandb=dict(state='not_configured',entity='3082928125-hkust-gz--org',project='expo-online'),source='Native learner update metrics, observed via read-only status; polling may miss updates; missing history is not reconstructed')
+        return dict(schema=1,sampled_at=time.time(),runs=runs,transport='local_read_only_observer',source='Native learner update metrics, observed via read-only status; polling may miss updates; missing history is not reconstructed')
 
 def main():
     p=argparse.ArgumentParser();p.add_argument('--root',type=Path,required=True);p.add_argument('--output',type=Path,required=True);p.add_argument('--url',default='http://127.0.0.1:8015/api/deployment/status');a=p.parse_args()

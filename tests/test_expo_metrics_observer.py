@@ -11,3 +11,12 @@ def test_exact_metrics_and_dedup(tmp_path):
 def test_empty_metrics_and_wrong_identity(tmp_path):
  s=m.Store(tmp_path/'m.db');x=status();x['online']['metrics']={};s.ingest(x);assert s.payload()['runs'][0]['points']==[]
  x['online']['deployment_id']='other';assert m.extract(x) is None
+
+def test_stale_source_and_connection_error_preserve_original_time(tmp_path):
+ s=m.Store(tmp_path/'m.db');x=status();x['online'].update(network_error='refused',last_update_at=40)
+ s.ingest(x);s.ingest(x);p=s.payload();r=p['runs'][0]
+ assert r['progress']['updated_at']==42 and r['progress']['last_update_at']==40
+ assert r['progress']['network_error']=='refused' and r['points'][0]['timestamp']==42
+ assert len(r['points'])==1 and 'wandb' not in p
+ assert p['transport']=='local_read_only_observer'
+ s.ingest({'model':None});assert len(s.payload()['runs'][0]['points'])==1

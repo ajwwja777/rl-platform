@@ -1,0 +1,13 @@
+[Unit]
+Description=Cobot read-only EXPO metrics for local web charts
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /home/agilex/jiaan/project/rl-platform/scripts/expo_metrics_observer.py --root /home/agilex/jiaan/project/rl-platform/runtime/native-metrics --output /home/agilex/jiaan/project/cobot-web/app/backend/segmented_frontend/native-expo-metrics.json
+Restart=on-failure
+RestartSec=10
+Nice=10
+
+[Install]
+WantedBy=default.target
