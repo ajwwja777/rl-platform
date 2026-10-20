@@ -1636,7 +1636,7 @@
       "data_directories": {
         "collection": "/media/agilex/Getea1/jiaan/data/datasets/plug_left_2cam/recordings/expo-532-hpc4-sft2000"
       },
-      "validation": "HPC 4-GPU 50/30/20 qualification pending; requires active allocation receipt.",
+      "validation": "4-H100 50/30/20 updates, partial-batch/checkpoint restore, full HTTP Actor return and Cobot inference passed; physical rollout/HIL acceptance remains user-operated.",
       "execution_fidelity": "Fresh SFT2000, no old online Replay or RL checkpoint. Critic 50% demonstration /30% online-success /20% online-failure per1280; minibatch64, UTD20,K30, warmup10, trigger5 eligible episodes. Base actor success-only unchanged.",
       "online_run_dir": "/home/agilex/jiaan/data/expo_ft/plug_left_2cam/native_remote_532_hpc4_20261020",
       "collection_directory_policy": "model",
