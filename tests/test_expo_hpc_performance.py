@@ -38,3 +38,11 @@ def test_hpc_rejects_invalid_performance_options_before_child_exec(tmp_path,opti
     result,value=launch(tmp_path,**options)
     assert result.returncode!=0
     assert value is None
+
+def test_async_launcher_keeps_four_devices_and_passes_bounds(tmp_path):
+    result,value=launch(tmp_path,gpu_allocator='default',memory_fraction=.65,async_mode='bounded_async_v1',async_max_pending=10,async_max_policy_lag=2)
+    assert result.returncode==0,result.stderr
+    assert value['argv'][0].endswith('/async_learner.py')
+    assert value['argv'][value['argv'].index('--async-max-pending')+1]=='10'
+    assert value['argv'][value['argv'].index('--async-max-policy-lag')+1]=='2'
+    assert value['argv'][-2:]==['--num-devices','4']

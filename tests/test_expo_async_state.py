@@ -60,3 +60,22 @@ def test_rng_independent_and_gate_keeps_active_episode_alive():
     assert collection_gate(10,1,False,10,2)=='backlog'
     assert collection_gate(1,2,False,10,2)=='policy_lag'
     assert collection_gate(100,100,True,10,2) is None
+
+def test_partial_batch_counts_towards_untrained_bound(tmp_path):
+    local=tmp_path/'local';root=tmp_path/'remote';box=Inbox(root,lambda:{3},max_pending=2)
+    a=episode(local);transfer(box,local,a)
+    (root/'committed.json').write_text(json.dumps({'accepted':[a],'replay':[a],'episodes_since_update':1}))
+    assert box.pending()==[] and box.backlog()==[a]
+    b=episode(local);transfer(box,local,b)
+    c=episode(local)
+    with pytest.raises(ValueError,match='backlog'):transfer(box,local,c)
+
+def test_failed_admission_write_cannot_ack_durability(tmp_path,monkeypatch):
+    import async_state
+    local=tmp_path/'local';root=tmp_path/'remote';i=episode(local);box=Inbox(root,lambda:{3})
+    for p in files(local,i):
+        b=p.read_bytes();box.receive(i,p.name,b,hashlib.sha256(b).hexdigest())
+    def fail(*a):raise OSError('disk failure')
+    monkeypatch.setattr(async_state,'atomic_json',fail)
+    with pytest.raises(OSError):box.admit(i)
+    assert not box.receipt(i)['received']

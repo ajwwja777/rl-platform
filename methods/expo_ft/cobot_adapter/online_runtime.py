@@ -22,6 +22,7 @@ class OnlineRuntime(FeedbackExecution, RemoteSupport, Runtime):
         self.remote_init(args)
         self.journal=EpisodeJournal(args.run_dir/'episodes')
         self.episode=None
+        self.control_lock=threading.RLock()
         from monitoring import RolloutHistory
         self.monitor_history=RolloutHistory(args.run_dir)
         super().__init__(args,ros)
@@ -38,6 +39,7 @@ class OnlineRuntime(FeedbackExecution, RemoteSupport, Runtime):
             def do_GET(self):
                 self.send(200,runtime.status_extra())
             def do_POST(self):
+                if not runtime.control_lock.acquire(blocking=False):return self.send(409,{'error':'Episode control or Actor installation is busy'})
                 try:
                     length=int(self.headers.get('Content-Length','0'))
                     if not 0<length<16384:raise ValueError('Invalid body size')
@@ -68,6 +70,7 @@ class OnlineRuntime(FeedbackExecution, RemoteSupport, Runtime):
                     with runtime.lock:runtime.save()
                     self.send(200,value)
                 except Exception as exc:self.send(409,{'error':str(exc)})
+                finally:runtime.control_lock.release()
         self.control=ThreadingHTTPServer(('127.0.0.1',args.control_port),Handler)
         threading.Thread(target=self.control.serve_forever,daemon=True).start()
         threading.Thread(target=self.collect,daemon=True).start()

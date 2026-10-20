@@ -44,6 +44,18 @@ class Inbox:
             done=set(self.committed())
             return [i for i in self.records if i not in done]
 
+    def backlog(self):
+        # Committed partial-batch episodes are received, but their gradient budget
+        # has not been consumed. Keep them in the backpressure count.
+        with self.lock:
+            path=self.root/'committed.json'
+            meta=json.loads(path.read_text()) if path.exists() else {}
+            count=meta.get('episodes_since_update',0)
+            partial=meta.get('replay',[])[-count:] if count else []
+            done=set(meta.get('accepted',[]))
+            outstanding=[p.name for p in self.episodes.iterdir() if p.is_dir() and p.name not in done]
+            return list(dict.fromkeys(partial+outstanding))
+
     def receive(self,identity,name,payload,digest):
         identity=episode_id(identity)
         with self.lock:
@@ -54,9 +66,7 @@ class Inbox:
                 if type(version) is not int or version not in self.known_versions():
                     raise ValueError('Episode policy was not published by this run')
                 if not directory.exists():
-                    done=set(self.committed())
-                    outstanding=sum(p.is_dir() and p.name not in done for p in self.episodes.iterdir())
-                    if outstanding>=self.max_pending:raise ValueError('Remote episode backlog is full')
+                    if len(self.backlog())>=self.max_pending:raise ValueError('Remote episode backlog is full')
                     if shutil.disk_usage(self.root).free<16*1024**3:raise ValueError('Remote journal disk space low')
             elif not (directory/'started.json').is_file():raise ValueError('Missing transferred start')
             return receive(self.episodes,identity,[],identity,name,payload,digest)
@@ -93,7 +103,17 @@ class Outbox:
     def pending(self):
         with self.lock:
             paths=sorted(self.episodes.glob('*/finished.json'),key=lambda p:(json.loads(p.read_text())['finished_at'],p.parent.name))
-            return [p.parent.name for p in paths if not (self.receipts/(p.parent.name+'.json')).exists()]
+            pending=[]
+            for p in paths:
+                if (self.receipts/(p.parent.name+'.json')).exists():continue
+                meta=json.loads(p.read_text())
+                actor_receipt=self.episodes.parent/'actor_receipts'/(p.parent.name+'.json')
+                if 'rollout_rng' not in meta and actor_receipt.is_file():
+                    receipt=json.loads(actor_receipt.read_text())
+                    if receipt['actor_version']!=meta['actor_version']:raise ValueError('Recovered Actor version mismatch')
+                    meta['rollout_rng']=receipt['rollout_rng'];atomic_json(p,meta)
+                pending.append(p.parent.name)
+            return pending
 
     def ack(self,identity,receipt):
         identity=episode_id(identity)

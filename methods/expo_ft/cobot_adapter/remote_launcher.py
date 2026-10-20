@@ -62,7 +62,10 @@ def select_gpus(config, is_busy):
     count = max(n for n in (1,2,4) if n <= maximum and n <= len(free))
     return free[:count]
 def learner_command(config, adapter):
-    command = [config['python'], str(adapter / 'observed_learner.py'), '--project', config['project'],
+    mode=config.get('async_mode')
+    if mode not in (None,'bounded_async_v1'):raise ValueError('Invalid async mode')
+    entry='async_learner.py' if mode else 'observed_learner.py'
+    command = [config['python'], str(adapter / entry), '--project', config['project'],
                '--bundle', config['bundle'], '--run-dir', config['run_dir'], '--port', str(config['port']),
                '--recipe', 'native_sync', '--seed-dir', config['seed_dir'], '--deployment-id', config['model_id'],
                '--rtc-delay', str(config['rtc_delay']), '--native-batch-update', '--learner-only']
@@ -75,6 +78,11 @@ def learner_command(config, adapter):
     if 'edit_scale' in config:
         from sampling_config import edit_scale as validate
         command += ['--edit-scale', str(validate(config['edit_scale']))]
+    if mode:
+        for key,default,maximum in [('async_max_pending',10,50),('async_max_policy_lag',2,10)]:
+            value=config.get(key,default)
+            if type(value) is not int or not 1<=value<=maximum:raise ValueError('Invalid async bound')
+            command+=['--'+key.replace('_','-'),str(value)]
     return command
 
 

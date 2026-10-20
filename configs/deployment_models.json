@@ -1641,6 +1641,70 @@
       "online_run_dir": "/home/agilex/jiaan/data/expo_ft/plug_left_2cam/native_remote_532_hpc4_20261020",
       "collection_directory_policy": "model",
       "critic_prior": "demo50_success30_failure20"
+    },
+    {
+      "id": "expo-plug-left-2cam-532-hpc4-async-2000",
+      "label": "EXPO 5:3:2 Async Online (Cobot Actor / HPC4 Learner)",
+      "kind": "vla",
+      "family": "EXPO",
+      "runtime_adapter": "expo_online",
+      "mode": "online",
+      "checkpoint": "/home/agilex/xiqing/models/expo-ft/plug_left_2cam/rtc_sft_20261013/step_2000",
+      "normalization": "/home/agilex/xiqing/models/expo-ft/plug_left_2cam/rtc_sft_20261013/step_2000/norm_stats.json",
+      "step": 2000,
+      "task": "plug_left_2cam",
+      "training_method": "realtime-expo-ft-532-hpc4-async",
+      "control_hz": 10,
+      "active_arm": "left",
+      "camera_keys": [
+        "left_wrist_image",
+        "right_wrist_image"
+      ],
+      "prompt": "Unplug the black plug from the bottom socket of the power strip and insert it into the top socket.",
+      "entry_relative": "scripts/expo_532_async_hpc4_up.sh",
+      "required": [
+        "/home/agilex/xiqing/models/expo-ft/plug_left_2cam/rtc_sft_20261013/step_2000/norm_stats.json",
+        "/home/agilex/jiaan/project/rl-platform/runtime/expo-remote/profile-532-hpc4-async.json",
+        "/home/agilex/jiaan/project/rl-platform/runtime/expo-remote/id_ed25519",
+        "/home/agilex/jiaan/project/rl-platform/methods/expo_ft/cobot_adapter/remote_runtime_support.py",
+        "/home/agilex/xiqing/projects/expo-ft/.venv/bin/python",
+        "/home/agilex/jiaan/project/rl-platform/runtime/expo-remote/native-source/train_pi_robo.py",
+        "/home/agilex/jiaan/project/rl-platform/methods/expo_ft/cobot_adapter/online_actor.py",
+        "/home/agilex/jiaan/project/rl-platform/methods/expo_ft/cobot_adapter/gripper_feedback.py",
+        "/home/agilex/jiaan/project/rl-platform/runtime/expo-remote/532-hpc4-async-ready.json",
+        "/home/agilex/jiaan/project/rl-platform/methods/expo_ft/cobot_adapter/async_runtime.py",
+        "/home/agilex/jiaan/project/rl-platform/methods/expo_ft/cobot_adapter/async_remote.py",
+        "/home/agilex/jiaan/project/rl-platform/methods/expo_ft/cobot_adapter/async_state.py"
+      ],
+      "checkpoint_type": "bounded_memory_expo_online_state",
+      "resumable_training": true,
+      "integration_level": "managed_runtime",
+      "io_contract": "expo-left-7d-two-wrist-10hz",
+      "evaluation_allowed": false,
+      "capabilities": {
+        "load": true,
+        "ready": true,
+        "start": true,
+        "pause": true,
+        "resume": true,
+        "stop": true,
+        "unload": true,
+        "logs": true,
+        "pid": true,
+        "capture": true,
+        "hil": true,
+        "evaluate": false,
+        "train": true
+      },
+      "data_directories": {
+        "collection": "/media/agilex/Getea1/jiaan/data/datasets/plug_left_2cam/recordings/expo-532-hpc4-sft2000-async"
+      },
+      "validation": "CPU transport/scheduling tested; isolated GPU and field qualification pending. Readiness marker required.",
+      "execution_fidelity": "Explicit continuation of committed synchronous state; warmup10/batch5/K30/UTD20/batch64/532 unchanged; independent Actor RNG, bounded asynchronous transport, episode-pinned publication.",
+      "online_run_dir": "/home/agilex/jiaan/data/expo_ft/plug_left_2cam/native_remote_532_hpc4_async_20261020",
+      "collection_directory_policy": "model",
+      "critic_prior": "demo50_success30_failure20",
+      "async_mode": "bounded_async_v1"
     }
   ]
 }

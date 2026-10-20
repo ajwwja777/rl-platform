@@ -153,3 +153,13 @@ def test_corrected_coordinator_command_is_recorded_without_relimiting(runtime):
         np.testing.assert_array_equal(data['actions'],corrected)
         assert data['state'][6]==pytest.approx(.027)
     post(runtime,'/episode/end',episode_uuid=identity,outcome='failure')
+
+def test_episode_control_rejects_start_during_actor_install(runtime):
+    acquired=threading.Event();release=threading.Event()
+    def install():
+        with runtime.control_lock:acquired.set();release.wait(3)
+    t=threading.Thread(target=install);t.start();assert acquired.wait(1)
+    try:
+        with pytest.raises(HTTPError):post(runtime,'/episode/start',episode_uuid=str(uuid4()))
+        assert not runtime.journal.active
+    finally:release.set();t.join()

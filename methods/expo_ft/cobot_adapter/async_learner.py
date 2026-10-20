@@ -61,7 +61,7 @@ class AsyncLearner(ObservedLearner):
 
     def save_status(self):
         value=super().save_status()
-        pending=self.inbox.pending() if self.inbox else []
+        pending=self.inbox.backlog() if self.inbox else []
         value.update(async_mode='bounded_async_v1',ready=self.phase!='fault' and self.published_version>=0,
             learner_phase=self.phase,actor_version=self.published_version,published_actor_version=self.published_version,
             published_generation=self.publications.get(str(self.published_version),{}).get('generation',0),
@@ -75,7 +75,7 @@ class AsyncLearner(ObservedLearner):
     def snapshot(self):
         value=dict(self._status)
         if self.inbox:
-            pending=self.inbox.pending();value.update(pending_episode_ids=pending,pending_episodes=len(pending))
+            pending=self.inbox.backlog();value.update(pending_episode_ids=pending,pending_episodes=len(pending))
         return value
 
     def work(self):
