@@ -127,3 +127,5 @@ xiqing 原生 RealTimeEXPOFTLearner 在 Cobot4090 完整推理通过；batch2/UT
 2026-10-20: [EXPO bounded asynchronous Online delivery](tasks/2026-10-20-expo-async/STATUS.md). Cobot Actor20/HPC4 Learner20 ready and paused, real Replay5152 preserved; no robot motion. Concurrent admission/update/restore/full HTTP return and same-process hot install passed; 289 EXPO tests and113 Web tests. Background transfer overlaps collection, with10 outstanding episodes/2 published generations bounds. Stable native update34.6s (1VLA+20Critic), GPU utilization~95%; full return256s, hot install5.75s. Recipe unchanged. Startup SSH connection refusals can be transient: verify live model-ready and matching identities before delivery, not merely accepted load. Source and detailed limits in task STATUS/RUNBOOK.
 
 2026-10-20：原生EXPO标量指标独立只读观察器及网页扩展，W&B按用户要求延期。详情tasks/2026-10-20-native-metrics/TASK.md。
+
+2026-10-20：新增 [rollout监控](tasks/2026-10-20-rollout-monitoring/TASK.md)，复用选动作时Q与Edit候选，记录实际precache/select耗时与monotonic视频锚；保留continuous每点版本来源。只同步源码，新增字段未来正常加载生效；当前HPC/Actor/Session不重载。
